@@ -39,6 +39,22 @@ export const publishHistory = sqliteTable("publish_history", {
 });
 
 /**
+ * Scenes — each row is one generation cycle.
+ */
+export const scenes = sqliteTable("scenes", {
+  id: text("id").primaryKey(),
+  status: text("status").notNull(), // 'pending' | 'generating' | 'complete' | 'failed'
+  contextJson: text("context_json"), // JSON SceneContext
+  prompt: text("prompt"),
+  imageProvider: text("image_provider"),
+  imagePath: text("image_path"),
+  createdAt: text("created_at").notNull(),
+  completedAt: text("completed_at"),
+  durationMs: integer("duration_ms"),
+  error: text("error"),
+});
+
+/**
  * Health snapshots — periodic captures of dependency health.
  */
 export const healthSnapshots = sqliteTable("health_snapshots", {

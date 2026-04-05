@@ -1,56 +1,11 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { getDb, settings, eq } from "@frame/db";
 import { DEFAULT_SETTINGS } from "@frame/core";
 import { validateSettings, mergeSettings } from "@frame/config";
 import type { AppSettings } from "@frame/core";
-
-function ensureSchema() {
-  const db = getDb();
-  // Create tables if they don't exist (simple bootstrap for v1)
-  const sqliteDb = (
-    db as unknown as {
-      _: { session: { client: { exec: (sql: string) => void } } };
-    }
-  )._.session.client;
-  sqliteDb.exec(`
-    CREATE TABLE IF NOT EXISTS settings (
-      id TEXT PRIMARY KEY DEFAULT 'default',
-      data TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    )
-  `);
-  sqliteDb.exec(`
-    CREATE TABLE IF NOT EXISTS job_runs (
-      id TEXT PRIMARY KEY,
-      type TEXT NOT NULL,
-      status TEXT NOT NULL,
-      started_at TEXT NOT NULL,
-      completed_at TEXT,
-      duration_ms INTEGER,
-      error TEXT,
-      metadata TEXT
-    )
-  `);
-  sqliteDb.exec(`
-    CREATE TABLE IF NOT EXISTS publish_history (
-      id TEXT PRIMARY KEY,
-      scene_id TEXT,
-      status TEXT NOT NULL,
-      published_at TEXT NOT NULL,
-      duration_ms INTEGER,
-      error TEXT,
-      content_id TEXT
-    )
-  `);
-  sqliteDb.exec(`
-    CREATE TABLE IF NOT EXISTS health_snapshots (
-      id TEXT PRIMARY KEY,
-      status TEXT NOT NULL,
-      data TEXT NOT NULL,
-      captured_at TEXT NOT NULL
-    )
-  `);
-}
+import { ensureSchema } from "@/lib/db-bootstrap";
 
 export async function GET() {
   try {

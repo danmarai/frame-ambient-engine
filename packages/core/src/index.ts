@@ -52,3 +52,12 @@ export type {
   SystemHealth,
   JobRun,
 } from "./types/health";
+
+export type {
+  // Scene
+  SceneStatus,
+  SceneContext,
+  Scene,
+  GenerateRequest,
+  GenerateResponse,
+} from "./types/scene";

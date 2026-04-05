@@ -4,9 +4,12 @@ import * as schema from "./schema";
 import { existsSync, mkdirSync } from "fs";
 import { dirname } from "path";
 
-let _db: ReturnType<typeof createDb> | null = null;
+let _db: ReturnType<typeof drizzle> | null = null;
+let _sqlite: InstanceType<typeof Database> | null = null;
 
-function createDb() {
+function init() {
+  if (_db) return;
+
   const dbPath =
     process.env.DATABASE_URL?.replace("file:", "") || "../../data/frame.db";
 
@@ -16,21 +19,25 @@ function createDb() {
     mkdirSync(dir, { recursive: true });
   }
 
-  const sqlite = new Database(dbPath);
+  _sqlite = new Database(dbPath);
 
   // Performance and reliability pragmas
-  sqlite.pragma("journal_mode = WAL");
-  sqlite.pragma("foreign_keys = ON");
-  sqlite.pragma("busy_timeout = 5000");
+  _sqlite.pragma("journal_mode = WAL");
+  _sqlite.pragma("foreign_keys = ON");
+  _sqlite.pragma("busy_timeout = 5000");
 
-  return drizzle(sqlite, { schema });
+  _db = drizzle(_sqlite, { schema });
 }
 
 export function getDb() {
-  if (!_db) {
-    _db = createDb();
-  }
-  return _db;
+  init();
+  return _db!;
+}
+
+/** Access the raw better-sqlite3 instance for DDL operations. */
+export function getRawDb(): InstanceType<typeof Database> {
+  init();
+  return _sqlite!;
 }
 
 export type FrameDb = ReturnType<typeof getDb>;
