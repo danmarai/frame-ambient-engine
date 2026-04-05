@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --frame-bg: #0a0a0a;
+  --frame-surface: #141414;
+  --frame-border: #262626;
+  --frame-text: #e5e5e5;
+  --frame-muted: #737373;
+}
+
+body {
+  background: var(--frame-bg);
+  color: var(--frame-text);
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}

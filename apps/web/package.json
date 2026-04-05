@@ -1,0 +1,39 @@
+{
+  "name": "@frame/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbo",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint src/ --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .next .turbo"
+  },
+  "dependencies": {
+    "@frame/config": "workspace:*",
+    "@frame/core": "workspace:*",
+    "@frame/db": "workspace:*",
+    "@frame/health": "workspace:*",
+    "@frame/providers": "workspace:*",
+    "@frame/rendering": "workspace:*",
+    "@frame/tv": "workspace:*",
+    "bcryptjs": "^2.4.3",
+    "iron-session": "^8.0.0",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@frame/eslint-config": "workspace:*",
+    "@frame/typescript-config": "workspace:*",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.7.0"
+  }
+}
