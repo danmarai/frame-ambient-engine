@@ -57,6 +57,7 @@ export type {
 export type {
   // Scene
   SceneStatus,
+  PublishStatus,
   SceneContext,
   Scene,
   Rating,

@@ -12,6 +12,7 @@ import type { Quote } from "./providers";
 import type { ThemeName, ImageProviderName } from "./settings";
 
 export type SceneStatus = "pending" | "generating" | "complete" | "failed";
+export type PublishStatus = "pending" | "published" | "failed";
 
 /** The gathered context that feeds prompt composition. */
 export interface SceneContext {
@@ -35,7 +36,7 @@ export interface Scene {
   durationMs: number | null;
   error: string | null;
   favorite?: boolean;
-  publishStatus?: "pending" | "published" | "failed";
+  publishStatus?: PublishStatus;
 }
 
 /** A user rating on a generated scene. */
