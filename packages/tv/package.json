@@ -10,11 +10,13 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@frame/core": "workspace:*"
+    "@frame/core": "workspace:*",
+    "node-ssdp": "^4.0.1"
   },
   "devDependencies": {
     "@frame/typescript-config": "workspace:*",
-    "typescript": "^5.7.0",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "@types/node-ssdp": "^4.0.5",
+    "typescript": "^5.7.0"
   }
 }
