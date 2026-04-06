@@ -179,6 +179,11 @@ export function composePrompt(context: SceneContext): string {
     );
   }
 
+  // Style preferences from taste feedback
+  if (context.styleHints && context.styleHints.length > 0) {
+    parts.push(`Style preferences: ${context.styleHints}`);
+  }
+
   // Technical direction
   parts.push(`Style: ${theme.style}`);
   parts.push(

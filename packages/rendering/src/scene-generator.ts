@@ -36,7 +36,7 @@ export interface GeneratorDeps {
 export async function generateScene(
   deps: GeneratorDeps,
   settings: AppSettings,
-  overrides?: { theme?: ThemeName },
+  overrides?: { theme?: ThemeName; styleHints?: string },
 ): Promise<{ scene: Omit<Scene, "id" | "imagePath">; imageData: Buffer }> {
   const start = Date.now();
   const theme = overrides?.theme ?? settings.theme;
@@ -59,6 +59,7 @@ export async function generateScene(
     market: market.status === "fulfilled" ? market.value : null,
     quote: quote.status === "fulfilled" ? quote.value : null,
     theme,
+    ...(overrides?.styleHints ? { styleHints: overrides.styleHints } : {}),
   };
 
   // 2. Compose prompt

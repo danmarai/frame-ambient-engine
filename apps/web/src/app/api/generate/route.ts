@@ -14,7 +14,7 @@ import {
   getQuoteProvider,
   getImageProvider,
 } from "@/lib/providers";
-import { generateScene } from "@frame/rendering";
+import { generateScene, computeStyleHints } from "@frame/rendering";
 
 export async function POST(request: Request) {
   try {
@@ -69,9 +69,14 @@ export async function POST(request: Request) {
       image: getImageProvider(resolvedProvider),
     };
 
+    // Compute taste feedback hints
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const styleHints = computeStyleHints(db as any);
+
     // Run the generation
     const { scene, imageData } = await generateScene(deps, appSettings, {
       theme: overrideTheme as AppSettings["theme"] | undefined,
+      styleHints: styleHints || undefined,
     });
 
     // Save image to filesystem
