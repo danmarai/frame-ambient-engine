@@ -8,6 +8,54 @@ import type {
 import { SamsungFrameClient } from "samsung-frame-connect";
 
 /**
+ * Wrap an async operation with a timeout.
+ * Returns the result or throws on timeout.
+ */
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string,
+): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`${label} timed out after ${ms}ms`)),
+        ms,
+      ),
+    ),
+  ]);
+}
+
+/**
+ * Create a client, connect, run an operation, and close.
+ * Handles connection timeout and always cleans up.
+ */
+async function withClient<T>(
+  ip: string,
+  fn: (client: SamsungFrameClient) => Promise<T>,
+  connectTimeoutMs = 15000,
+): Promise<T> {
+  const client = new SamsungFrameClient({
+    host: ip,
+    name: "FrameEngine",
+    verbosity: 0,
+  });
+
+  await withTimeout(client.connect(), connectTimeoutMs, "TV connect");
+
+  try {
+    return await fn(client);
+  } finally {
+    try {
+      await client.close();
+    } catch {
+      // Ignore close errors
+    }
+  }
+}
+
+/**
  * Real Samsung Frame TV publisher.
  * Wraps the samsung-frame-connect npm package for WebSocket communication
  * and uses HTTP probe on port 8001 for connectivity testing.
@@ -53,19 +101,19 @@ export class SamsungFramePublisher implements TvPublisher {
   ): Promise<TvPublishResult> {
     const start = Date.now();
     try {
-      const client = new SamsungFrameClient({ host: ip });
-      await client.connect();
+      const contentId = await withClient(
+        ip,
+        async (client) => {
+          return await client.upload(imageData, { fileType: "JPEG" });
+        },
+        20000,
+      );
 
-      try {
-        const contentId = await client.upload(imageData, { fileType: "JPEG" });
-        return {
-          success: true,
-          contentId,
-          durationMs: Date.now() - start,
-        };
-      } finally {
-        await client.close();
-      }
+      return {
+        success: true,
+        contentId,
+        durationMs: Date.now() - start,
+      };
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Unknown upload error";
@@ -83,15 +131,10 @@ export class SamsungFramePublisher implements TvPublisher {
     _token?: string,
   ): Promise<boolean> {
     try {
-      const client = new SamsungFrameClient({ host: ip });
-      await client.connect();
-
-      try {
+      await withClient(ip, async (client) => {
         await client.setCurrentArt({ id: contentId });
-        return true;
-      } finally {
-        await client.close();
-      }
+      });
+      return true;
     } catch {
       return false;
     }
@@ -99,15 +142,11 @@ export class SamsungFramePublisher implements TvPublisher {
 
   async getArtModeStatus(ip: string, _token?: string): Promise<boolean> {
     try {
-      const client = new SamsungFrameClient({ host: ip });
-      await client.connect();
-
-      try {
-        return await client.inArtMode();
-      } finally {
-        await client.close();
-      }
+      return await withClient(ip, async (client) => {
+        return await withTimeout(client.inArtMode(), 5000, "Art mode check");
+      });
     } catch {
+      // Art mode commands time out when TV is in regular TV mode — this is normal
       return false;
     }
   }
@@ -117,9 +156,6 @@ export class SamsungFramePublisher implements TvPublisher {
     _enabled: boolean,
     _token?: string,
   ): Promise<boolean> {
-    console.warn(
-      "SamsungFramePublisher: setArtMode is not supported by samsung-frame-connect",
-    );
     return false;
   }
 

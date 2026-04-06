@@ -20,8 +20,10 @@ export default function DashboardPage() {
   useEffect(() => {
     fetch("/api/scenes")
       .then((r) => r.json())
-      .then((scenes: Scene[]) => {
-        setSceneCount(scenes.length);
+      .then((data: { scenes: Scene[]; total: number } | Scene[]) => {
+        const scenes = Array.isArray(data) ? data : data.scenes;
+        const total = Array.isArray(data) ? data.length : data.total;
+        setSceneCount(total);
         if (scenes.length > 0) setLastScene(scenes[0]!);
       })
       .catch(() => {});

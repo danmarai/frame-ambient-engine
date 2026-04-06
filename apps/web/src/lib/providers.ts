@@ -59,10 +59,10 @@ export function getImageProvider(name?: ImageProviderName): ImageProvider {
   }
 }
 
-export function getTvPublisher(): TvPublisher {
+export function getTvPublisher(tvIp?: string): TvPublisher {
   const env = loadEnvConfig();
 
-  if (env.samsungTvIp) {
+  if (tvIp || env.samsungTvIp) {
     return new SamsungFramePublisher();
   }
 

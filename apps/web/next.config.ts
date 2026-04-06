@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
     "samsung-frame-connect",
     "node-ssdp",
     "sharp",
+    "ws",
   ],
   transpilePackages: [
     "@frame/core",

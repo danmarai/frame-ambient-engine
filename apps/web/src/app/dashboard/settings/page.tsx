@@ -95,24 +95,44 @@ export default function SettingsPage() {
         }
       })
       .catch(() => {});
-  }, [checkTvStatus]);
+    // Only run on mount — not when checkTvStatus changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [scanResult, setScanResult] = useState<{
+    type: "success" | "empty" | "error";
+    text: string;
+  } | null>(null);
 
   async function handleScanForTvs() {
     setScanning(true);
     setDiscoveredDevices([]);
+    setScanResult(null);
     try {
       const res = await fetch("/api/tv/discover", { method: "POST" });
       if (res.ok) {
         const data = await res.json();
-        setDiscoveredDevices(data.devices ?? []);
-        if (!data.devices?.length) {
-          setMessage({ type: "error", text: "No TVs found on network" });
+        // API returns a flat array of TvDeviceInfo objects
+        const devices: DiscoveredDevice[] = Array.isArray(data)
+          ? data
+          : (data.devices ?? []);
+        setDiscoveredDevices(devices);
+        if (devices.length === 0) {
+          setScanResult({
+            type: "empty",
+            text: "No Frame TVs found on your network.",
+          });
+        } else {
+          setScanResult({
+            type: "success",
+            text: `Found ${devices.length} Frame TV${devices.length > 1 ? "s" : ""}. Select one below or enter an IP manually.`,
+          });
         }
       } else {
-        setMessage({ type: "error", text: "Failed to scan for TVs" });
+        setScanResult({ type: "error", text: "Failed to scan for TVs." });
       }
     } catch {
-      setMessage({ type: "error", text: "Network error during scan" });
+      setScanResult({ type: "error", text: "Network error during scan." });
     } finally {
       setScanning(false);
     }
@@ -127,10 +147,12 @@ export default function SettingsPage() {
     setPairResult(null);
     setPairStep(1);
 
-    // Step 1: brief pause for user to read
-    await new Promise((r) => setTimeout(r, 800));
+    // Step 1: verifying TV is reachable
+    await new Promise((r) => setTimeout(r, 500));
     setPairStep(2);
 
+    // Step 2+3: the API call does HTTP probe then WebSocket pairing
+    // This can take up to 60 seconds while waiting for user to press Allow
     try {
       const res = await fetch("/api/tv/pair", {
         method: "POST",
@@ -138,19 +160,16 @@ export default function SettingsPage() {
         body: JSON.stringify({ ip: settings.tv.ip }),
       });
 
-      setPairStep(3);
+      const data = await res.json();
 
-      if (res.ok) {
-        const data = await res.json();
+      if (res.ok && data.paired) {
+        setPairStep(3);
         setPairResult(
-          data.device
-            ? `Paired with ${data.device.name} (${data.device.model})`
-            : "Pairing successful",
+          `Paired with ${data.device?.name ?? "TV"} (${data.device?.model ?? "Unknown"})`,
         );
-        await checkTvStatus();
+        await checkTvStatus(settings.tv.ip);
       } else {
-        const err = await res.json().catch(() => ({ error: "Pairing failed" }));
-        setPairResult(err.error || "Pairing failed");
+        setPairResult(data.error || "Pairing failed");
       }
     } catch {
       setPairResult("Network error during pairing");
@@ -323,6 +342,7 @@ export default function SettingsPage() {
         tvConnection={tvConnection}
         tvDevice={tvDevice}
         scanning={scanning}
+        scanResult={scanResult}
         discoveredDevices={discoveredDevices}
         pairing={pairing}
         pairStep={pairStep}
@@ -418,6 +438,7 @@ function TvSection({
   tvConnection,
   tvDevice,
   scanning,
+  scanResult,
   discoveredDevices,
   pairing,
   pairStep,
@@ -432,6 +453,7 @@ function TvSection({
   tvConnection: TvConnectionState;
   tvDevice: TvStatusResult["device"] | null;
   scanning: boolean;
+  scanResult: { type: "success" | "empty" | "error"; text: string } | null;
   discoveredDevices: DiscoveredDevice[];
   pairing: boolean;
   pairStep: PairStep | null;
@@ -442,9 +464,9 @@ function TvSection({
   onSelectDevice: (ip: string) => void;
 }) {
   const pairSteps: Record<PairStep, string> = {
-    1: "Ensure your TV is powered on",
-    2: "Click Pair to initiate connection",
-    3: "On your TV, press Allow when prompted",
+    1: "Verifying TV is reachable...",
+    2: "Waiting for you to press Allow on your TV remote (up to 60s)...",
+    3: "Paired successfully!",
   };
 
   return (
@@ -456,72 +478,147 @@ function TvSection({
         <ConnectionStatusDot state={tvConnection} />
       </div>
       <div className="space-y-4">
-        {/* IP Input */}
-        <TextInput
-          label="TV IP Address"
-          value={settings.tv.ip}
-          placeholder="192.168.1.100"
-          onChange={(v) =>
-            setSettings({ ...settings, tv: { ...settings.tv, ip: v } })
-          }
-        />
+        {/* Connected device info — show at top when connected */}
+        {tvConnection === "connected" && tvDevice && (
+          <div className="rounded-md border border-green-500/20 bg-green-500/5 p-3">
+            <p className="mb-1 text-xs font-medium text-green-600">
+              Connected Device
+            </p>
+            <p className="text-sm text-frame-text">
+              {tvDevice.name} — {tvDevice.model}
+            </p>
+            <p className="text-xs text-frame-muted">
+              Firmware: {tvDevice.firmwareVersion} | Art Mode:{" "}
+              {tvDevice.isArtMode ? "On" : "Off"}
+            </p>
+          </div>
+        )}
 
-        {/* Scan for TVs */}
-        <div className="flex items-center justify-between">
-          <label className="text-sm text-frame-text">Discover TVs</label>
+        {/* Step 1: Find your TV */}
+        <div>
+          <p className="mb-2 text-xs font-medium text-frame-muted">
+            Step 1: Find your TV
+          </p>
+          <p className="mb-3 text-xs text-frame-muted">
+            Scan your network to auto-discover Frame TVs, or enter the IP
+            address manually. Your TV must be powered on (not just standby) to
+            be discovered.
+          </p>
+
+          {/* Scan button */}
           <button
             type="button"
             onClick={onScan}
             disabled={scanning}
-            className="rounded-md border border-frame-border bg-frame-bg px-3 py-1.5 text-sm text-frame-text transition-colors hover:bg-frame-border disabled:opacity-50"
+            className="mb-3 w-full rounded-md border border-frame-border bg-frame-bg px-3 py-2 text-sm text-frame-text transition-colors hover:bg-frame-border disabled:opacity-50"
           >
-            {scanning ? "Scanning..." : "Scan for TVs"}
+            {scanning
+              ? "Scanning your network... (up to 10 seconds)"
+              : "Scan for Frame TVs"}
           </button>
+
+          {/* Scan result message */}
+          {scanResult && (
+            <div
+              className={`mb-3 rounded-md px-3 py-2 text-sm ${
+                scanResult.type === "success"
+                  ? "bg-frame-success/10 text-frame-success"
+                  : scanResult.type === "empty"
+                    ? "bg-yellow-500/10 text-yellow-600"
+                    : "bg-frame-error/10 text-frame-error"
+              }`}
+            >
+              <p>{scanResult.text}</p>
+              {scanResult.type === "empty" && (
+                <p className="mt-1 text-xs opacity-80">
+                  Make sure your TV is powered on and connected to the same WiFi
+                  network. You can also enter the IP address manually below.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Discovered devices list */}
+          {discoveredDevices.length > 0 && (
+            <div className="mb-3 rounded-md border border-frame-border bg-frame-bg p-2">
+              <p className="mb-2 text-xs text-frame-muted">
+                Click a TV to select it:
+              </p>
+              <div className="space-y-1">
+                {discoveredDevices.map((device) => (
+                  <button
+                    key={device.ip}
+                    type="button"
+                    onClick={() => onSelectDevice(device.ip)}
+                    className="flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm text-frame-text hover:bg-frame-accent/10 hover:text-frame-accent"
+                  >
+                    <span className="font-medium">
+                      {device.name}{" "}
+                      <span className="font-normal text-frame-muted">
+                        ({device.model})
+                      </span>
+                    </span>
+                    <span className="text-xs text-frame-muted">
+                      {device.ip}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Manual IP input */}
+          <TextInput
+            label="TV IP Address"
+            value={settings.tv.ip}
+            placeholder="e.g. 192.168.1.100"
+            onChange={(v) =>
+              setSettings({ ...settings, tv: { ...settings.tv, ip: v } })
+            }
+          />
+          {!settings.tv.ip && (
+            <p className="mt-1 text-xs text-frame-muted">
+              Find your TV&apos;s IP in its network settings, or use the scan
+              above.
+            </p>
+          )}
         </div>
 
-        {/* Discovered devices list */}
-        {discoveredDevices.length > 0 && (
-          <div className="rounded-md border border-frame-border bg-frame-bg p-2">
-            <p className="mb-2 text-xs text-frame-muted">
-              Found {discoveredDevices.length} device(s):
+        {/* Step 2: Connect */}
+        {settings.tv.ip && (
+          <div>
+            <p className="mb-2 text-xs font-medium text-frame-muted">
+              Step 2: Connect to your TV
             </p>
-            <div className="space-y-1">
-              {discoveredDevices.map((device) => (
-                <button
-                  key={device.ip}
-                  type="button"
-                  onClick={() => onSelectDevice(device.ip)}
-                  className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-sm text-frame-text hover:bg-frame-border"
-                >
-                  <span>
-                    {device.name} ({device.model})
-                  </span>
-                  <span className="text-xs text-frame-muted">{device.ip}</span>
-                </button>
-              ))}
+            <p className="mb-3 text-xs text-frame-muted">
+              Test the connection to verify your TV is reachable, then pair to
+              enable art publishing.
+            </p>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onTestConnection}
+                disabled={tvConnection === "checking"}
+                className="flex-1 rounded-md border border-frame-border bg-frame-bg px-3 py-2 text-sm text-frame-text transition-colors hover:bg-frame-border disabled:opacity-50"
+              >
+                {tvConnection === "checking" ? "Testing..." : "Test Connection"}
+              </button>
+              <button
+                type="button"
+                onClick={onPair}
+                disabled={pairing}
+                className="flex-1 rounded-md bg-frame-accent px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-frame-accent/90 disabled:opacity-50"
+              >
+                {pairing ? "Pairing..." : "Pair with TV"}
+              </button>
             </div>
           </div>
         )}
 
-        {/* Pair button */}
-        <div className="flex items-center justify-between">
-          <label className="text-sm text-frame-text">Pair with TV</label>
-          <button
-            type="button"
-            onClick={onPair}
-            disabled={pairing || !settings.tv.ip}
-            className="rounded-md border border-frame-border bg-frame-bg px-3 py-1.5 text-sm text-frame-text transition-colors hover:bg-frame-border disabled:opacity-50"
-          >
-            {pairing ? "Pairing..." : "Pair"}
-          </button>
-        </div>
-
         {/* Pairing steps */}
         {pairStep !== null && (
           <div className="rounded-md border border-frame-border bg-frame-bg p-3">
-            <p className="mb-2 text-xs font-medium text-frame-muted">
-              Pairing Steps:
-            </p>
             <ol className="space-y-1.5">
               {([1, 2, 3] as PairStep[]).map((step) => (
                 <li
@@ -530,12 +627,12 @@ function TvSection({
                     step === pairStep
                       ? "font-medium text-frame-accent"
                       : step < pairStep
-                        ? "text-frame-muted line-through"
+                        ? "text-frame-success"
                         : "text-frame-muted"
                   }`}
                 >
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-current text-xs">
-                    {step}
+                    {step < pairStep ? "✓" : step}
                   </span>
                   {pairSteps[step]}
                 </li>
@@ -554,37 +651,13 @@ function TvSection({
             }`}
           >
             {pairResult}
+            {pairResult.startsWith("Paired") && (
+              <p className="mt-1 text-xs opacity-80">
+                You can now publish images to your TV from the Preview Studio.
+              </p>
+            )}
           </div>
         )}
-
-        {/* Connected device info */}
-        {tvConnection === "connected" && tvDevice && (
-          <div className="rounded-md border border-green-500/20 bg-green-500/5 p-3">
-            <p className="mb-1 text-xs font-medium text-frame-muted">
-              Connected Device
-            </p>
-            <p className="text-sm text-frame-text">
-              {tvDevice.name} - {tvDevice.model}
-            </p>
-            <p className="text-xs text-frame-muted">
-              Firmware: {tvDevice.firmwareVersion} | Art Mode:{" "}
-              {tvDevice.isArtMode ? "On" : "Off"}
-            </p>
-          </div>
-        )}
-
-        {/* Test Connection button */}
-        <div className="flex items-center justify-between">
-          <label className="text-sm text-frame-text">Test Connection</label>
-          <button
-            type="button"
-            onClick={onTestConnection}
-            disabled={!settings.tv.ip || tvConnection === "checking"}
-            className="rounded-md border border-frame-border bg-frame-bg px-3 py-1.5 text-sm text-frame-text transition-colors hover:bg-frame-border disabled:opacity-50"
-          >
-            {tvConnection === "checking" ? "Testing..." : "Test Connection"}
-          </button>
-        </div>
       </div>
     </div>
   );

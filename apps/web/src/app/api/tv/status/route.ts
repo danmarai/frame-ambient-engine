@@ -29,7 +29,7 @@ export async function GET() {
       });
     }
 
-    const tvPublisher = getTvPublisher();
+    const tvPublisher = getTvPublisher(ip);
     const device: TvDeviceInfo | null = await tvPublisher.testConnectivity(ip);
 
     if (!device) {

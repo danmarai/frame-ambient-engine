@@ -6,6 +6,7 @@ import { DEFAULT_SETTINGS } from "@frame/core";
 import type { AppSettings } from "@frame/core";
 import { ensureSchema } from "@/lib/db-bootstrap";
 import { getTvPublisher } from "@/lib/providers";
+import { pairWithTv, saveToken } from "@frame/tv";
 
 export async function POST(request: Request) {
   try {
@@ -19,17 +20,43 @@ export async function POST(request: Request) {
       );
     }
 
-    const tvPublisher = getTvPublisher();
+    // Step 1: HTTP probe to verify TV is reachable
+    const tvPublisher = getTvPublisher(ip);
     const device = await tvPublisher.testConnectivity(ip);
 
     if (!device) {
       return NextResponse.json(
-        { error: "Could not connect to TV" },
+        {
+          error:
+            "Could not reach TV at " +
+            ip +
+            ". Make sure it is powered on and on the same network.",
+        },
         { status: 400 },
       );
     }
 
-    // Save the IP to settings
+    // Step 2: WebSocket pairing — this triggers the Allow/Deny popup on the TV
+    // Give the user 60 seconds to press Allow on their remote
+    const pairResult = await pairWithTv(ip, 60000);
+
+    if (!pairResult.success) {
+      return NextResponse.json(
+        {
+          error: pairResult.error ?? "Pairing failed",
+          device, // Still return device info since HTTP probe worked
+          paired: false,
+        },
+        { status: 400 },
+      );
+    }
+
+    // Step 3: Save token for samsung-frame-connect library
+    if (pairResult.token) {
+      await saveToken(pairResult.token);
+    }
+
+    // Step 4: Save IP and token to settings DB
     ensureSchema();
     const db = getDb();
     const rows = await db
@@ -41,7 +68,7 @@ export async function POST(request: Request) {
       rows.length > 0 ? JSON.parse(rows[0]!.data) : DEFAULT_SETTINGS;
     const merged: AppSettings = {
       ...current,
-      tv: { ...current.tv, ip },
+      tv: { ...current.tv, ip, token: pairResult.token },
     };
     const now = new Date().toISOString();
 
@@ -61,7 +88,11 @@ export async function POST(request: Request) {
         .where(eq(settings.id, "default"));
     }
 
-    return NextResponse.json(device);
+    return NextResponse.json({
+      device,
+      paired: true,
+      token: pairResult.token ? "saved" : undefined,
+    });
   } catch (error) {
     console.error("TV pairing failed:", error);
     return NextResponse.json({ error: "TV pairing failed" }, { status: 500 });

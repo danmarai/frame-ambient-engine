@@ -18,6 +18,7 @@
     "@frame/typescript-config": "workspace:*",
     "@types/node": "^22.0.0",
     "@types/node-ssdp": "^4.0.4",
+    "@types/ws": "^8.18.1",
     "typescript": "^5.7.0"
   }
 }
