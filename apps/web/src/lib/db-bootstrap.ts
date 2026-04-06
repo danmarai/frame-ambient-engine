@@ -61,5 +61,27 @@ export function ensureSchema() {
     )
   `);
 
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS ratings (
+      id TEXT PRIMARY KEY,
+      scene_id TEXT NOT NULL REFERENCES scenes(id),
+      rating TEXT NOT NULL,
+      features TEXT,
+      rated_at TEXT NOT NULL
+    )
+  `);
+
+  // Add columns that may not exist on older databases
+  try {
+    sqlite.exec(`ALTER TABLE scenes ADD COLUMN favorite INTEGER DEFAULT 0`);
+  } catch {
+    /* already exists */
+  }
+  try {
+    sqlite.exec(`ALTER TABLE scenes ADD COLUMN publish_status TEXT`);
+  } catch {
+    /* already exists */
+  }
+
   bootstrapped = true;
 }
