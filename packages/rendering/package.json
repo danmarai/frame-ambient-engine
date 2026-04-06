@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@frame/core": "workspace:*",
+    "@frame/db": "workspace:*",
+    "drizzle-orm": "^0.38.0",
     "sharp": "^0.33.0"
   },
   "devDependencies": {

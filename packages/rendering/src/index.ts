@@ -12,4 +12,7 @@ export const RENDER_TARGET = {
 export { composePrompt } from "./prompt-composer";
 export { generateScene } from "./scene-generator";
 export type { GeneratorDeps } from "./scene-generator";
+
 export { prepareForTV, getImageMetadata } from "./image-processor";
+
+export { saveRating, computeStyleHints } from "./feedback";
