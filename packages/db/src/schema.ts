@@ -63,3 +63,15 @@ export const healthSnapshots = sqliteTable("health_snapshots", {
   data: text("data").notNull(), // JSON-serialized SystemHealth
   capturedAt: text("captured_at").notNull(),
 });
+
+/**
+ * Ratings — thumbs up/down feedback on generated scenes.
+ * Features JSON captures context for preference learning.
+ */
+export const ratings = sqliteTable("ratings", {
+  id: text("id").primaryKey(),
+  sceneId: text("scene_id").notNull(),
+  rating: text("rating").notNull(), // 'up' | 'down'
+  features: text("features").notNull(), // JSON-serialized feature map
+  ratedAt: text("rated_at").notNull(),
+});
