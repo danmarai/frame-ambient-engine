@@ -10,16 +10,17 @@ ADRs exist so that future contributors and agents can understand why choices wer
 
 ## Current ADRs
 
-| ADR                                         | Title                                           | Status   |
-| ------------------------------------------- | ----------------------------------------------- | -------- |
-| [001](001-local-first-runtime.md)           | Local-First Runtime                             | Accepted |
-| [002](002-nextjs-typescript-stack.md)       | Next.js 15 with TypeScript and App Router       | Accepted |
-| [003](003-provider-adapter-pattern.md)      | Provider Adapter Pattern                        | Accepted |
-| [004](004-scene-spec-central-contract.md)   | Scene Spec as Central Contract                  | Accepted |
-| [005](005-sqlite-local-storage.md)          | SQLite via Drizzle ORM for Local Persistence    | Accepted |
-| [006](006-tv-publisher-abstraction.md)      | TV Publisher Abstraction                        | Accepted |
-| [007](007-fallback-first-reliability.md)    | Fallback-First Reliability                      | Accepted |
-| [008](008-samsung-frame-connect-library.md) | Samsung Frame Connect Library for TV Publishing | Accepted |
+| ADR                                         | Title                                              | Status   |
+| ------------------------------------------- | -------------------------------------------------- | -------- |
+| [001](001-local-first-runtime.md)           | Local-First Runtime                                | Accepted |
+| [002](002-nextjs-typescript-stack.md)       | Next.js 15 with TypeScript and App Router          | Accepted |
+| [003](003-provider-adapter-pattern.md)      | Provider Adapter Pattern                           | Accepted |
+| [004](004-scene-spec-central-contract.md)   | Scene Spec as Central Contract                     | Accepted |
+| [005](005-sqlite-local-storage.md)          | SQLite via Drizzle ORM for Local Persistence       | Accepted |
+| [006](006-tv-publisher-abstraction.md)      | TV Publisher Abstraction                           | Accepted |
+| [007](007-fallback-first-reliability.md)    | Fallback-First Reliability                         | Accepted |
+| [008](008-samsung-frame-connect-library.md) | Samsung Frame Connect Library for TV Publishing    | Accepted |
+| [009](009-smartthings-cloud-future.md)      | SmartThings Cloud API as Future Integration Option | Proposed |
 
 ## How to Add a New ADR
 
