@@ -19,19 +19,20 @@
     "@frame/rendering": "workspace:*",
     "@frame/tv": "workspace:*",
     "bcryptjs": "^2.4.3",
-    "node-cron": "^3.0.3",
     "better-sqlite3": "^11.0.0",
     "iron-session": "^8.0.0",
     "next": "^15.1.0",
+    "node-cron": "^3.0.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "sharp": "^0.33.0"
   },
   "devDependencies": {
     "@frame/eslint-config": "workspace:*",
     "@frame/typescript-config": "workspace:*",
     "@types/bcryptjs": "^2.4.6",
-    "@types/node-cron": "^3.0.11",
     "@types/node": "^22.0.0",
+    "@types/node-cron": "^3.0.11",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.4.20",
