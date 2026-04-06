@@ -10,11 +10,12 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@frame/core": "workspace:*"
+    "@frame/core": "workspace:*",
+    "samsung-frame-connect": "^0.9.1"
   },
   "devDependencies": {
     "@frame/typescript-config": "workspace:*",
-    "typescript": "^5.7.0",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
   }
 }

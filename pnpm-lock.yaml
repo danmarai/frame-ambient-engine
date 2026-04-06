@@ -212,6 +212,9 @@ importers:
       '@frame/core':
         specifier: workspace:*
         version: link:../core
+      samsung-frame-connect:
+        specifier: ^0.9.1
+        version: 0.9.1
     devDependencies:
       '@frame/typescript-config':
         specifier: workspace:*
@@ -1630,6 +1633,9 @@ packages:
   fraction.js@5.3.4:
     resolution: {integrity: sha512-1X1NTtiJphryn/uLQz3whtY6jK3fTqoE3ohKs0tT+Ujr1W59oopxmoEh7Lu5p6vBaPbgoM0bzveAW4Qi5RyWDQ==}
 
+  fresh-console@2.0.0:
+    resolution: {integrity: sha512-eWH+iF0jauvN43hASARpFP+FHoYb4ReSSFmZbSLqMtyJkO0p/a+ewPbP8nO/Ov6oeZZzyTZjKU0whSCJ4SZrqg==}
+
   fs-constants@1.0.0:
     resolution: {integrity: sha512-y6OAwoSIf7FyjMIv94u+b5rdheZEjzR63GTyZJm5qh4Bi+2YgwLCcI/fPFZkL5PSixOt6ZNKm+w+Hfp/Bciwow==}
 
@@ -2201,6 +2207,22 @@ packages:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
     engines: {node: '>= 0.8.0'}
 
+  promise-duplex@8.0.0:
+    resolution: {integrity: sha512-JlrnT6KZMRD+t4cxP7gh/dlGP2pl01/jTPg3pTLvFLBTdHTbTTdc+g25q0qswC3ziO9RAr3L1b2n/++4y23GQg==}
+    engines: {node: '>=16.0.0'}
+
+  promise-readable@8.0.1:
+    resolution: {integrity: sha512-peVAz+49xRooF1Om2wYSOluKpOApnpiJVOKgQ6IR/ZAWo15tBa4ZtcKKSTAytRiNJVlkvil9NoFhqihY4Sl1Fw==}
+    engines: {node: '>=16.0.0'}
+
+  promise-socket@8.0.0:
+    resolution: {integrity: sha512-5Qb5719QcOm3/zrt0DLiAsJXutv2vb4HRxCiOVro1eyAOMak6vF2gTIoB6f0M1mnKMCsXW1SC/O+4G3P6p7kbw==}
+    engines: {node: '>=16.0.0'}
+
+  promise-writable@8.0.0:
+    resolution: {integrity: sha512-Qn7/5tE42fjLUWevPm/SFmVz26tRdhmxmPXgOJSeIwLnkI2V4u0/t+CrRXb8ic1Jy9qqvOHVYm+sAIgel++eVA==}
+    engines: {node: '>=16.0.0'}
+
   prop-types@15.8.1:
     resolution: {integrity: sha512-oj87CgZICdulUohogVAR7AjlC0327U4el4L6eAvOqCeudMDVU0NThNaV+b9Df4dXgSP1gXMTnPdhfe/2qDH5cg==}
 
@@ -2292,6 +2314,9 @@ packages:
   safe-regex-test@1.1.0:
     resolution: {integrity: sha512-x/+Cz4YrimQxQccJf5mKEbIa1NzeCRNI5Ecl/ekmlYaampdNLPalVyIcCZNNH3MvmqBugV5TMYZXv0ljslUlaw==}
     engines: {node: '>= 0.4'}
+
+  samsung-frame-connect@0.9.1:
+    resolution: {integrity: sha512-FH+fvWmzD9kpmNwBMRjVrDXRO9Luf8m4NMrb+XraCH8RY/0kuGDJSG+DldVy3HQDMZHBaZmalTN0Pnfpm2nmzQ==}
 
   scheduler@0.27.0:
     resolution: {integrity: sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==}
@@ -2579,6 +2604,18 @@ packages:
 
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
+
+  ws@8.20.0:
+    resolution: {integrity: sha512-sAt8BhgNbzCtgGbt2OxmpuryO63ZoDk/sqaB/znQm94T4fCEsy/yV+7CdC1kJhOU9lboAEU7R3kquuycDoibVA==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
 
   yocto-queue@0.1.0:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
@@ -3916,6 +3953,8 @@ snapshots:
 
   fraction.js@5.3.4: {}
 
+  fresh-console@2.0.0: {}
+
   fs-constants@1.0.0: {}
 
   fs.realpath@1.0.0: {}
@@ -4486,6 +4525,19 @@ snapshots:
 
   prelude-ls@1.2.1: {}
 
+  promise-duplex@8.0.0:
+    dependencies:
+      promise-readable: 8.0.1
+      promise-writable: 8.0.0
+
+  promise-readable@8.0.1: {}
+
+  promise-socket@8.0.0:
+    dependencies:
+      promise-duplex: 8.0.0
+
+  promise-writable@8.0.0: {}
+
   prop-types@15.8.1:
     dependencies:
       loose-envify: 1.4.0
@@ -4600,6 +4652,16 @@ snapshots:
       call-bound: 1.0.4
       es-errors: 1.3.0
       is-regex: 1.2.1
+
+  samsung-frame-connect@0.9.1:
+    dependencies:
+      argparse: 2.0.1
+      fresh-console: 2.0.0
+      promise-socket: 8.0.0
+      ws: 8.20.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   scheduler@0.27.0: {}
 
@@ -5036,5 +5098,7 @@ snapshots:
   word-wrap@1.2.5: {}
 
   wrappy@1.0.2: {}
+
+  ws@8.20.0: {}
 
   yocto-queue@0.1.0: {}

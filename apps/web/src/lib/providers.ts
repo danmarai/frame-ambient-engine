@@ -8,6 +8,7 @@ import type {
   QuoteProvider,
   ImageProvider,
   ImageProviderName,
+  TvPublisher,
 } from "@frame/core";
 import {
   MockMarketProvider,
@@ -17,6 +18,7 @@ import {
   OpenAIImageProvider,
   GeminiImageProvider,
 } from "@frame/providers";
+import { MockTvPublisher, SamsungFramePublisher } from "@frame/tv";
 import { loadEnvConfig } from "@frame/config";
 
 export function getWeatherProvider(): WeatherProvider {
@@ -55,4 +57,14 @@ export function getImageProvider(name?: ImageProviderName): ImageProvider {
     default:
       return new MockImageProvider();
   }
+}
+
+export function getTvPublisher(): TvPublisher {
+  const env = loadEnvConfig();
+
+  if (env.samsungTvIp) {
+    return new SamsungFramePublisher();
+  }
+
+  return new MockTvPublisher();
 }
