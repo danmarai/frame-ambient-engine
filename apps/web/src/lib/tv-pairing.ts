@@ -29,10 +29,8 @@ export async function pairWithTv(
   ip: string,
   timeoutMs = 60000,
 ): Promise<PairResult> {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { WebSocket } = require(
-    /* webpackIgnore: true */ "ws",
-  ) as typeof import("ws");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+  const { WebSocket } = require(/* webpackIgnore: true */ "ws") as any;
 
   return new Promise((resolve) => {
     const name = Buffer.from("FrameEngine").toString("base64");
