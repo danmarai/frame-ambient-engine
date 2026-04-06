@@ -52,9 +52,13 @@ export interface QuoteSettings {
 
 export type ImageProviderName = "mock" | "gemini" | "openai";
 
+export type TvConnectionStatus = "disconnected" | "pairing" | "connected";
+
 export interface TvSettings {
   ip: string;
   token?: string;
+  connectionStatus?: TvConnectionStatus;
+  discoveredDevices?: import("./providers").TvDeviceInfo[];
 }
 
 export interface SchedulerSettings {

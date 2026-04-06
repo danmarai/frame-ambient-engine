@@ -19,6 +19,7 @@ export interface SceneContext {
   market: SemanticMarket | null;
   quote: Quote | null;
   theme: ThemeName;
+  styleHints?: string;
 }
 
 /** A fully realized scene with generated image. */
@@ -33,6 +34,17 @@ export interface Scene {
   completedAt: string | null;
   durationMs: number | null;
   error: string | null;
+  favorite?: boolean;
+  publishStatus?: "pending" | "published" | "failed";
+}
+
+/** A user rating on a generated scene. */
+export interface Rating {
+  id: string;
+  sceneId: string;
+  rating: "up" | "down";
+  features: Record<string, string>;
+  ratedAt: string;
 }
 
 /** What the generate endpoint accepts. */
