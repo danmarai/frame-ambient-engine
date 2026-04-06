@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS } from "@frame/core";
 import type { AppSettings } from "@frame/core";
 import { ensureSchema } from "@/lib/db-bootstrap";
 import { getTvPublisher } from "@/lib/providers";
-import { pairWithTv, saveToken } from "@frame/tv";
+import { pairWithTv, saveToken } from "@/lib/tv-pairing";
 
 export async function POST(request: Request) {
   try {
