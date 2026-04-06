@@ -52,6 +52,21 @@ export const scenes = sqliteTable("scenes", {
   completedAt: text("completed_at"),
   durationMs: integer("duration_ms"),
   error: text("error"),
+  favorite: integer("favorite").default(0),
+  publishStatus: text("publish_status"), // null | 'pending' | 'published' | 'failed'
+});
+
+/**
+ * Ratings — thumbs up/down feedback on scenes.
+ */
+export const ratings = sqliteTable("ratings", {
+  id: text("id").primaryKey(),
+  sceneId: text("scene_id")
+    .notNull()
+    .references(() => scenes.id),
+  rating: text("rating").notNull(), // 'up' | 'down'
+  features: text("features"), // JSON string of extracted features
+  ratedAt: text("rated_at").notNull(), // ISO timestamp
 });
 
 /**
