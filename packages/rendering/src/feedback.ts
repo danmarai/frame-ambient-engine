@@ -18,12 +18,12 @@ function getTimeOfDay(): string {
  * Save a thumbs up/down rating for a scene.
  * Extracts features from the scene's context for preference learning.
  */
-export async function saveRating(
+export function saveRating(
   db: BetterSQLite3Database,
   sceneId: string,
   rating: "up" | "down",
   context: SceneContext,
-): Promise<void> {
+): void {
   const features = {
     theme: context.theme,
     weather: context.weather?.sky ?? "unknown",
@@ -51,9 +51,7 @@ interface FeatureStats {
  * Compute natural language style hints from rating history.
  * Returns empty string if fewer than 20 ratings exist.
  */
-export async function computeStyleHints(
-  db: BetterSQLite3Database,
-): Promise<string> {
+export function computeStyleHints(db: BetterSQLite3Database): string {
   const allRatings = db.select().from(ratings).all();
 
   if (allRatings.length < 20) {
@@ -64,6 +62,7 @@ export async function computeStyleHints(
   const stats = new Map<string, FeatureStats>();
 
   for (const row of allRatings) {
+    if (!row.features) continue;
     const features = JSON.parse(row.features) as Record<string, string>;
     const isLike = row.rating === "up";
 
@@ -82,7 +81,8 @@ export async function computeStyleHints(
 
   for (const [statKey, { likes, total }] of stats.entries()) {
     const pLike = likes / total;
-    const [_key, value] = statKey.split(":");
+    const idx = statKey.indexOf(":");
+    const value = statKey.slice(idx + 1);
     if (pLike > 0.65) {
       preferred.push({ label: value, pLike });
     } else if (pLike < 0.35) {
