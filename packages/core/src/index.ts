@@ -13,6 +13,7 @@ export type {
   ThemeName,
   QuoteSettings,
   ImageProviderName,
+  TvConnectionStatus,
   TvSettings,
   SchedulerSettings,
   AppSettings,
@@ -56,8 +57,10 @@ export type {
 export type {
   // Scene
   SceneStatus,
+  PublishStatus,
   SceneContext,
   Scene,
+  Rating,
   GenerateRequest,
   GenerateResponse,
 } from "./types/scene";
