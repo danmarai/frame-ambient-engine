@@ -83,12 +83,14 @@ export async function POST(
     const overlay = appSettings.overlay ?? {
       showQuote: false,
       showWeather: false,
+      showMarket: false,
+      temperatureUnit: "celsius" as const,
     };
-    if (overlay.showQuote || overlay.showWeather) {
+    if (overlay.showQuote || overlay.showWeather || overlay.showMarket) {
       const context = scene.contextJson ? JSON.parse(scene.contextJson) : null;
       if (context) {
         console.log(
-          `${logPrefix} Applying overlays (quote=${overlay.showQuote}, weather=${overlay.showWeather})`,
+          `${logPrefix} Applying overlays (quote=${overlay.showQuote}, weather=${overlay.showWeather}, market=${overlay.showMarket})`,
         );
         preparedImage = await applyOverlays(preparedImage, context, overlay);
         console.log(
