@@ -48,7 +48,7 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t border-frame-border p-4">
-        <p className="text-xs text-frame-muted">v0.2.0 — Milestone 1</p>
+        <p className="text-xs text-frame-muted">v0.3.0 — Milestone 3</p>
       </div>
     </aside>
   );
