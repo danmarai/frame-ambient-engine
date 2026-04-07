@@ -59,7 +59,8 @@ async function runCycle(): Promise<void> {
       getQuoteProvider,
       getImageProvider,
     } = await import("@/lib/providers");
-    const { MockTvPublisher } = await import("@frame/tv");
+    const { prepareForTV, applyOverlays } = await import("@frame/rendering");
+    const { getTvPublisher } = await import("@/lib/providers");
     const { randomUUID } = await import("crypto");
     const { writeFile, mkdir } = await import("fs/promises");
     const path = await import("path");
@@ -131,10 +132,19 @@ async function runCycle(): Promise<void> {
     // Publish to TV if configured
     if (appSettings.tv?.ip) {
       try {
-        const publisher = new MockTvPublisher();
+        // Upscale to 4K JPEG
+        let prepared = await prepareForTV(imageData);
+
+        // Apply overlays if enabled
+        const overlay = appSettings.overlay ?? {};
+        if (overlay.showQuote || overlay.showWeather || overlay.showMarket) {
+          prepared = await applyOverlays(prepared, scene.context, overlay);
+        }
+
+        const publisher = getTvPublisher(appSettings.tv.ip);
         const result = await publisher.upload(
           appSettings.tv.ip,
-          imageData,
+          prepared,
           appSettings.tv.token,
         );
 

@@ -71,9 +71,38 @@ export default function PreviewPage() {
   const [currentScene, setCurrentScene] = useState<Scene | null>(null);
   const [recentScenes, setRecentScenes] = useState<Scene[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [selectedTheme, setSelectedTheme] = useState<string>("");
-  const [selectedStyle, setSelectedStyle] = useState<string>("");
-  const [selectedProvider, setSelectedProvider] = useState<string>("");
+  // Persist dropdown state in localStorage
+  const [selectedTheme, setSelectedTheme] = useState<string>(() =>
+    typeof window !== "undefined"
+      ? (localStorage.getItem("preview.theme") ?? "")
+      : "",
+  );
+  const [selectedStyle, setSelectedStyle] = useState<string>(() =>
+    typeof window !== "undefined"
+      ? (localStorage.getItem("preview.style") ?? "")
+      : "",
+  );
+  const [selectedProvider, setSelectedProvider] = useState<string>(() =>
+    typeof window !== "undefined"
+      ? (localStorage.getItem("preview.provider") ?? "")
+      : "",
+  );
+
+  // Overlay controls for preview
+  const [showQuoteOverlay, setShowQuoteOverlay] = useState(false);
+  const [showWeatherOverlay, setShowWeatherOverlay] = useState(false);
+  const [showMarketOverlay, setShowMarketOverlay] = useState(false);
+
+  // Persist selections
+  useEffect(() => {
+    localStorage.setItem("preview.theme", selectedTheme);
+  }, [selectedTheme]);
+  useEffect(() => {
+    localStorage.setItem("preview.style", selectedStyle);
+  }, [selectedStyle]);
+  useEffect(() => {
+    localStorage.setItem("preview.provider", selectedProvider);
+  }, [selectedProvider]);
 
   // Rating and favorite state
   const [ratings, setRatings] = useState<Record<string, "up" | "down">>({});
@@ -351,6 +380,41 @@ export default function PreviewPage() {
           </button>
         </div>
 
+        {/* Overlay indicators */}
+        <div className="mt-3 flex items-center gap-4 border-t border-frame-border pt-3">
+          <span className="text-xs text-frame-muted">Overlays:</span>
+          <label className="flex items-center gap-1.5 text-xs text-frame-muted">
+            <input
+              type="checkbox"
+              checked={showQuoteOverlay}
+              onChange={(e) => setShowQuoteOverlay(e.target.checked)}
+              className="rounded"
+            />
+            Quote
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-frame-muted">
+            <input
+              type="checkbox"
+              checked={showWeatherOverlay}
+              onChange={(e) => setShowWeatherOverlay(e.target.checked)}
+              className="rounded"
+            />
+            Weather
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-frame-muted">
+            <input
+              type="checkbox"
+              checked={showMarketOverlay}
+              onChange={(e) => setShowMarketOverlay(e.target.checked)}
+              className="rounded"
+            />
+            Market
+          </label>
+          <span className="text-xs text-frame-muted/60">
+            (shown when published to TV)
+          </span>
+        </div>
+
         {/* Generation progress */}
         {generating && (
           <div className="mt-4">
@@ -391,13 +455,52 @@ export default function PreviewPage() {
       {currentScene && (
         <div className="space-y-4">
           {currentScene.imagePath && (
-            <div className="overflow-hidden rounded-lg border border-frame-border">
+            <div className="relative overflow-hidden rounded-lg border border-frame-border">
               <img
                 src={`/api/scenes/${currentScene.id}/image`}
                 alt="Generated wallpaper"
                 className="w-full"
                 style={{ aspectRatio: "16/9", objectFit: "cover" }}
               />
+              {/* Overlay previews — CSS approximation of what will be composited */}
+              {showWeatherOverlay && currentScene.context?.weather && (
+                <div className="absolute right-4 top-4 rounded-xl bg-black/60 px-4 py-2 text-white">
+                  <div className="text-lg font-bold">
+                    {currentScene.context.weather.temperatureF
+                      ? `${Math.round(((currentScene.context.weather.temperatureF - 32) * 5) / 9)}°C`
+                      : ""}
+                  </div>
+                  <div className="text-xs opacity-80">
+                    {currentScene.context.weather.description?.slice(0, 30)}
+                  </div>
+                </div>
+              )}
+              {showMarketOverlay && currentScene.context?.market && (
+                <div
+                  className={`absolute top-4 rounded-xl bg-black/60 px-4 py-2 text-white ${showWeatherOverlay && currentScene.context?.weather ? "right-4 top-16" : "right-4"}`}
+                >
+                  <div
+                    className={`text-sm font-bold ${currentScene.context.market.direction === "up" ? "text-green-400" : currentScene.context.market.direction === "down" ? "text-red-400" : ""}`}
+                  >
+                    {currentScene.context.market.symbol}{" "}
+                    {currentScene.context.market.direction === "up" ? "▲" : "▼"}{" "}
+                    {currentScene.context.market.changePercent > 0 ? "+" : ""}
+                    {currentScene.context.market.changePercent.toFixed(2)}%
+                  </div>
+                </div>
+              )}
+              {showQuoteOverlay && currentScene.context?.quote && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-xl bg-black/60 px-6 py-3 text-center text-white">
+                  <div className="text-sm italic">
+                    &ldquo;{currentScene.context.quote.text}&rdquo;
+                  </div>
+                  {currentScene.context.quote.author && (
+                    <div className="mt-1 text-xs opacity-70">
+                      — {currentScene.context.quote.author}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
