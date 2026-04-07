@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppSettings } from "@frame/core";
 import { DEFAULT_SETTINGS } from "@frame/core";
 
@@ -31,8 +31,31 @@ type TvConnectionState =
   | "disconnected"
   | "no-tv";
 
+const THEME_LABELS: Record<string, string> = {
+  forest: "Forest",
+  ocean: "Ocean",
+  astro: "Astro / Night Sky",
+  sky: "Cloudscapes",
+  cute: "Cute / Whimsical",
+  landmarks: "Global Landmarks",
+  natgeo: "National Geographic",
+  science: "Science",
+  "famous-women": "Famous Women in History",
+  holiday: "Holiday (auto-seasonal)",
+};
+
+const IMAGE_STYLE_LABELS: Record<string, string> = {
+  photorealistic: "Photorealistic",
+  "fine-art": "Fine Art",
+  artistic: "Artistic",
+  illustration: "Illustration",
+  random: "Random (cycles through all)",
+};
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [savedSettings, setSavedSettings] =
+    useState<AppSettings>(DEFAULT_SETTINGS);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
@@ -52,6 +75,22 @@ export default function SettingsPage() {
   const [pairing, setPairing] = useState(false);
   const [pairStep, setPairStep] = useState<PairStep | null>(null);
   const [pairResult, setPairResult] = useState<string | null>(null);
+
+  // Dirty state detection
+  const isDirty = JSON.stringify(settings) !== JSON.stringify(savedSettings);
+  const isDirtyRef = useRef(isDirty);
+  isDirtyRef.current = isDirty;
+
+  // Unsaved changes warning via beforeunload
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (isDirtyRef.current) {
+        e.preventDefault();
+      }
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
 
   const checkTvStatus = useCallback(
     async (ip?: string) => {
@@ -88,6 +127,7 @@ export default function SettingsPage() {
       .then((r) => r.json())
       .then((data) => {
         setSettings(data);
+        setSavedSettings(data);
         // Check TV status after loading settings
         if (data.tv?.ip) {
           checkTvStatus(data.tv.ip);
@@ -96,7 +136,7 @@ export default function SettingsPage() {
         }
       })
       .catch(() => {});
-    // Only run on mount — not when checkTvStatus changes
+    // Only run on mount -- not when checkTvStatus changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -208,6 +248,7 @@ export default function SettingsPage() {
       if (res.ok) {
         const saved = await res.json();
         setSettings(saved);
+        setSavedSettings(saved);
         setMessage({ type: "success", text: "Settings saved successfully" });
       } else {
         const err = await res.json();
@@ -221,7 +262,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl pb-24">
       <h1 className="mb-6 text-2xl font-semibold">Settings</h1>
 
       {message && (
@@ -236,9 +277,9 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Theme */}
-      <Section title="Theme">
-        <Select
+      {/* Content */}
+      <Section title="Content">
+        <LabeledSelect
           label="Active Theme"
           value={settings.theme}
           options={[
@@ -249,17 +290,17 @@ export default function SettingsPage() {
             "cute",
             "landmarks",
             "natgeo",
+            "science",
+            "famous-women",
+            "holiday",
           ]}
+          labels={THEME_LABELS}
           onChange={(v) =>
             setSettings({ ...settings, theme: v as AppSettings["theme"] })
           }
         />
-      </Section>
-
-      {/* Image Style */}
-      <Section title="Image Style">
-        <Select
-          label="Rendering Style"
+        <LabeledSelect
+          label="Image Style"
           value={settings.imageStyle ?? "photorealistic"}
           options={[
             "photorealistic",
@@ -268,6 +309,7 @@ export default function SettingsPage() {
             "illustration",
             "random",
           ]}
+          labels={IMAGE_STYLE_LABELS}
           onChange={(v) =>
             setSettings({
               ...settings,
@@ -275,42 +317,21 @@ export default function SettingsPage() {
             })
           }
         />
-      </Section>
-
-      {/* Overlays */}
-      <Section title="Image Overlays">
         <Toggle
-          label="Show Quote on Image"
-          checked={settings.overlay?.showQuote ?? false}
+          label="Holiday Mode"
+          checked={settings.holiday?.enabled ?? false}
           onChange={(v) =>
             setSettings({
               ...settings,
-              overlay: {
-                ...settings.overlay,
-                showQuote: v,
-                showWeather: settings.overlay?.showWeather ?? false,
-              },
-            })
-          }
-        />
-        <Toggle
-          label="Show Weather on Image"
-          checked={settings.overlay?.showWeather ?? false}
-          onChange={(v) =>
-            setSettings({
-              ...settings,
-              overlay: {
-                ...settings.overlay,
-                showWeather: v,
-                showQuote: settings.overlay?.showQuote ?? false,
-              },
+              holiday: { ...settings.holiday, enabled: v },
             })
           }
         />
       </Section>
 
-      {/* Weather */}
-      <Section title="Weather">
+      {/* Data Sources */}
+      <Section title="Data Sources">
+        <p className="mb-2 text-xs font-medium text-frame-muted">Weather</p>
         <Toggle
           label="Enable Weather"
           checked={settings.weather.enabled}
@@ -349,10 +370,10 @@ export default function SettingsPage() {
             })
           }
         />
-      </Section>
 
-      {/* Market */}
-      <Section title="Market">
+        <div className="my-3 border-t border-frame-border" />
+
+        <p className="mb-2 text-xs font-medium text-frame-muted">Market</p>
         <Toggle
           label="Enable Market Indicator"
           checked={settings.market.enabled}
@@ -391,12 +412,12 @@ export default function SettingsPage() {
             })
           }
         />
-      </Section>
 
-      {/* Quotes */}
-      <Section title="Quotes">
+        <div className="my-3 border-t border-frame-border" />
+
+        <p className="mb-2 text-xs font-medium text-frame-muted">Quotes</p>
         <Toggle
-          label="Show Motivational Quotes"
+          label="Enable Motivational Quotes"
           checked={settings.quotes.enabled}
           onChange={(v) =>
             setSettings({
@@ -407,7 +428,55 @@ export default function SettingsPage() {
         />
       </Section>
 
-      {/* TV */}
+      {/* Image Overlays */}
+      <Section title="Image Overlays">
+        <Toggle
+          label="Show Quote on Image"
+          checked={settings.overlay?.showQuote ?? false}
+          onChange={(v) =>
+            setSettings({
+              ...settings,
+              overlay: { ...settings.overlay, showQuote: v },
+            })
+          }
+        />
+        <Toggle
+          label="Show Weather on Image"
+          checked={settings.overlay?.showWeather ?? false}
+          onChange={(v) =>
+            setSettings({
+              ...settings,
+              overlay: { ...settings.overlay, showWeather: v },
+            })
+          }
+        />
+        <Toggle
+          label="Show Market on Image"
+          checked={settings.overlay?.showMarket ?? false}
+          onChange={(v) =>
+            setSettings({
+              ...settings,
+              overlay: { ...settings.overlay, showMarket: v },
+            })
+          }
+        />
+        <Select
+          label="Temperature Unit"
+          value={settings.overlay?.temperatureUnit ?? "celsius"}
+          options={["celsius", "fahrenheit"]}
+          onChange={(v) =>
+            setSettings({
+              ...settings,
+              overlay: {
+                ...settings.overlay,
+                temperatureUnit: v as "celsius" | "fahrenheit",
+              },
+            })
+          }
+        />
+      </Section>
+
+      {/* Samsung Frame TV */}
       <TvSection
         settings={settings}
         setSettings={setSettings}
@@ -451,13 +520,50 @@ export default function SettingsPage() {
         />
       </Section>
 
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="mt-8 rounded-md bg-frame-accent px-6 py-2.5 font-medium text-white transition-colors hover:bg-frame-accent/90 disabled:opacity-50"
+      {/* Image Provider */}
+      <Section title="Image Provider">
+        <Select
+          label="Provider"
+          value={settings.imageProvider ?? "openai"}
+          options={["openai", "gemini", "mock"]}
+          onChange={(v) =>
+            setSettings({
+              ...settings,
+              imageProvider: v as AppSettings["imageProvider"],
+            })
+          }
+        />
+      </Section>
+
+      {/* Floating Save Footer */}
+      <div
+        className={`fixed inset-x-0 bottom-0 z-50 border-t border-frame-border bg-frame-surface/95 px-6 py-4 backdrop-blur transition-all duration-300 ${
+          isDirty
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none translate-y-full opacity-0"
+        }`}
       >
-        {saving ? "Saving..." : "Save Settings"}
-      </button>
+        <div className="mx-auto flex max-w-2xl items-center justify-between">
+          <span className="text-sm text-frame-muted">Unsaved changes</span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setSettings(savedSettings)}
+              className="rounded-md border border-frame-border px-4 py-2 text-sm text-frame-text transition-colors hover:bg-frame-border"
+            >
+              Discard
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="rounded-md bg-frame-accent px-6 py-2 font-medium text-white transition-colors hover:bg-frame-accent/90 disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Settings"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -550,7 +656,7 @@ function TvSection({
         <ConnectionStatusDot state={tvConnection} />
       </div>
       <div className="space-y-4">
-        {/* Connected device info — show at top when connected */}
+        {/* Connected device info -- show at top when connected */}
         {tvConnection === "connected" && tvDevice && (
           <div className="rounded-md border border-green-500/20 bg-green-500/5 p-3">
             <p className="mb-1 text-xs font-medium text-green-600">
@@ -670,7 +776,7 @@ function TvSection({
           </div>
         )}
 
-        {/* Advanced — collapsible section for WebSocket pairing */}
+        {/* Advanced -- collapsible section for WebSocket pairing */}
         <details className="group">
           <summary className="cursor-pointer text-xs text-frame-muted hover:text-frame-text">
             Advanced...
@@ -704,7 +810,7 @@ function TvSection({
                     }`}
                   >
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-current text-xs">
-                      {step < pairStep ? "✓" : step}
+                      {step < pairStep ? "\u2713" : step}
                     </span>
                     {pairSteps[step]}
                   </li>
@@ -726,6 +832,37 @@ function TvSection({
           </div>
         </details>
       </div>
+    </div>
+  );
+}
+
+function LabeledSelect({
+  label,
+  value,
+  options,
+  labels,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  labels: Record<string, string>;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <label className="text-sm text-frame-text">{label}</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="rounded-md border border-frame-border bg-frame-bg px-3 py-1.5 text-sm text-frame-text"
+      >
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {labels[o] ?? o}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
