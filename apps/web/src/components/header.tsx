@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { logout } from "@/app/login/actions";
 
 type TvStatus = "checking" | "connected" | "disconnected" | "unconfigured";
@@ -9,35 +9,36 @@ export function Header() {
   const [tvStatus, setTvStatus] = useState<TvStatus>("checking");
   const [tvName, setTvName] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function checkTv() {
-      try {
-        const res = await fetch("/api/tv/status");
-        if (cancelled) return;
-        const data = await res.json();
-        if (data.connected) {
-          setTvStatus("connected");
-          setTvName(data.device?.name || "TV");
-        } else if (data.reason === "No TV configured") {
-          setTvStatus("unconfigured");
-        } else {
-          setTvStatus("disconnected");
-        }
-      } catch {
-        if (!cancelled) setTvStatus("disconnected");
+  const checkTv = useCallback(async () => {
+    try {
+      const res = await fetch("/api/tv/status");
+      const data = await res.json();
+      if (data.connected) {
+        setTvStatus("connected");
+        setTvName(data.device?.name || "TV");
+      } else if (data.reason === "No TV configured") {
+        setTvStatus("unconfigured");
+      } else {
+        setTvStatus("disconnected");
       }
+    } catch {
+      setTvStatus("disconnected");
     }
-
-    checkTv();
-    // Re-check every 30 seconds
-    const interval = setInterval(checkTv, 30000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
   }, []);
+
+  useEffect(() => {
+    checkTv();
+    const interval = setInterval(checkTv, 30000);
+
+    // Listen for immediate refresh from other components (e.g., after pairing)
+    const onRefresh = () => checkTv();
+    window.addEventListener("tv-status-changed", onRefresh);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("tv-status-changed", onRefresh);
+    };
+  }, [checkTv]);
 
   const tvColors: Record<TvStatus, string> = {
     checking: "bg-yellow-400 animate-pulse",

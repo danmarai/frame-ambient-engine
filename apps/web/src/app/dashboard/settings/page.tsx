@@ -70,6 +70,7 @@ export default function SettingsPage() {
         if (data.connected) {
           setTvConnection("connected");
           setTvDevice(data.device ?? null);
+          window.dispatchEvent(new Event("tv-status-changed"));
         } else {
           setTvConnection("disconnected");
           setTvDevice(null);
@@ -122,10 +123,20 @@ export default function SettingsPage() {
             type: "empty",
             text: "No Frame TVs found on your network.",
           });
+        } else if (devices.length === 1) {
+          // Auto-select the only TV found
+          const tv = devices[0]!;
+          setSettings({ ...settings, tv: { ...settings.tv, ip: tv.ip } });
+          setScanResult({
+            type: "success",
+            text: `Found ${tv.name} at ${tv.ip} — auto-selected.`,
+          });
+          // Immediately check connection status
+          checkTvStatus(tv.ip);
         } else {
           setScanResult({
             type: "success",
-            text: `Found ${devices.length} Frame TV${devices.length > 1 ? "s" : ""}. Select one below or enter an IP manually.`,
+            text: `Found ${devices.length} Frame TVs. Select one below or enter an IP manually.`,
           });
         }
       } else {
@@ -645,80 +656,75 @@ function TvSection({
           )}
         </div>
 
-        {/* Step 2: Connect */}
+        {/* Step 2: Test Connection */}
         {settings.tv.ip && (
           <div>
-            <p className="mb-2 text-xs font-medium text-frame-muted">
-              Step 2: Connect to your TV
-            </p>
-            <p className="mb-3 text-xs text-frame-muted">
-              Test the connection to verify your TV is reachable, then pair to
-              enable art publishing.
-            </p>
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={onTestConnection}
-                disabled={tvConnection === "checking"}
-                className="flex-1 rounded-md border border-frame-border bg-frame-bg px-3 py-2 text-sm text-frame-text transition-colors hover:bg-frame-border disabled:opacity-50"
-              >
-                {tvConnection === "checking" ? "Testing..." : "Test Connection"}
-              </button>
-              <button
-                type="button"
-                onClick={onPair}
-                disabled={pairing}
-                className="flex-1 rounded-md bg-frame-accent px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-frame-accent/90 disabled:opacity-50"
-              >
-                {pairing ? "Pairing..." : "Pair with TV"}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={onTestConnection}
+              disabled={tvConnection === "checking"}
+              className="w-full rounded-md border border-frame-border bg-frame-bg px-3 py-2 text-sm text-frame-text transition-colors hover:bg-frame-border disabled:opacity-50"
+            >
+              {tvConnection === "checking" ? "Testing..." : "Test Connection"}
+            </button>
           </div>
         )}
 
-        {/* Pairing steps */}
-        {pairStep !== null && (
-          <div className="rounded-md border border-frame-border bg-frame-bg p-3">
-            <ol className="space-y-1.5">
-              {([1, 2, 3] as PairStep[]).map((step) => (
-                <li
-                  key={step}
-                  className={`flex items-center gap-2 text-sm ${
-                    step === pairStep
-                      ? "font-medium text-frame-accent"
-                      : step < pairStep
-                        ? "text-frame-success"
-                        : "text-frame-muted"
-                  }`}
-                >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-current text-xs">
-                    {step < pairStep ? "✓" : step}
-                  </span>
-                  {pairSteps[step]}
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
+        {/* Advanced — collapsible section for WebSocket pairing */}
+        <details className="group">
+          <summary className="cursor-pointer text-xs text-frame-muted hover:text-frame-text">
+            Advanced...
+          </summary>
+          <div className="mt-3 space-y-3 rounded-md border border-frame-border bg-frame-bg p-3">
+            <p className="text-xs text-frame-muted">
+              WebSocket pairing is only needed for art-mode API features. Image
+              publishing uses DLNA which does not require pairing.
+            </p>
+            <button
+              type="button"
+              onClick={onPair}
+              disabled={pairing || !settings.tv.ip}
+              className="w-full rounded-md border border-frame-border px-3 py-2 text-sm text-frame-text hover:bg-frame-border disabled:opacity-50"
+            >
+              {pairing ? "Pairing..." : "Pair via WebSocket"}
+            </button>
 
-        {/* Pair result */}
-        {pairResult && (
-          <div
-            className={`rounded-md px-3 py-2 text-sm ${
-              pairResult.startsWith("Paired")
-                ? "bg-frame-success/10 text-frame-success"
-                : "bg-frame-error/10 text-frame-error"
-            }`}
-          >
-            {pairResult}
-            {pairResult.startsWith("Paired") && (
-              <p className="mt-1 text-xs opacity-80">
-                You can now publish images to your TV from the Preview Studio.
-              </p>
+            {/* Pairing steps */}
+            {pairStep !== null && (
+              <ol className="space-y-1.5">
+                {([1, 2, 3] as PairStep[]).map((step) => (
+                  <li
+                    key={step}
+                    className={`flex items-center gap-2 text-sm ${
+                      step === pairStep
+                        ? "font-medium text-frame-accent"
+                        : step < pairStep
+                          ? "text-frame-success"
+                          : "text-frame-muted"
+                    }`}
+                  >
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-current text-xs">
+                      {step < pairStep ? "✓" : step}
+                    </span>
+                    {pairSteps[step]}
+                  </li>
+                ))}
+              </ol>
+            )}
+
+            {pairResult && (
+              <div
+                className={`rounded-md px-3 py-2 text-sm ${
+                  pairResult.startsWith("Paired")
+                    ? "bg-frame-success/10 text-frame-success"
+                    : "bg-frame-error/10 text-frame-error"
+                }`}
+              >
+                {pairResult}
+              </div>
             )}
           </div>
-        )}
+        </details>
       </div>
     </div>
   );

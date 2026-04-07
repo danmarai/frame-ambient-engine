@@ -88,9 +88,16 @@ export class DlnaFramePublisher implements TvPublisher {
       await dlnaSetUri(ip, imageUrl);
       console.log(`[dlna] SetAVTransportURI OK`);
 
-      // Send DLNA Play
-      await dlnaPlay(ip);
-      console.log(`[dlna] Play OK`);
+      // Send DLNA Play (non-fatal — some TVs return 500 for image Play but display anyway)
+      try {
+        await dlnaPlay(ip);
+        console.log(`[dlna] Play OK`);
+      } catch (playErr) {
+        console.log(
+          `[dlna] Play failed (non-fatal, image may already be displayed):`,
+          playErr instanceof Error ? playErr.message : playErr,
+        );
+      }
 
       // Wait for TV to fetch the image (it requests it multiple times)
       await new Promise((r) => setTimeout(r, 5000));
