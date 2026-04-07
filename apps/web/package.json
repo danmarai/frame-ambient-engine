@@ -23,9 +23,12 @@
     "iron-session": "^8.0.0",
     "next": "^15.1.0",
     "node-cron": "^3.0.3",
+    "node-ssdp": "^4.0.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "sharp": "^0.33.0"
+    "samsung-frame-connect": "^0.9.1",
+    "sharp": "^0.33.0",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
     "@frame/eslint-config": "workspace:*",
@@ -33,8 +36,10 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.0.0",
     "@types/node-cron": "^3.0.11",
+    "@types/node-ssdp": "^4.0.4",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/ws": "^8.18.1",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.0",

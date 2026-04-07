@@ -10,8 +10,6 @@
  * the library's timeout limitation.
  */
 
-import { WebSocket } from "ws";
-
 export interface PairResult {
   success: boolean;
   token?: string;
@@ -27,7 +25,12 @@ export interface PairResult {
  * @param ip - TV IP address
  * @param timeoutMs - How long to wait for user to press Allow (default 60s)
  */
-export function pairWithTv(ip: string, timeoutMs = 60000): Promise<PairResult> {
+export async function pairWithTv(
+  ip: string,
+  timeoutMs = 60000,
+): Promise<PairResult> {
+  const { WebSocket } = await import("ws");
+
   return new Promise((resolve) => {
     const name = Buffer.from("FrameEngine").toString("base64");
     const url = `wss://${ip}:8002/api/v2/channels/samsung.remote.control?name=${name}&token=None`;

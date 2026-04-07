@@ -50,15 +50,24 @@ importers:
       node-cron:
         specifier: ^3.0.3
         version: 3.0.3
+      node-ssdp:
+        specifier: ^4.0.1
+        version: 4.0.1
       react:
         specifier: ^19.0.0
         version: 19.2.4
       react-dom:
         specifier: ^19.0.0
         version: 19.2.4(react@19.2.4)
+      samsung-frame-connect:
+        specifier: ^0.9.1
+        version: 0.9.1
       sharp:
         specifier: ^0.33.0
         version: 0.33.5
+      ws:
+        specifier: ^8.20.0
+        version: 8.20.0
     devDependencies:
       '@frame/eslint-config':
         specifier: workspace:*
@@ -75,12 +84,18 @@ importers:
       '@types/node-cron':
         specifier: ^3.0.11
         version: 3.0.11
+      '@types/node-ssdp':
+        specifier: ^4.0.4
+        version: 4.0.5
       '@types/react':
         specifier: ^19.0.0
         version: 19.2.14
       '@types/react-dom':
         specifier: ^19.0.0
         version: 19.2.3(@types/react@19.2.14)
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.27(postcss@8.5.8)
