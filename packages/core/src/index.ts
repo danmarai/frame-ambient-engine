@@ -11,6 +11,8 @@ export type {
   MarketTimeframe,
   MarketSettings,
   ThemeName,
+  ImageStyleName,
+  OverlaySettings,
   QuoteSettings,
   ImageProviderName,
   TvConnectionStatus,

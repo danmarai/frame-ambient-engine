@@ -12,6 +12,7 @@ import type {
   MarketProvider,
   QuoteProvider,
   ImageProvider,
+  ImageStyleName,
   SceneContext,
   Scene,
   ThemeName,
@@ -36,7 +37,11 @@ export interface GeneratorDeps {
 export async function generateScene(
   deps: GeneratorDeps,
   settings: AppSettings,
-  overrides?: { theme?: ThemeName; styleHints?: string },
+  overrides?: {
+    theme?: ThemeName;
+    imageStyle?: ImageStyleName;
+    styleHints?: string;
+  },
 ): Promise<{ scene: Omit<Scene, "id" | "imagePath">; imageData: Buffer }> {
   const start = Date.now();
   const theme = overrides?.theme ?? settings.theme;
@@ -62,8 +67,10 @@ export async function generateScene(
     ...(overrides?.styleHints ? { styleHints: overrides.styleHints } : {}),
   };
 
-  // 2. Compose prompt
-  const prompt = composePrompt(context);
+  // 2. Compose prompt with image style
+  const imageStyle =
+    overrides?.imageStyle ?? settings.imageStyle ?? "photorealistic";
+  const prompt = composePrompt(context, imageStyle);
 
   // 3. Generate image
   const generated = await deps.image.generate({

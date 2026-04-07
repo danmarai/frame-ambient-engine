@@ -1,6 +1,7 @@
 import type {
   AppSettings,
   ThemeName,
+  ImageStyleName,
   MarketSymbol,
   MarketTimeframe,
   WeatherIntegrationMode,
@@ -9,7 +10,22 @@ import type {
   ImageProviderName,
 } from "@frame/core";
 
-const VALID_THEMES: ThemeName[] = ["forest", "ocean", "astro", "sky", "cute"];
+const VALID_THEMES: ThemeName[] = [
+  "forest",
+  "ocean",
+  "astro",
+  "sky",
+  "cute",
+  "landmarks",
+  "natgeo",
+];
+const VALID_IMAGE_STYLES: ImageStyleName[] = [
+  "photorealistic",
+  "fine-art",
+  "artistic",
+  "illustration",
+  "random",
+];
 const VALID_SYMBOLS: MarketSymbol[] = ["BTC", "SPY"];
 const VALID_TIMEFRAMES: MarketTimeframe[] = ["day", "week"];
 const VALID_WEATHER_MODES: WeatherIntegrationMode[] = [
@@ -99,6 +115,14 @@ export function validateSettings(input: unknown): {
     errors.push(`Invalid theme: ${s.theme}`);
   }
 
+  // Image style
+  if (
+    s.imageStyle &&
+    !VALID_IMAGE_STYLES.includes(s.imageStyle as ImageStyleName)
+  ) {
+    errors.push(`Invalid image style: ${s.imageStyle}`);
+  }
+
   // Image provider
   if (
     s.imageProvider &&
@@ -134,6 +158,8 @@ export function mergeSettings(
     },
     market: { ...current.market, ...partial.market },
     theme: partial.theme ?? current.theme,
+    imageStyle: partial.imageStyle ?? current.imageStyle,
+    overlay: { ...current.overlay, ...partial.overlay },
     quotes: { ...current.quotes, ...partial.quotes },
     imageProvider: partial.imageProvider ?? current.imageProvider,
     tv: { ...current.tv, ...partial.tv },

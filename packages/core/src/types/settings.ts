@@ -44,7 +44,21 @@ export interface MarketSettings {
   timeframe: MarketTimeframe;
 }
 
-export type ThemeName = "forest" | "ocean" | "astro" | "sky" | "cute";
+export type ThemeName =
+  | "forest"
+  | "ocean"
+  | "astro"
+  | "sky"
+  | "cute"
+  | "landmarks"
+  | "natgeo";
+
+export type ImageStyleName =
+  | "photorealistic"
+  | "fine-art"
+  | "artistic"
+  | "illustration"
+  | "random";
 
 export interface QuoteSettings {
   enabled: boolean;
@@ -68,11 +82,18 @@ export interface SchedulerSettings {
   intervalMinutes: number;
 }
 
+export interface OverlaySettings {
+  showQuote: boolean;
+  showWeather: boolean;
+}
+
 export interface AppSettings {
   location: LocationSettings;
   weather: WeatherSettings;
   market: MarketSettings;
   theme: ThemeName;
+  imageStyle: ImageStyleName;
+  overlay: OverlaySettings;
   quotes: QuoteSettings;
   imageProvider: ImageProviderName;
   tv: TvSettings;
@@ -93,6 +114,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
     timeframe: "day",
   },
   theme: "forest",
+  imageStyle: "photorealistic",
+  overlay: { showQuote: false, showWeather: false },
   quotes: { enabled: true },
   imageProvider: "mock",
   tv: { ip: "" },
