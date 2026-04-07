@@ -51,7 +51,10 @@ export type ThemeName =
   | "sky"
   | "cute"
   | "landmarks"
-  | "natgeo";
+  | "natgeo"
+  | "science"
+  | "famous-women"
+  | "holiday";
 
 export type ImageStyleName =
   | "photorealistic"
@@ -85,6 +88,12 @@ export interface SchedulerSettings {
 export interface OverlaySettings {
   showQuote: boolean;
   showWeather: boolean;
+  showMarket: boolean;
+  temperatureUnit: "celsius" | "fahrenheit";
+}
+
+export interface HolidaySettings {
+  enabled: boolean;
 }
 
 export interface AppSettings {
@@ -94,6 +103,7 @@ export interface AppSettings {
   theme: ThemeName;
   imageStyle: ImageStyleName;
   overlay: OverlaySettings;
+  holiday: HolidaySettings;
   quotes: QuoteSettings;
   imageProvider: ImageProviderName;
   tv: TvSettings;
@@ -115,9 +125,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
   },
   theme: "forest",
   imageStyle: "photorealistic",
-  overlay: { showQuote: false, showWeather: false },
+  overlay: {
+    showQuote: false,
+    showWeather: false,
+    showMarket: false,
+    temperatureUnit: "celsius",
+  },
+  holiday: { enabled: false },
   quotes: { enabled: true },
-  imageProvider: "mock",
+  imageProvider: "openai",
   tv: { ip: "" },
   scheduler: {
     enabled: true,

@@ -70,7 +70,8 @@ export async function generateScene(
   // 2. Compose prompt with image style
   const imageStyle =
     overrides?.imageStyle ?? settings.imageStyle ?? "photorealistic";
-  const prompt = composePrompt(context, imageStyle);
+  const holidayEnabled = settings.holiday?.enabled ?? false;
+  const prompt = composePrompt(context, imageStyle, holidayEnabled);
 
   // 3. Generate image
   const generated = await deps.image.generate({

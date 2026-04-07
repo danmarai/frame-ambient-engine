@@ -18,6 +18,9 @@ const VALID_THEMES: ThemeName[] = [
   "cute",
   "landmarks",
   "natgeo",
+  "science",
+  "famous-women",
+  "holiday",
 ];
 const VALID_IMAGE_STYLES: ImageStyleName[] = [
   "photorealistic",
@@ -160,6 +163,7 @@ export function mergeSettings(
     theme: partial.theme ?? current.theme,
     imageStyle: partial.imageStyle ?? current.imageStyle,
     overlay: { ...current.overlay, ...partial.overlay },
+    holiday: { ...current.holiday, ...partial.holiday },
     quotes: { ...current.quotes, ...partial.quotes },
     imageProvider: partial.imageProvider ?? current.imageProvider,
     tv: { ...current.tv, ...partial.tv },

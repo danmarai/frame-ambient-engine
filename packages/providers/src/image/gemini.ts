@@ -40,7 +40,7 @@ export class GeminiImageProvider implements ImageProvider {
 
   async generate(request: ImageGenerationRequest): Promise<GeneratedImage> {
     // Use Gemini 2.0 Flash with image generation capability
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${this.apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${this.apiKey}`;
 
     const res = await fetch(url, {
       method: "POST",

@@ -13,6 +13,7 @@ export type {
   ThemeName,
   ImageStyleName,
   OverlaySettings,
+  HolidaySettings,
   QuoteSettings,
   ImageProviderName,
   TvConnectionStatus,
