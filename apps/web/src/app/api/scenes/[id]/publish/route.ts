@@ -7,7 +7,7 @@ import path from "path";
 import { getDb, scenes, publishHistory, settings, eq } from "@frame/db";
 import { DEFAULT_SETTINGS } from "@frame/core";
 import type { AppSettings } from "@frame/core";
-import { prepareForTV } from "@frame/rendering";
+import { prepareForTV, applyOverlays } from "@frame/rendering";
 import { ensureSchema } from "@/lib/db-bootstrap";
 import { getTvPublisher } from "@/lib/providers";
 
@@ -74,10 +74,28 @@ export async function POST(
 
     // 5. Prepare image for TV (upscale to 4K JPEG)
     console.log(`${logPrefix} Upscaling to 4K...`);
-    const preparedImage = await prepareForTV(imageData);
+    let preparedImage = await prepareForTV(imageData);
     console.log(
       `${logPrefix} Upscaled: ${(preparedImage.length / 1024).toFixed(0)}KB`,
     );
+
+    // 5b. Apply overlays if enabled
+    const overlay = appSettings.overlay ?? {
+      showQuote: false,
+      showWeather: false,
+    };
+    if (overlay.showQuote || overlay.showWeather) {
+      const context = scene.contextJson ? JSON.parse(scene.contextJson) : null;
+      if (context) {
+        console.log(
+          `${logPrefix} Applying overlays (quote=${overlay.showQuote}, weather=${overlay.showWeather})`,
+        );
+        preparedImage = await applyOverlays(preparedImage, context, overlay);
+        console.log(
+          `${logPrefix} Overlays applied: ${(preparedImage.length / 1024).toFixed(0)}KB`,
+        );
+      }
+    }
 
     // 6. Update status to pending
     await db
