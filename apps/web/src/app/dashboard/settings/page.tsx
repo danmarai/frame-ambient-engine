@@ -230,9 +230,70 @@ export default function SettingsPage() {
         <Select
           label="Active Theme"
           value={settings.theme}
-          options={["forest", "ocean", "astro", "sky", "cute"]}
+          options={[
+            "forest",
+            "ocean",
+            "astro",
+            "sky",
+            "cute",
+            "landmarks",
+            "natgeo",
+          ]}
           onChange={(v) =>
             setSettings({ ...settings, theme: v as AppSettings["theme"] })
+          }
+        />
+      </Section>
+
+      {/* Image Style */}
+      <Section title="Image Style">
+        <Select
+          label="Rendering Style"
+          value={settings.imageStyle ?? "photorealistic"}
+          options={[
+            "photorealistic",
+            "fine-art",
+            "artistic",
+            "illustration",
+            "random",
+          ]}
+          onChange={(v) =>
+            setSettings({
+              ...settings,
+              imageStyle: v as AppSettings["imageStyle"],
+            })
+          }
+        />
+      </Section>
+
+      {/* Overlays */}
+      <Section title="Image Overlays">
+        <Toggle
+          label="Show Quote on Image"
+          checked={settings.overlay?.showQuote ?? false}
+          onChange={(v) =>
+            setSettings({
+              ...settings,
+              overlay: {
+                ...settings.overlay,
+                showQuote: v,
+                showWeather: settings.overlay?.showWeather ?? false,
+              },
+            })
+          }
+        />
+        <Toggle
+          label="Show Weather on Image"
+          checked={settings.overlay?.showWeather ?? false}
+          onChange={(v) =>
+            setSettings({
+              ...settings,
+              overlay: {
+                ...settings.overlay,
+                showWeather: v,
+                showQuote: settings.overlay?.showQuote ?? false,
+              },
+            })
           }
         />
       </Section>

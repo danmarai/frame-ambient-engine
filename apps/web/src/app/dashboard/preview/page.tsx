@@ -46,7 +46,22 @@ interface ScenesResponse {
 
 type FilterTab = "all" | "favorites" | "liked" | "disliked";
 
-const THEMES = ["forest", "ocean", "astro", "sky", "cute"] as const;
+const THEMES = [
+  "forest",
+  "ocean",
+  "astro",
+  "sky",
+  "cute",
+  "landmarks",
+  "natgeo",
+] as const;
+const IMAGE_STYLES = [
+  "photorealistic",
+  "fine-art",
+  "artistic",
+  "illustration",
+  "random",
+] as const;
 const PROVIDERS = ["openai", "gemini", "mock"] as const;
 const PAGE_LIMIT = 12;
 
@@ -57,6 +72,7 @@ export default function PreviewPage() {
   const [recentScenes, setRecentScenes] = useState<Scene[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<string>("");
+  const [selectedStyle, setSelectedStyle] = useState<string>("");
   const [selectedProvider, setSelectedProvider] = useState<string>("");
 
   // Rating and favorite state
@@ -141,6 +157,7 @@ export default function PreviewPage() {
     try {
       const body: Record<string, string> = {};
       if (selectedTheme) body.theme = selectedTheme;
+      if (selectedStyle) body.imageStyle = selectedStyle;
       if (selectedProvider) body.provider = selectedProvider;
 
       const res = await fetch("/api/generate", {
@@ -278,6 +295,26 @@ export default function PreviewPage() {
               {THEMES.map((t) => (
                 <option key={t} value={t}>
                   {t.charAt(0).toUpperCase() + t.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs text-frame-muted">Style</label>
+            <select
+              value={selectedStyle}
+              onChange={(e) => setSelectedStyle(e.target.value)}
+              className="rounded border border-frame-border bg-frame-bg px-3 py-2 text-sm text-frame-text"
+            >
+              <option value="">Use settings default</option>
+              {IMAGE_STYLES.map((s) => (
+                <option key={s} value={s}>
+                  {s === "fine-art"
+                    ? "Fine Art"
+                    : s === "random"
+                      ? "Random (cycle)"
+                      : s.charAt(0).toUpperCase() + s.slice(1)}
                 </option>
               ))}
             </select>

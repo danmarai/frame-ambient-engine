@@ -23,10 +23,12 @@ export async function POST(request: Request) {
 
     // Parse optional overrides from request body
     let overrideTheme: string | undefined;
+    let overrideStyle: string | undefined;
     let overrideProvider: ImageProviderName | undefined;
     try {
       const body = await request.json();
       overrideTheme = body.theme;
+      overrideStyle = body.imageStyle;
       overrideProvider = body.provider;
     } catch {
       // Empty body is fine
@@ -76,6 +78,7 @@ export async function POST(request: Request) {
     // Run the generation
     const { scene, imageData } = await generateScene(deps, appSettings, {
       theme: overrideTheme as AppSettings["theme"] | undefined,
+      imageStyle: (overrideStyle as AppSettings["imageStyle"]) || undefined,
       styleHints: styleHints || undefined,
     });
 
