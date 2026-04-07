@@ -18,7 +18,7 @@ import {
   OpenAIImageProvider,
   GeminiImageProvider,
 } from "@frame/providers";
-import { MockTvPublisher, SamsungFramePublisher } from "@frame/tv";
+import { MockTvPublisher, DlnaFramePublisher } from "@frame/tv";
 import { loadEnvConfig } from "@frame/config";
 
 export function getWeatherProvider(): WeatherProvider {
@@ -63,7 +63,7 @@ export function getTvPublisher(tvIp?: string): TvPublisher {
   const env = loadEnvConfig();
 
   if (tvIp || env.samsungTvIp) {
-    return new SamsungFramePublisher();
+    return new DlnaFramePublisher();
   }
 
   return new MockTvPublisher();
