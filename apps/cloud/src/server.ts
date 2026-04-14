@@ -22,6 +22,13 @@ import {
 } from "./tv-connections.js";
 import { uploadToTv, selectAndActivate } from "./tv-upload.js";
 import {
+  generate,
+  loadImage,
+  getGenerationConfig,
+  getUserSettings,
+  updateUserSettings,
+} from "./generation.js";
+import {
   verifyGoogleToken,
   createSession,
   getSession,
@@ -226,10 +233,103 @@ app.get("/api/feedback/:tvId", (req, res) => {
   res.json(tvFeedback);
 });
 
+// --- Generation ---
+
+app.get("/api/generation/config", (_req, res) => {
+  res.json(getGenerationConfig());
+});
+
+app.post("/api/generate", optionalAuth, async (req, res) => {
+  const {
+    theme,
+    imageStyle,
+    provider,
+    overlays,
+    tvId,
+    tvIp: explicitIp,
+  } = req.body;
+  const userId = (req as any).user?.userId;
+
+  try {
+    console.log(
+      `Generation request: theme=${theme}, style=${imageStyle}, provider=${provider}`,
+    );
+    const result = await generate({
+      userId,
+      theme,
+      imageStyle,
+      provider,
+      overlays,
+    });
+
+    // If tvId/tvIp provided, also upload to TV
+    let uploadResult = null;
+    const tvIp = explicitIp || (tvId ? getTvIp(tvId) : null);
+    if (tvIp && tvIp !== "unknown") {
+      console.log(`Auto-uploading to TV at ${tvIp}...`);
+      await makeRoom(tvIp, 1);
+      const upload = await uploadToTv(tvIp, result.imageData);
+      if (upload.success && upload.contentId) {
+        recordUpload(tvIp, upload.contentId);
+        await selectAndActivate(tvIp, upload.contentId);
+        uploadResult = {
+          contentId: upload.contentId,
+          durationMs: upload.durationMs,
+        };
+        if (tvId) {
+          sendToTv(tvId, { type: "new_art", contentId: upload.contentId });
+        }
+      }
+    }
+
+    res.json({
+      sceneId: result.sceneId,
+      prompt: result.prompt,
+      context: result.context,
+      durationMs: result.durationMs,
+      provider: result.provider,
+      imageUrl: `/api/images/${result.sceneId}`,
+      upload: uploadResult,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Generation failed";
+    console.error("Generation error:", message);
+    res.status(500).json({ error: message });
+  }
+});
+
+app.get("/api/images/:sceneId", async (req, res) => {
+  const data = await loadImage(req.params.sceneId);
+  if (!data) {
+    res.status(404).json({ error: "Image not found" });
+    return;
+  }
+  res.setHeader("Content-Type", "image/jpeg");
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  res.send(data);
+});
+
+// --- User Settings ---
+
+app.get("/api/settings", optionalAuth, (req, res) => {
+  const userId = (req as any).user?.userId || "default";
+  res.json(getUserSettings(userId));
+});
+
+app.post("/api/settings", optionalAuth, (req, res) => {
+  const userId = (req as any).user?.userId || "default";
+  updateUserSettings(userId, req.body);
+  res.json({ success: true });
+});
+
 // --- Gallery Route ---
 
 app.get("/gallery", (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "gallery.html"));
+});
+
+app.get("/studio", (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "studio.html"));
 });
 
 app.get("/api/config", (_req, res) => {

@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Frame Art — Studio</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #0f0f1a;
+        color: #fff;
+        min-height: 100vh;
+        padding-bottom: 80px;
+      }
+
+      .header {
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid #222;
+        position: sticky;
+        top: 0;
+        background: #0f0f1a;
+        z-index: 10;
+      }
+      .header h1 {
+        font-size: 18px;
+        color: #0ff;
+      }
+      .nav {
+        display: flex;
+        gap: 16px;
+        font-size: 13px;
+      }
+      .nav a {
+        color: #666;
+        text-decoration: none;
+      }
+      .nav a.active,
+      .nav a:hover {
+        color: #0ff;
+      }
+
+      .controls {
+        padding: 12px 16px;
+        background: #1a1a2e;
+      }
+      .control-row {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .control-row select {
+        flex: 1;
+        background: #0f0f1a;
+        color: #fff;
+        border: 1px solid #333;
+        padding: 10px;
+        border-radius: 8px;
+        font-size: 14px;
+      }
+      .overlay-toggles {
+        display: flex;
+        gap: 12px;
+        padding: 8px 0;
+      }
+      .overlay-toggles label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: #888;
+      }
+      .overlay-toggles input[type="checkbox"] {
+        accent-color: #0ff;
+      }
+
+      .generate-btn {
+        width: 100%;
+        padding: 14px;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        background: #0ff;
+        color: #000;
+        margin-top: 4px;
+      }
+      .generate-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .generate-btn.generating {
+        background: #335;
+        color: #0ff;
+        animation: pulse 1.5s infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.7;
+        }
+      }
+
+      .preview {
+        padding: 16px;
+      }
+      .preview img {
+        width: 100%;
+        border-radius: 12px;
+        aspect-ratio: 16/9;
+        object-fit: cover;
+      }
+      .preview-info {
+        margin-top: 12px;
+        font-size: 13px;
+        color: #888;
+        line-height: 1.6;
+      }
+      .preview-info .label {
+        color: #666;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .preview-info .value {
+        color: #ccc;
+        margin-bottom: 8px;
+      }
+
+      .progress {
+        padding: 0 16px;
+        margin-top: 8px;
+      }
+      .progress-bar {
+        height: 4px;
+        background: #222;
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .progress-fill {
+        height: 100%;
+        background: #0ff;
+        transition: width 1s linear;
+        border-radius: 2px;
+      }
+      .progress-text {
+        font-size: 12px;
+        color: #666;
+        margin-top: 4px;
+      }
+
+      .publish-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 12px 16px;
+        background: #1a1a2e;
+        border-top: 1px solid #333;
+        display: flex;
+        gap: 8px;
+      }
+      .publish-bar button {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .btn-publish {
+        background: #0a5;
+        color: #fff;
+      }
+      .btn-publish:disabled {
+        opacity: 0.5;
+      }
+
+      .status-msg {
+        padding: 8px 16px;
+        font-size: 13px;
+        text-align: center;
+      }
+      .status-msg.success {
+        color: #0a5;
+      }
+      .status-msg.error {
+        color: #a03;
+      }
+
+      .login-prompt {
+        text-align: center;
+        padding: 80px 20px;
+      }
+      .login-prompt h1 {
+        color: #0ff;
+        margin-bottom: 8px;
+      }
+      .login-prompt p {
+        color: #666;
+        margin-bottom: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loginView" class="login-prompt">
+      <h1>Frame Art Studio</h1>
+      <p>Sign in to generate art for your TV</p>
+      <div
+        id="googleBtn"
+        style="display: flex; justify-content: center; margin: 24px 0"
+      ></div>
+    </div>
+
+    <div id="appView" style="display: none">
+      <div class="header">
+        <h1>Studio</h1>
+        <div class="nav">
+          <a href="/pair">Pair</a>
+          <a href="/studio" class="active">Studio</a>
+          <a href="/gallery">Gallery</a>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="control-row">
+          <select id="themeSelect">
+            <option value="">Theme...</option>
+          </select>
+          <select id="styleSelect">
+            <option value="">Style...</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <select id="providerSelect">
+            <option value="">Provider...</option>
+          </select>
+          <select id="tvSelect">
+            <option value="">TV target...</option>
+          </select>
+        </div>
+        <div class="overlay-toggles">
+          <span style="color: #555">Overlays:</span>
+          <label><input type="checkbox" id="ovWeather" /> Weather</label>
+          <label><input type="checkbox" id="ovMarket" /> Market</label>
+          <label><input type="checkbox" id="ovQuote" /> Quote</label>
+        </div>
+        <button class="generate-btn" id="genBtn">Generate Art</button>
+      </div>
+
+      <div class="progress" id="progressSection" style="display: none">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+        <div class="progress-text" id="progressText">Starting...</div>
+      </div>
+
+      <div class="preview" id="previewSection" style="display: none">
+        <img id="previewImg" src="" alt="Generated art" />
+        <div class="preview-info">
+          <div class="label">Prompt</div>
+          <div class="value" id="promptText"></div>
+          <div class="label">Context</div>
+          <div class="value" id="contextText"></div>
+          <div class="label">Stats</div>
+          <div class="value" id="statsText"></div>
+        </div>
+      </div>
+
+      <div class="status-msg" id="statusMsg"></div>
+
+      <div class="publish-bar" id="publishBar" style="display: none">
+        <button class="btn-publish" id="publishBtn" disabled>
+          Publish to TV
+        </button>
+      </div>
+    </div>
+
+    <script>
+      var session = localStorage.getItem("frameArtSession");
+      var user = null;
+      try {
+        user = JSON.parse(localStorage.getItem("frameArtUser") || "null");
+      } catch (e) {}
+      var currentScene = null;
+
+      // Auth (same as other pages)
+      function handleGoogleCredential(response) {
+        fetch("/api/auth/google", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken: response.credential }),
+        })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (data) {
+            if (data.sessionId) {
+              session = data.sessionId;
+              user = data.user;
+              localStorage.setItem("frameArtSession", data.sessionId);
+              localStorage.setItem("frameArtUser", JSON.stringify(data.user));
+              showApp();
+            }
+          });
+      }
+
+      function showApp() {
+        document.getElementById("loginView").style.display = "none";
+        document.getElementById("appView").style.display = "block";
+        loadConfig();
+        loadDevices();
+      }
+
+      function loadConfig() {
+        fetch("/api/generation/config")
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (cfg) {
+            fillSelect("themeSelect", cfg.themes);
+            fillSelect("styleSelect", cfg.styles);
+            fillSelect("providerSelect", cfg.providers);
+          });
+      }
+
+      function fillSelect(id, items) {
+        var sel = document.getElementById(id);
+        var saved = localStorage.getItem("studio." + id) || "";
+        items.forEach(function (item) {
+          var opt = document.createElement("option");
+          opt.value = item.id;
+          opt.textContent = item.label;
+          if (item.id === saved) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        sel.addEventListener("change", function () {
+          localStorage.setItem("studio." + id, sel.value);
+        });
+      }
+
+      function loadDevices() {
+        fetch("/api/devices")
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (devices) {
+            var sel = document.getElementById("tvSelect");
+            devices.forEach(function (d) {
+              var opt = document.createElement("option");
+              opt.value = d.tvId + "|" + d.tvIp;
+              opt.textContent = (d.name || d.modelName) + " (" + d.tvIp + ")";
+              sel.appendChild(opt);
+            });
+          });
+      }
+
+      // Generate
+      document.getElementById("genBtn").addEventListener("click", function () {
+        var btn = this;
+        btn.disabled = true;
+        btn.textContent = "Generating...";
+        btn.className = "generate-btn generating";
+
+        var progress = document.getElementById("progressSection");
+        progress.style.display = "block";
+        document.getElementById("previewSection").style.display = "none";
+        document.getElementById("publishBar").style.display = "none";
+
+        var startTime = Date.now();
+        var progressTimer = setInterval(function () {
+          var elapsed = Math.floor((Date.now() - startTime) / 1000);
+          var pct = Math.min(95, (elapsed / 35) * 100);
+          document.getElementById("progressFill").style.width = pct + "%";
+          var msg =
+            elapsed < 5
+              ? "Gathering context data..."
+              : elapsed < 15
+                ? "Composing prompt..."
+                : elapsed < 30
+                  ? "AI is painting..."
+                  : "Almost done...";
+          document.getElementById("progressText").textContent =
+            msg + " (" + elapsed + "s)";
+        }, 1000);
+
+        var tvVal = document.getElementById("tvSelect").value;
+        var tvParts = tvVal ? tvVal.split("|") : [null, null];
+
+        var body = {};
+        var theme = document.getElementById("themeSelect").value;
+        var style = document.getElementById("styleSelect").value;
+        var provider = document.getElementById("providerSelect").value;
+        if (theme) body.theme = theme;
+        if (style) body.imageStyle = style;
+        if (provider) body.provider = provider;
+        if (tvParts[0]) body.tvId = tvParts[0];
+        if (tvParts[1]) body.tvIp = tvParts[1];
+        body.overlays = {
+          showWeather: document.getElementById("ovWeather").checked,
+          showMarket: document.getElementById("ovMarket").checked,
+          showQuote: document.getElementById("ovQuote").checked,
+        };
+
+        fetch("/api/generate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: session ? "Bearer " + session : "",
+          },
+          body: JSON.stringify(body),
+        })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (data) {
+            clearInterval(progressTimer);
+            progress.style.display = "none";
+            btn.disabled = false;
+            btn.textContent = "Generate Art";
+            btn.className = "generate-btn";
+
+            if (data.error) {
+              setStatus(data.error, true);
+              return;
+            }
+
+            currentScene = data;
+            document.getElementById("previewSection").style.display = "block";
+            document.getElementById("previewImg").src = data.imageUrl;
+            document.getElementById("promptText").textContent =
+              data.prompt || "";
+            var ctx = data.context || {};
+            var ctxParts = [];
+            if (ctx.weather)
+              ctxParts.push(
+                "Weather: " + (ctx.weather.description || ctx.weather.sky),
+              );
+            if (ctx.market)
+              ctxParts.push(
+                "Market: " +
+                  ctx.market.symbol +
+                  " " +
+                  (ctx.market.changePercent > 0 ? "+" : "") +
+                  ctx.market.changePercent?.toFixed(2) +
+                  "%",
+              );
+            if (ctx.quote) ctxParts.push('Quote: "' + ctx.quote.text + '"');
+            document.getElementById("contextText").textContent =
+              ctxParts.join(" | ") || "No context data";
+            document.getElementById("statsText").textContent =
+              "Generated in " +
+              (data.durationMs / 1000).toFixed(1) +
+              "s via " +
+              data.provider;
+
+            if (data.upload) {
+              setStatus(
+                "Art generated and uploaded to TV! (" +
+                  data.upload.contentId +
+                  ")",
+                false,
+              );
+            } else {
+              document.getElementById("publishBar").style.display = "flex";
+              document.getElementById("publishBtn").disabled = false;
+              setStatus("Art generated! Tap Publish to send to TV.", false);
+            }
+          })
+          .catch(function (err) {
+            clearInterval(progressTimer);
+            progress.style.display = "none";
+            btn.disabled = false;
+            btn.textContent = "Generate Art";
+            btn.className = "generate-btn";
+            setStatus("Error: " + err.message, true);
+          });
+      });
+
+      function setStatus(msg, isError) {
+        var el = document.getElementById("statusMsg");
+        el.textContent = msg;
+        el.className = "status-msg " + (isError ? "error" : "success");
+      }
+
+      // Init auth
+      if (session && user) {
+        fetch("/api/auth/me", {
+          headers: { Authorization: "Bearer " + session },
+        })
+          .then(function (r) {
+            if (r.ok) showApp();
+            else initLogin();
+          })
+          .catch(function () {
+            initLogin();
+          });
+      } else {
+        window.onload = function () {
+          initLogin();
+        };
+      }
+
+      function initLogin() {
+        document.getElementById("loginView").style.display = "block";
+        fetch("/api/config")
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (cfg) {
+            if (!cfg.googleClientId) {
+              showApp();
+              return;
+            }
+            google.accounts.id.initialize({
+              client_id: cfg.googleClientId,
+              callback: handleGoogleCredential,
+            });
+            google.accounts.id.renderButton(
+              document.getElementById("googleBtn"),
+              {
+                theme: "filled_blue",
+                size: "large",
+                shape: "pill",
+                width: 300,
+              },
+            );
+          });
+      }
+    </script>
+  </body>
+</html>

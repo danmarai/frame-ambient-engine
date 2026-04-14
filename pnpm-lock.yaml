@@ -17,6 +17,12 @@ importers:
       '@frame/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@frame/providers':
+        specifier: workspace:*
+        version: link:../../packages/providers
+      '@frame/rendering':
+        specifier: workspace:*
+        version: link:../../packages/rendering
       '@frame/tv':
         specifier: workspace:*
         version: link:../../packages/tv
