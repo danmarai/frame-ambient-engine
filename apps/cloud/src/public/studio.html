@@ -83,6 +83,21 @@
         accent-color: #0ff;
       }
 
+      .tv-status {
+        padding: 8px 12px;
+        margin-top: 4px;
+        border-radius: 8px;
+        font-size: 13px;
+      }
+      .tv-status.paired {
+        background: #0a3;
+        color: #fff;
+      }
+      .tv-status.unpaired {
+        background: #332;
+        color: #fa0;
+      }
+
       .generate-btn {
         width: 100%;
         padding: 14px;
@@ -93,7 +108,7 @@
         cursor: pointer;
         background: #0ff;
         color: #000;
-        margin-top: 4px;
+        margin-top: 8px;
       }
       .generate-btn:disabled {
         opacity: 0.5;
@@ -122,6 +137,43 @@
         border-radius: 12px;
         aspect-ratio: 16/9;
         object-fit: cover;
+      }
+      .preview-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+        align-items: center;
+      }
+      .preview-actions button {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .btn-saved {
+        background: #1a3a1a;
+        color: #4f4;
+      }
+      .btn-icon {
+        background: #222;
+        color: #888;
+        font-size: 16px;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+      }
+      .btn-icon:hover {
+        background: #333;
+        color: #fff;
       }
       .preview-info {
         margin-top: 12px;
@@ -189,6 +241,10 @@
       .btn-publish:disabled {
         opacity: 0.5;
       }
+      .btn-nopair {
+        background: #332;
+        color: #fa0;
+      }
 
       .status-msg {
         padding: 8px 16px;
@@ -238,20 +294,8 @@
 
       <div class="controls">
         <div class="control-row">
-          <select id="themeSelect">
-            <option value="">Theme...</option>
-          </select>
-          <select id="styleSelect">
-            <option value="">Style...</option>
-          </select>
-        </div>
-        <div class="control-row">
-          <select id="providerSelect">
-            <option value="">Provider...</option>
-          </select>
-          <select id="tvSelect">
-            <option value="">TV target...</option>
-          </select>
+          <select id="themeSelect"></select>
+          <select id="styleSelect"></select>
         </div>
         <div class="overlay-toggles">
           <span style="color: #555">Overlays:</span>
@@ -259,6 +303,7 @@
           <label><input type="checkbox" id="ovMarket" /> Market</label>
           <label><input type="checkbox" id="ovQuote" /> Quote</label>
         </div>
+        <div id="tvStatus"></div>
         <button class="generate-btn" id="genBtn">Generate Art</button>
       </div>
 
@@ -271,6 +316,15 @@
 
       <div class="preview" id="previewSection" style="display: none">
         <img id="previewImg" src="" alt="Generated art" />
+        <div class="preview-actions">
+          <button class="btn-saved" id="savedBadge">Saved to Gallery</button>
+          <button class="btn-icon" id="deleteBtn" title="Delete">
+            &#128465;
+          </button>
+          <button class="btn-icon" id="editBtn" title="Refine & Regenerate">
+            &#9998;
+          </button>
+        </div>
         <div class="preview-info">
           <div class="label">Prompt</div>
           <div class="value" id="promptText"></div>
@@ -283,11 +337,7 @@
 
       <div class="status-msg" id="statusMsg"></div>
 
-      <div class="publish-bar" id="publishBar" style="display: none">
-        <button class="btn-publish" id="publishBtn" disabled>
-          Publish to TV
-        </button>
-      </div>
+      <div class="publish-bar" id="publishBar" style="display: none"></div>
     </div>
 
     <script>
@@ -297,8 +347,13 @@
         user = JSON.parse(localStorage.getItem("frameArtUser") || "null");
       } catch (e) {}
       var currentScene = null;
+      var pairedTv = null;
+      try {
+        pairedTv = JSON.parse(localStorage.getItem("pairedTv") || "null");
+      } catch (e) {}
+      var devices = [];
 
-      // Auth (same as other pages)
+      // Auth
       function handleGoogleCredential(response) {
         fetch("/api/auth/google", {
           method: "POST",
@@ -324,6 +379,7 @@
         document.getElementById("appView").style.display = "block";
         loadConfig();
         loadDevices();
+        updateTvStatus();
       }
 
       function loadConfig() {
@@ -332,25 +388,35 @@
             return r.json();
           })
           .then(function (cfg) {
-            fillSelect("themeSelect", cfg.themes);
-            fillSelect("styleSelect", cfg.styles);
-            fillSelect("providerSelect", cfg.providers);
-          });
-      }
+            // Theme with default
+            var themeSel = document.getElementById("themeSelect");
+            var savedTheme = localStorage.getItem("studio.theme") || "forest";
+            cfg.themes.forEach(function (t) {
+              var opt = document.createElement("option");
+              opt.value = t.id;
+              opt.textContent = t.label;
+              if (t.id === savedTheme) opt.selected = true;
+              themeSel.appendChild(opt);
+            });
+            themeSel.addEventListener("change", function () {
+              localStorage.setItem("studio.theme", themeSel.value);
+            });
 
-      function fillSelect(id, items) {
-        var sel = document.getElementById(id);
-        var saved = localStorage.getItem("studio." + id) || "";
-        items.forEach(function (item) {
-          var opt = document.createElement("option");
-          opt.value = item.id;
-          opt.textContent = item.label;
-          if (item.id === saved) opt.selected = true;
-          sel.appendChild(opt);
-        });
-        sel.addEventListener("change", function () {
-          localStorage.setItem("studio." + id, sel.value);
-        });
+            // Style with default
+            var styleSel = document.getElementById("styleSelect");
+            var savedStyle =
+              localStorage.getItem("studio.style") || "photorealistic";
+            cfg.styles.forEach(function (s) {
+              var opt = document.createElement("option");
+              opt.value = s.id;
+              opt.textContent = s.label;
+              if (s.id === savedStyle) opt.selected = true;
+              styleSel.appendChild(opt);
+            });
+            styleSel.addEventListener("change", function () {
+              localStorage.setItem("studio.style", styleSel.value);
+            });
+          });
       }
 
       function loadDevices() {
@@ -358,15 +424,48 @@
           .then(function (r) {
             return r.json();
           })
-          .then(function (devices) {
-            var sel = document.getElementById("tvSelect");
-            devices.forEach(function (d) {
-              var opt = document.createElement("option");
-              opt.value = d.tvId + "|" + d.tvIp;
-              opt.textContent = (d.name || d.modelName) + " (" + d.tvIp + ")";
-              sel.appendChild(opt);
-            });
+          .then(function (d) {
+            devices = d;
+            updateTvStatus();
           });
+      }
+
+      function updateTvStatus() {
+        var el = document.getElementById("tvStatus");
+        var bar = document.getElementById("publishBar");
+
+        if (pairedTv && pairedTv.tvIp) {
+          el.innerHTML =
+            '<div class="tv-status paired">TV: ' +
+            pairedTv.tvIp +
+            " (paired)</div>";
+          // Show publish button when we have a scene
+          if (currentScene) {
+            bar.style.display = "flex";
+            bar.innerHTML =
+              '<button class="btn-publish" id="publishBtn">Publish to TV</button>';
+            document
+              .getElementById("publishBtn")
+              .addEventListener("click", doPublish);
+          }
+        } else if (devices.length > 0) {
+          // Has scanned devices but not paired
+          el.innerHTML =
+            '<div class="tv-status unpaired">TV found but not paired. <a href="/pair" style="color:#0ff;">Pair now</a></div>';
+          if (currentScene) {
+            bar.style.display = "flex";
+            bar.innerHTML =
+              '<button class="btn-nopair" onclick="location.href=\'/pair\'">Pair a TV to publish</button>';
+          }
+        } else {
+          el.innerHTML =
+            '<div class="tv-status unpaired">No TV paired. <a href="/pair" style="color:#0ff;">Pair your Frame TV</a></div>';
+          if (currentScene) {
+            bar.style.display = "flex";
+            bar.innerHTML =
+              '<button class="btn-nopair" onclick="location.href=\'/pair\'">Pair a TV to publish</button>';
+          }
+        }
       }
 
       // Generate
@@ -376,8 +475,7 @@
         btn.textContent = "Generating...";
         btn.className = "generate-btn generating";
 
-        var progress = document.getElementById("progressSection");
-        progress.style.display = "block";
+        document.getElementById("progressSection").style.display = "block";
         document.getElementById("previewSection").style.display = "none";
         document.getElementById("publishBar").style.display = "none";
 
@@ -388,7 +486,7 @@
           document.getElementById("progressFill").style.width = pct + "%";
           var msg =
             elapsed < 5
-              ? "Gathering context data..."
+              ? "Gathering weather & context..."
               : elapsed < 15
                 ? "Composing prompt..."
                 : elapsed < 30
@@ -398,22 +496,16 @@
             msg + " (" + elapsed + "s)";
         }, 1000);
 
-        var tvVal = document.getElementById("tvSelect").value;
-        var tvParts = tvVal ? tvVal.split("|") : [null, null];
-
-        var body = {};
-        var theme = document.getElementById("themeSelect").value;
-        var style = document.getElementById("styleSelect").value;
-        var provider = document.getElementById("providerSelect").value;
-        if (theme) body.theme = theme;
-        if (style) body.imageStyle = style;
-        if (provider) body.provider = provider;
-        if (tvParts[0]) body.tvId = tvParts[0];
-        if (tvParts[1]) body.tvIp = tvParts[1];
-        body.overlays = {
-          showWeather: document.getElementById("ovWeather").checked,
-          showMarket: document.getElementById("ovMarket").checked,
-          showQuote: document.getElementById("ovQuote").checked,
+        var body = {
+          theme: document.getElementById("themeSelect").value || "forest",
+          imageStyle:
+            document.getElementById("styleSelect").value || "photorealistic",
+          provider: "openai",
+          overlays: {
+            showWeather: document.getElementById("ovWeather").checked,
+            showMarket: document.getElementById("ovMarket").checked,
+            showQuote: document.getElementById("ovQuote").checked,
+          },
         };
 
         fetch("/api/generate", {
@@ -429,7 +521,7 @@
           })
           .then(function (data) {
             clearInterval(progressTimer);
-            progress.style.display = "none";
+            document.getElementById("progressSection").style.display = "none";
             btn.disabled = false;
             btn.textContent = "Generate Art";
             btn.className = "generate-btn";
@@ -448,47 +540,103 @@
             var ctxParts = [];
             if (ctx.weather)
               ctxParts.push(
-                "Weather: " + (ctx.weather.description || ctx.weather.sky),
+                "Weather: " +
+                  (ctx.weather.description || ctx.weather.sky || ""),
               );
             if (ctx.market)
               ctxParts.push(
                 "Market: " +
-                  ctx.market.symbol +
+                  (ctx.market.symbol || "") +
                   " " +
                   (ctx.market.changePercent > 0 ? "+" : "") +
-                  ctx.market.changePercent?.toFixed(2) +
+                  (ctx.market.changePercent || 0).toFixed(2) +
                   "%",
               );
-            if (ctx.quote) ctxParts.push('Quote: "' + ctx.quote.text + '"');
+            if (ctx.quote) ctxParts.push('"' + (ctx.quote.text || "") + '"');
             document.getElementById("contextText").textContent =
-              ctxParts.join(" | ") || "No context data";
+              ctxParts.join(" | ") || "No context";
             document.getElementById("statsText").textContent =
-              "Generated in " +
-              (data.durationMs / 1000).toFixed(1) +
-              "s via " +
-              data.provider;
+              (data.durationMs / 1000).toFixed(1) + "s via " + data.provider;
 
-            if (data.upload) {
-              setStatus(
-                "Art generated and uploaded to TV! (" +
-                  data.upload.contentId +
-                  ")",
-                false,
-              );
-            } else {
-              document.getElementById("publishBar").style.display = "flex";
-              document.getElementById("publishBtn").disabled = false;
-              setStatus("Art generated! Tap Publish to send to TV.", false);
-            }
+            updateTvStatus();
+            setStatus("Art generated and saved to gallery!", false);
           })
           .catch(function (err) {
             clearInterval(progressTimer);
-            progress.style.display = "none";
+            document.getElementById("progressSection").style.display = "none";
             btn.disabled = false;
             btn.textContent = "Generate Art";
             btn.className = "generate-btn";
             setStatus("Error: " + err.message, true);
           });
+      });
+
+      function doPublish() {
+        if (!currentScene || !pairedTv) return;
+        var btn = document.getElementById("publishBtn");
+        btn.disabled = true;
+        btn.textContent = "Publishing...";
+        setStatus("Uploading to TV...");
+
+        fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tvId: pairedTv.tvId,
+            tvIp: pairedTv.tvIp,
+            imageUrl: window.location.origin + currentScene.imageUrl,
+          }),
+        })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (data) {
+            if (data.success) {
+              setStatus(
+                "Published to TV! (" +
+                  data.contentId +
+                  ", " +
+                  (data.durationMs / 1000).toFixed(1) +
+                  "s)",
+                false,
+              );
+            } else {
+              setStatus("Publish failed: " + (data.error || "unknown"), true);
+            }
+            btn.disabled = false;
+            btn.textContent = "Publish to TV";
+          })
+          .catch(function (err) {
+            setStatus("Publish error: " + err.message, true);
+            btn.disabled = false;
+            btn.textContent = "Publish to TV";
+          });
+      }
+
+      // Delete
+      document
+        .getElementById("deleteBtn")
+        .addEventListener("click", function () {
+          if (currentScene && confirm("Delete this image?")) {
+            document.getElementById("previewSection").style.display = "none";
+            document.getElementById("publishBar").style.display = "none";
+            currentScene = null;
+            setStatus("Image deleted.", false);
+          }
+        });
+
+      // Edit/Regenerate
+      document.getElementById("editBtn").addEventListener("click", function () {
+        if (currentScene) {
+          var feedback = prompt(
+            "What would you change? (e.g., 'more vibrant colors', 'add mountains')",
+          );
+          if (feedback) {
+            setStatus("Regenerating with feedback: " + feedback, false);
+            // TODO: pass feedback as style hints to generation
+            document.getElementById("genBtn").click();
+          }
+        }
       });
 
       function setStatus(msg, isError) {
@@ -497,7 +645,7 @@
         el.className = "status-msg " + (isError ? "error" : "success");
       }
 
-      // Init auth
+      // Init
       if (session && user) {
         fetch("/api/auth/me", {
           headers: { Authorization: "Bearer " + session },

@@ -282,6 +282,18 @@ app.post("/api/generate", optionalAuth, async (req, res) => {
       }
     }
 
+    // Archive for gallery
+    const sceneRecord = {
+      sceneId: result.sceneId,
+      prompt: result.prompt,
+      context: result.context,
+      durationMs: result.durationMs,
+      provider: result.provider,
+      imageUrl: `/api/images/${result.sceneId}`,
+      createdAt: new Date().toISOString(),
+    };
+    sceneArchive.push(sceneRecord);
+
     res.json({
       sceneId: result.sceneId,
       prompt: result.prompt,
@@ -296,6 +308,22 @@ app.post("/api/generate", optionalAuth, async (req, res) => {
     console.error("Generation error:", message);
     res.status(500).json({ error: message });
   }
+});
+
+// Scene archive — stores all generated scenes for gallery
+const sceneArchive: Array<{
+  sceneId: string;
+  prompt: string;
+  context: Record<string, unknown>;
+  durationMs: number;
+  provider: string;
+  imageUrl: string;
+  createdAt: string;
+}> = [];
+
+app.get("/api/scenes", (_req, res) => {
+  // Return newest first
+  res.json([...sceneArchive].reverse());
 });
 
 app.get("/api/images/:sceneId", async (req, res) => {

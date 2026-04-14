@@ -220,6 +220,12 @@
         </select>
       </div>
 
+      <h2 style="padding: 16px 16px 0; font-size: 16px; color: #0ff">
+        Generated Art
+      </h2>
+      <div id="generatedGrid" class="gallery"></div>
+
+      <h2 style="padding: 16px 16px 0; font-size: 16px; color: #888">On TV</h2>
       <div id="galleryGrid" class="gallery"></div>
 
       <div class="actions">
@@ -267,6 +273,43 @@
         document.getElementById("userName").textContent = user.name;
         if (user.picture) document.getElementById("userPic").src = user.picture;
         loadDevices();
+        loadGeneratedScenes();
+      }
+
+      function loadGeneratedScenes() {
+        fetch("/api/scenes")
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (scenes) {
+            var grid = document.getElementById("generatedGrid");
+            if (!scenes || scenes.length === 0) {
+              grid.innerHTML =
+                '<div class="empty" style="grid-column:1/-1;"><h2>No generated art yet</h2><p>Go to <a href="/studio" style="color:#0ff">Studio</a> to create some!</p></div>';
+              return;
+            }
+            grid.innerHTML = "";
+            scenes.forEach(function (scene) {
+              var card = document.createElement("div");
+              card.className = "art-card";
+              card.innerHTML =
+                '<img src="' +
+                scene.imageUrl +
+                '" alt="Generated art" style="width:100%;aspect-ratio:16/9;object-fit:cover;">' +
+                '<div class="info">' +
+                (scene.prompt || "").substring(0, 50) +
+                "...</div>" +
+                '<div class="feedback">' +
+                '<button class="btn-up" onclick="rate(\'' +
+                scene.sceneId +
+                "','up',this)\">👍</button>" +
+                '<button class="btn-down" onclick="rate(\'' +
+                scene.sceneId +
+                "','down',this)\">👎</button>" +
+                "</div>";
+              grid.appendChild(card);
+            });
+          });
       }
 
       function loadDevices() {
