@@ -1,0 +1,406 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+  </head>
+  <body
+    style="
+      background: #0a0a1a;
+      color: #eee;
+      font-size: 22px;
+      padding: 30px;
+      font-family: sans-serif;
+    "
+  >
+    <h1 style="color: #ff0; font-size: 36px">Yuen's TV Test Suite</h1>
+    <p style="color: #888">Automated testing — just watch the results!</p>
+    <div
+      id="log"
+      style="
+        font-size: 18px;
+        margin-top: 15px;
+        line-height: 1.5;
+        max-height: 85vh;
+        overflow-y: auto;
+      "
+    ></div>
+    <script>
+      var lineNum = 0;
+      function log(msg, good) {
+        lineNum++;
+        var d = document.createElement("div");
+        d.style.padding = "5px 8px";
+        d.style.margin = "2px 0";
+        d.style.borderRadius = "4px";
+        d.style.background =
+          good === true ? "#0a3" : good === false ? "#a03" : "#224";
+        d.textContent = "[" + lineNum + "] " + msg;
+        document.getElementById("log").appendChild(d);
+        document.getElementById("log").scrollTop =
+          document.getElementById("log").scrollHeight;
+      }
+
+      var results = {};
+
+      // ===== PHASE 1: Device Info =====
+      log("=== PHASE 1: Device Discovery ===");
+
+      // HTTP API info
+      log("Fetching TV REST API...");
+      var xhr = new XMLHttpRequest();
+      xhr.timeout = 5000;
+      xhr.onload = function () {
+        try {
+          var data = JSON.parse(xhr.responseText);
+          var dev = data.device;
+          results.model = dev.modelName;
+          results.modelCode = dev.model;
+          results.frameTv = dev.FrameTVSupport;
+          results.name = dev.name;
+          log("Model: " + dev.modelName, true);
+          log(
+            "Code: " +
+              dev.model +
+              " (year prefix: " +
+              dev.model.substring(0, 2) +
+              ")",
+            true,
+          );
+          log("Frame TV: " + dev.FrameTVSupport, dev.FrameTVSupport === "true");
+          log("Name: " + dev.name);
+          log("Dev mode: " + dev.developerMode);
+          log("Dev IP: " + dev.developerIP);
+          startPhase2();
+        } catch (e) {
+          log("REST API parse error: " + e.message, false);
+        }
+      };
+      xhr.onerror = function () {
+        log("REST API failed - try http://localhost:8001/api/v2/", false);
+      };
+      xhr.open("GET", "http://localhost:8001/api/v2/", true);
+      xhr.send();
+
+      // ===== PHASE 2: Art Mode WebSocket =====
+      function startPhase2() {
+        log("");
+        log("=== PHASE 2: Art Mode WebSocket (localhost:8001) ===");
+
+        var ws = new WebSocket(
+          "ws://localhost:8001/api/v2/channels/com.samsung.art-app?name=" +
+            btoa("YuenTest"),
+        );
+        var gotReady = false;
+        var queries = {};
+
+        ws.onopen = function () {
+          log("ws://localhost:8001 OPEN", true);
+          results.ws8001 = true;
+        };
+        ws.onerror = function () {
+          log("ws://localhost:8001 FAILED", false);
+          results.ws8001 = false;
+        };
+
+        ws.onmessage = function (e) {
+          try {
+            var msg = JSON.parse(e.data);
+            if (msg.event === "ms.channel.connect") log("Channel connected");
+            if (msg.event === "ms.channel.ready") {
+              gotReady = true;
+              log("Channel READY", true);
+
+              // Query everything
+              var reqs = [
+                { request: "get_artmode_status", id: "q1" },
+                { request: "get_api_version", id: "q2" },
+                { request: "get_device_info", id: "q3" },
+                { request: "get_current_artwork", id: "q4" },
+                { request: "get_content_list", id: "q5", category: "MY-C0004" },
+                { request: "get_auto_rotation_status", id: "q6" },
+                // THE BIG TEST: send_image from foreground
+                {
+                  request: "send_image",
+                  id: "q7",
+                  file_type: "jpg",
+                  request_id: "fg_test",
+                  conn_info: {
+                    d2d_mode: "socket",
+                    connection_id: 12345,
+                    id: "fg_test",
+                  },
+                  image_date: "2026:04:13 18:00:00",
+                  matte_id: "none",
+                  portrait_matte_id: "shadowbox_polar",
+                  file_size: 50000,
+                },
+              ];
+
+              reqs.forEach(function (req, i) {
+                setTimeout(
+                  function () {
+                    log("Sending: " + req.request + "...");
+                    ws.send(
+                      JSON.stringify({
+                        method: "ms.channel.emit",
+                        params: {
+                          event: "art_app_request",
+                          to: "host",
+                          data: JSON.stringify(req),
+                        },
+                      }),
+                    );
+                  },
+                  (i + 1) * 2000,
+                );
+              });
+
+              // Set slideshow
+              setTimeout(function () {
+                log("Trying set_auto_rotation_status...");
+                ws.send(
+                  JSON.stringify({
+                    method: "ms.channel.emit",
+                    params: {
+                      event: "art_app_request",
+                      to: "host",
+                      data: JSON.stringify({
+                        request: "set_auto_rotation_status",
+                        id: "q8",
+                        value: "on",
+                        type: "shuffled",
+                        duration: 1,
+                      }),
+                    },
+                  }),
+                );
+              }, 16000);
+
+              setTimeout(function () {
+                log("Trying set_slideshow_status...");
+                ws.send(
+                  JSON.stringify({
+                    method: "ms.channel.emit",
+                    params: {
+                      event: "art_app_request",
+                      to: "host",
+                      data: JSON.stringify({
+                        request: "set_slideshow_status",
+                        id: "q9",
+                        value: "on",
+                        duration: 1,
+                        type: "shuffled",
+                      }),
+                    },
+                  }),
+                );
+              }, 18000);
+            }
+
+            if (msg.event === "d2d_service_message") {
+              var inner = JSON.parse(msg.data);
+              var id = inner.id || "";
+
+              if (inner.event === "artmode_status") {
+                log("Art mode: " + inner.value, true);
+                results.artMode = inner.value;
+              } else if (inner.event === "api_version") {
+                log("API version: " + inner.version, true);
+                results.apiVersion = inner.version;
+              } else if (inner.event === "get_device_info") {
+                log(
+                  "Resolution: " +
+                    inner.resolution_type +
+                    " | Flash: " +
+                    inner.tv_flash_size +
+                    "GB | Motion: " +
+                    inner.support_motion_sensor,
+                  true,
+                );
+                results.flashSize = inner.tv_flash_size;
+                results.resolution = inner.resolution_type;
+              } else if (inner.event === "current_artwork") {
+                log("Current art: " + inner.content_id, true);
+              } else if (inner.event === "content_list") {
+                try {
+                  var list = JSON.parse(inner.content_list);
+                  log("Gallery: " + list.length + " images", true);
+                  results.imageCount = list.length;
+                } catch (ex) {
+                  log("Content list received");
+                }
+              } else if (inner.event === "auto_rotation_status") {
+                log("Auto rotation: " + inner.value, inner.value === "on");
+                results.autoRotation = inner.value;
+              } else if (inner.event === "ready_to_use") {
+                log(
+                  "*** send_image from FOREGROUND got ready_to_use! ***",
+                  true,
+                );
+                results.fgSendImage = true;
+                // Don't complete the TCP upload — just close connection to avoid crash
+                log("(NOT completing upload to avoid service crash)");
+              } else if (inner.event === "error") {
+                if (id === "q7" || id === "fg_test") {
+                  log(
+                    "send_image from foreground: ERROR " + inner.error_code,
+                    false,
+                  );
+                  results.fgSendImage = false;
+                  results.fgSendImageError = inner.error_code;
+                } else if (id === "q8") {
+                  log("set_auto_rotation: ERROR " + inner.error_code, false);
+                  results.setAutoRotation = false;
+                } else if (id === "q9") {
+                  log("set_slideshow: ERROR " + inner.error_code, false);
+                  results.setSlideshow = false;
+                } else {
+                  log("Error for " + id + ": " + inner.error_code, false);
+                }
+              } else if (inner.event === "slideshow_status") {
+                log("Slideshow status: " + inner.value, true);
+                results.slideshow = inner.value;
+              } else if (
+                id === "q8" &&
+                inner.event === "auto_rotation_changed"
+              ) {
+                log("*** set_auto_rotation WORKS! ***", true);
+                results.setAutoRotation = true;
+              } else {
+                log(
+                  inner.event + ": " + JSON.stringify(inner).substring(0, 200),
+                );
+              }
+            }
+
+            if (msg.event === "ms.error") {
+              log("WS error: " + JSON.stringify(msg.data), false);
+            }
+          } catch (ex) {
+            log("Parse error: " + ex.message, false);
+          }
+        };
+
+        // Phase 3: WSS localhost:8002
+        setTimeout(function () {
+          log("");
+          log("=== PHASE 3: WSS localhost:8002 (cert test) ===");
+          try {
+            var ws2 = new WebSocket(
+              "wss://localhost:8002/api/v2/channels/com.samsung.art-app?name=" +
+                btoa("YuenTest2"),
+            );
+            ws2.onopen = function () {
+              log("wss://localhost:8002 OPEN!", true);
+              results.wss8002 = true;
+              ws2.close();
+            };
+            ws2.onerror = function () {
+              log("wss://localhost:8002 blocked (cert)", false);
+              results.wss8002 = false;
+            };
+          } catch (ex) {
+            log("wss://localhost:8002 exception: " + ex.message, false);
+            results.wss8002 = false;
+          }
+        }, 22000);
+
+        // Phase 4: Cloud connectivity
+        setTimeout(function () {
+          log("");
+          log("=== PHASE 4: Cloud Connectivity ===");
+          // Test outbound XHR
+          try {
+            var x = new XMLHttpRequest();
+            x.timeout = 5000;
+            x.onload = function () {
+              log("XHR to cloud: " + x.status, true);
+              results.cloudXhr = true;
+            };
+            x.onerror = function () {
+              log("XHR to cloud: failed", false);
+              results.cloudXhr = false;
+            };
+            x.ontimeout = function () {
+              log("XHR to cloud: timeout", false);
+              results.cloudXhr = false;
+            };
+            x.open("GET", "https://httpbin.org/get", true);
+            x.send();
+          } catch (ex) {
+            log("XHR exception: " + ex.message, false);
+          }
+        }, 25000);
+
+        // Final summary
+        setTimeout(function () {
+          log("");
+          log("=== RESULTS SUMMARY ===");
+          log(
+            "Model: " +
+              (results.model || "?") +
+              " (" +
+              (results.modelCode || "?") +
+              ")",
+          );
+          log("Frame TV: " + (results.frameTv || "?"));
+          log(
+            "API: " +
+              (results.apiVersion || "?") +
+              " | Flash: " +
+              (results.flashSize || "?") +
+              "GB",
+          );
+          log(
+            "ws://localhost:8001: " + (results.ws8001 ? "YES" : "NO"),
+            results.ws8001,
+          );
+          log(
+            "wss://localhost:8002: " + (results.wss8002 ? "YES" : "NO"),
+            results.wss8002,
+          );
+          log(
+            "send_image from foreground: " +
+              (results.fgSendImage
+                ? "YES!"
+                : "NO (" + (results.fgSendImageError || "timeout") + ")"),
+            results.fgSendImage,
+          );
+          log(
+            "set_auto_rotation: " +
+              (results.setAutoRotation === true ? "YES!" : "NO"),
+            results.setAutoRotation === true,
+          );
+          log(
+            "set_slideshow: " +
+              (results.setSlideshow === undefined
+                ? "untested"
+                : results.setSlideshow
+                  ? "YES"
+                  : "NO"),
+          );
+          log(
+            "Cloud XHR: " + (results.cloudXhr ? "YES" : "NO"),
+            results.cloudXhr,
+          );
+          log("Gallery: " + (results.imageCount || "?") + " images");
+          log("");
+          log(
+            "KEY QUESTION: Does send_image work from foreground on this model?",
+          );
+          if (results.fgSendImage) {
+            log(
+              "YES! Newer TV supports foreground uploads! Background service may not be needed!",
+              true,
+            );
+          } else {
+            log(
+              "NO — same restriction as 2020 model. Need phone bridge for this TV too.",
+              false,
+            );
+          }
+        }, 30000);
+      }
+    </script>
+  </body>
+</html>

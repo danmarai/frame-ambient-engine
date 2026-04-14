@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Frame Art — Pair Your TV</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #0f0f1a;
+        color: #fff;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .card {
+        background: #1a1a2e;
+        border-radius: 20px;
+        padding: 40px;
+        max-width: 400px;
+        width: 100%;
+        text-align: center;
+      }
+      h1 {
+        font-size: 28px;
+        margin-bottom: 8px;
+        color: #0ff;
+      }
+      .subtitle {
+        color: #888;
+        margin-bottom: 32px;
+        font-size: 14px;
+      }
+      .code-input {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        margin-bottom: 24px;
+      }
+      .code-input input {
+        width: 44px;
+        height: 56px;
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+        border: 2px solid #333;
+        border-radius: 12px;
+        background: #0f0f1a;
+        color: #fff;
+        text-transform: uppercase;
+      }
+      .code-input input:focus {
+        border-color: #0ff;
+        outline: none;
+      }
+      button {
+        width: 100%;
+        padding: 16px;
+        border: none;
+        border-radius: 12px;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .btn-primary {
+        background: #0ff;
+        color: #000;
+      }
+      .btn-primary:hover {
+        background: #0dd;
+      }
+      .btn-primary:disabled {
+        background: #333;
+        color: #666;
+        cursor: not-allowed;
+      }
+      .status {
+        margin-top: 16px;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        display: none;
+      }
+      .status.error {
+        display: block;
+        background: #3a1a1a;
+        color: #f66;
+      }
+      .status.success {
+        display: block;
+        background: #1a3a1a;
+        color: #6f6;
+      }
+      .instructions {
+        margin-top: 24px;
+        color: #666;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      /* Sync page styles */
+      .sync-card {
+        text-align: left;
+      }
+      .tv-info {
+        background: #0f0f1a;
+        padding: 16px;
+        border-radius: 12px;
+        margin: 16px 0;
+      }
+      .tv-info dt {
+        color: #888;
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+      .tv-info dd {
+        color: #fff;
+        font-size: 16px;
+        margin-bottom: 12px;
+      }
+      .btn-upload {
+        background: #4a90d9;
+        color: #fff;
+        margin-top: 16px;
+      }
+      .btn-upload:hover {
+        background: #3a80c9;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card" id="loginView">
+      <h1>Frame Art</h1>
+      <p class="subtitle">Sign in to manage your Frame TV art</p>
+      <div
+        id="googleBtn"
+        style="display: flex; justify-content: center; margin: 24px 0"
+      ></div>
+      <div class="instructions">
+        Sign in with Google to pair and manage your Samsung Frame TV.
+      </div>
+    </div>
+
+    <div class="card" id="pairView" style="display: none">
+      <h1>Frame Art</h1>
+      <p class="subtitle">Enter the code shown on your TV</p>
+
+      <div class="code-input" id="codeInput">
+        <input type="text" maxlength="1" data-idx="0" autofocus />
+        <input type="text" maxlength="1" data-idx="1" />
+        <input type="text" maxlength="1" data-idx="2" />
+        <input type="text" maxlength="1" data-idx="3" />
+        <input type="text" maxlength="1" data-idx="4" />
+        <input type="text" maxlength="1" data-idx="5" />
+      </div>
+
+      <button class="btn-primary" id="pairBtn" disabled>Link TV</button>
+      <div class="status" id="status"></div>
+
+      <div class="instructions">
+        Open the Frame Art app on your Samsung Frame TV to see the pairing code.
+      </div>
+    </div>
+
+    <div class="card sync-card" id="syncView" style="display: none">
+      <h1>TV Linked!</h1>
+      <p class="subtitle">Your Frame TV is connected</p>
+
+      <dl class="tv-info">
+        <dt>TV ID</dt>
+        <dd id="tvIdDisplay">—</dd>
+        <dt>TV IP</dt>
+        <dd id="tvIpDisplay">—</dd>
+        <dt>Status</dt>
+        <dd id="tvStatusDisplay">Connected</dd>
+      </dl>
+
+      <div
+        id="waitingMsg"
+        style="
+          background: #1a2a3a;
+          padding: 16px;
+          border-radius: 8px;
+          margin: 16px 0;
+          color: #4af;
+          font-size: 14px;
+        "
+      >
+        The TV app is closing. Wait 10 seconds before uploading so Art Mode can
+        resume...
+        <div
+          id="countdown"
+          style="font-size: 24px; text-align: center; margin-top: 8px"
+        >
+          10
+        </div>
+      </div>
+      <button class="btn-upload" id="uploadBtn" disabled style="opacity: 0.4">
+        Upload Art to TV
+      </button>
+      <div class="status" id="syncStatus"></div>
+
+      <div class="instructions" style="margin-top: 24px">
+        Press "Upload Art" to send a test image to your TV's Art Mode. The image
+        will display through Samsung's native Art Mode with all matte and
+        brightness features.
+      </div>
+    </div>
+
+    <script>
+      const inputs = document.querySelectorAll(".code-input input");
+      const pairBtn = document.getElementById("pairBtn");
+      const status = document.getElementById("status");
+      const pairView = document.getElementById("pairView");
+      const syncView = document.getElementById("syncView");
+
+      // Auto-advance code inputs
+      inputs.forEach((input, i) => {
+        input.addEventListener("input", () => {
+          input.value = input.value.toUpperCase();
+          if (input.value && i < inputs.length - 1) inputs[i + 1].focus();
+          updatePairButton();
+        });
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Backspace" && !input.value && i > 0)
+            inputs[i - 1].focus();
+        });
+      });
+
+      function getCode() {
+        return Array.from(inputs)
+          .map((i) => i.value)
+          .join("");
+      }
+
+      function updatePairButton() {
+        pairBtn.disabled = getCode().length !== 6;
+      }
+
+      // Reset if ?reset in URL
+      if (window.location.search.includes("reset")) {
+        localStorage.removeItem("pairedTv");
+        localStorage.removeItem("frameArtSession");
+        localStorage.removeItem("frameArtUser");
+        window.location.href = "/pair";
+      }
+
+      var currentSession = localStorage.getItem("frameArtSession");
+      var currentUser = null;
+      try {
+        currentUser = JSON.parse(
+          localStorage.getItem("frameArtUser") || "null",
+        );
+      } catch (e) {}
+
+      // Google Sign-In callback
+      function handleGoogleCredential(response) {
+        fetch("/api/auth/google", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken: response.credential }),
+        })
+          .then(function (res) {
+            return res.json();
+          })
+          .then(function (data) {
+            if (data.sessionId) {
+              currentSession = data.sessionId;
+              currentUser = data.user;
+              localStorage.setItem("frameArtSession", data.sessionId);
+              localStorage.setItem("frameArtUser", JSON.stringify(data.user));
+              showPostLogin();
+            }
+          })
+          .catch(function (err) {
+            console.error("Auth error:", err);
+          });
+      }
+
+      function showPostLogin() {
+        document.getElementById("loginView").style.display = "none";
+        // Check if already paired
+        var savedTv = localStorage.getItem("pairedTv");
+        if (savedTv) {
+          var tv = JSON.parse(savedTv);
+          showSyncView(tv.tvId, tv.tvIp, true);
+        } else {
+          document.getElementById("pairView").style.display = "block";
+        }
+      }
+
+      // Initialize Google Sign-In
+      function initGoogleAuth() {
+        fetch("/api/config")
+          .then(function (res) {
+            return res.json();
+          })
+          .then(function (cfg) {
+            if (!cfg.googleClientId) {
+              // No Google auth configured — skip login
+              showPostLogin();
+              return;
+            }
+            google.accounts.id.initialize({
+              client_id: cfg.googleClientId,
+              callback: handleGoogleCredential,
+            });
+            google.accounts.id.renderButton(
+              document.getElementById("googleBtn"),
+              {
+                theme: "filled_blue",
+                size: "large",
+                shape: "pill",
+                width: 300,
+              },
+            );
+          });
+      }
+
+      // Check existing session or show login
+      if (currentSession && currentUser) {
+        // Verify session is still valid
+        fetch("/api/auth/me", {
+          headers: { Authorization: "Bearer " + currentSession },
+        })
+          .then(function (res) {
+            if (res.ok) {
+              showPostLogin();
+            } else {
+              initGoogleAuth();
+            }
+          })
+          .catch(function () {
+            initGoogleAuth();
+          });
+      } else {
+        // Wait for Google library to load
+        window.onload = function () {
+          initGoogleAuth();
+        };
+      }
+
+      // Pair button
+      pairBtn.addEventListener("click", function () {
+        var code = getCode();
+        if (code.length !== 6) return;
+
+        pairBtn.disabled = true;
+        pairBtn.textContent = "Linking...";
+        status.textContent = "Sending pairing request...";
+        status.className = "status success";
+
+        var sessionId =
+          "phone-" + Math.random().toString(36).substring(2) + Date.now();
+        fetch("/api/pair", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: code, phoneSessionId: sessionId }),
+        })
+          .then(function (res) {
+            return res.json();
+          })
+          .then(function (data) {
+            if (data.success) {
+              localStorage.setItem(
+                "pairedTv",
+                JSON.stringify({
+                  tvId: data.tvId,
+                  tvIp: data.tvIp,
+                  phoneSessionId: sessionId,
+                  pairedAt: new Date().toISOString(),
+                }),
+              );
+              showSyncView(data.tvId, data.tvIp);
+            } else {
+              status.textContent = data.error || "Pairing failed";
+              status.className = "status error";
+              pairBtn.disabled = false;
+              pairBtn.textContent = "Link TV";
+            }
+          })
+          .catch(function (err) {
+            status.textContent = "Connection error: " + err.message;
+            status.className = "status error";
+            pairBtn.disabled = false;
+            pairBtn.textContent = "Link TV";
+          });
+      });
+
+      function showSyncView(tvId, tvIp, skipCountdown) {
+        pairView.style.display = "none";
+        syncView.style.display = "block";
+        document.getElementById("tvIdDisplay").textContent = tvId;
+        document.getElementById("tvIpDisplay").textContent = tvIp;
+
+        var btn = document.getElementById("uploadBtn");
+        var waitMsg = document.getElementById("waitingMsg");
+        var countdownEl = document.getElementById("countdown");
+
+        if (skipCountdown) {
+          // Returning from localStorage — no countdown needed
+          waitMsg.style.display = "none";
+          btn.disabled = false;
+          btn.style.opacity = "1";
+          return;
+        }
+
+        // Countdown before enabling upload
+        var remaining = 10;
+        countdownEl.textContent = remaining;
+        var timer = setInterval(function () {
+          remaining--;
+          countdownEl.textContent = remaining;
+          if (remaining <= 0) {
+            clearInterval(timer);
+            waitMsg.style.display = "none";
+            btn.disabled = false;
+            btn.style.opacity = "1";
+          }
+        }, 1000);
+      }
+
+      // Upload button
+      document
+        .getElementById("uploadBtn")
+        .addEventListener("click", function () {
+          var btn = document.getElementById("uploadBtn");
+          var syncStatus = document.getElementById("syncStatus");
+          var saved = JSON.parse(localStorage.getItem("pairedTv") || "{}");
+
+          btn.disabled = true;
+          btn.textContent = "Uploading...";
+          syncStatus.textContent = "Sending art to your TV...";
+          syncStatus.className = "status success";
+
+          fetch("/api/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tvId: saved.tvId, tvIp: saved.tvIp }),
+          })
+            .then(function (res) {
+              return res.json();
+            })
+            .then(function (data) {
+              if (data.success) {
+                syncStatus.textContent =
+                  "Art uploaded! Content ID: " +
+                  data.contentId +
+                  " (" +
+                  data.durationMs +
+                  "ms)";
+                syncStatus.className = "status success";
+              } else {
+                syncStatus.textContent =
+                  "Upload failed: " + (data.error || "Unknown error");
+                syncStatus.className = "status error";
+              }
+              btn.disabled = false;
+              btn.textContent = "Upload Art to TV";
+            })
+            .catch(function (err) {
+              syncStatus.textContent = "Connection error: " + err.message;
+              syncStatus.className = "status error";
+              btn.disabled = false;
+              btn.textContent = "Upload Art to TV";
+            });
+        });
+    </script>
+  </body>
+</html>

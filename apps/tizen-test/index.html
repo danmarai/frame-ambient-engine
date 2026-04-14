@@ -2,276 +2,207 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Frame Localhost Test — Tizen App</title>
-    <style>
-      body {
-        background: #111;
-        color: #eee;
-        font-family: sans-serif;
-        padding: 30px;
-        font-size: 22px;
-        margin: 0;
-      }
-      h1 {
-        font-size: 28px;
-        color: #4a90d9;
-      }
-      .s {
-        margin: 8px 0;
-        padding: 10px 14px;
-        border-radius: 8px;
-        font-size: 18px;
-      }
-      .t {
-        background: #333;
-      }
-      .g {
-        background: #1a4d1a;
-      }
-      .r {
-        background: #4d1a1a;
-      }
-      .b {
-        background: #1a2a4d;
-      }
-      .w {
-        background: #4d3d1a;
-      }
-      #log {
-        max-height: 80vh;
-        overflow-y: auto;
-      }
-    </style>
   </head>
-  <body>
-    <h1>TIZEN APP — Localhost WebSocket Test</h1>
-    <p>
-      This is running as an installed Tizen app (not browser). Testing localhost
-      access...
-    </p>
-    <div id="log"></div>
-
+  <body
+    style="
+      background: #0a0a1a;
+      color: #eee;
+      font-size: 24px;
+      padding: 30px;
+      font-family: sans-serif;
+    "
+  >
+    <h1 style="color: #ff0; font-size: 32px; margin-bottom: 20px">
+      Yuen's TV — Results Only
+    </h1>
+    <div id="r" style="line-height: 2"></div>
     <script>
-      var n = btoa("FrameTizenApp");
-      var testNum = 0;
-
-      function log(m, c) {
-        var d = document.createElement("div");
-        d.className = "s " + (c || "t");
-        d.innerHTML = m;
-        document.getElementById("log").appendChild(d);
-        var logEl = document.getElementById("log");
-        logEl.scrollTop = logEl.scrollHeight;
+      var results = {};
+      function show(key, val, good) {
+        results[key] = val;
+        var el = document.getElementById("r");
+        el.innerHTML = "";
+        Object.keys(results).forEach(function (k) {
+          var v = results[k];
+          var color =
+            v.good === true ? "#0a3" : v.good === false ? "#a03" : "#335";
+          el.innerHTML +=
+            "<div style='padding:4px 8px;margin:2px 0;border-radius:4px;background:" +
+            color +
+            "'>" +
+            k +
+            ": " +
+            v.text +
+            "</div>";
+        });
       }
 
-      function runWS(url, desc, delay) {
-        var num = ++testNum;
-        setTimeout(function () {
-          var id = "T" + num;
-          log(
-            "<b>" + id + "</b>: " + desc + "<br><small>" + url + "</small>",
-            "t",
-          );
+      show("Status", { text: "Starting...", good: null });
+
+      // Fetch REST API
+      var xhr = new XMLHttpRequest();
+      xhr.timeout = 5000;
+      xhr.onload = function () {
+        try {
+          var dev = JSON.parse(xhr.responseText).device;
+          show("Model", {
+            text: dev.modelName + " (" + dev.model + ")",
+            good: true,
+          });
+          show("Year", { text: "20" + dev.model.substring(0, 2), good: true });
+          show("Frame TV", {
+            text: dev.FrameTVSupport,
+            good: dev.FrameTVSupport === "true",
+          });
+          show("Resolution", { text: dev.resolution, good: true });
+          startWS();
+        } catch (e) {
+          show("REST API", { text: "parse error", good: false });
+        }
+      };
+      xhr.onerror = function () {
+        show("REST API", { text: "failed", good: false });
+      };
+      xhr.open("GET", "http://localhost:8001/api/v2/", true);
+      xhr.send();
+
+      function startWS() {
+        show("Status", { text: "Connecting WebSocket...", good: null });
+        var ws = new WebSocket(
+          "ws://localhost:8001/api/v2/channels/com.samsung.art-app?name=" +
+            btoa("YuenTest"),
+        );
+        ws.onopen = function () {
+          show("WS localhost:8001", { text: "OPEN", good: true });
+        };
+        ws.onerror = function () {
+          show("WS localhost:8001", { text: "FAILED", good: false });
+        };
+        ws.onmessage = function (e) {
           try {
-            var ws = new WebSocket(url);
-            var opened = false;
-            var gotMsg = false;
-
-            ws.onopen = function () {
-              opened = true;
-              log("<b>" + id + "</b>: ✅ OPEN — connection established!", "g");
-            };
-
-            ws.onmessage = function (e) {
-              gotMsg = true;
-              try {
-                var msg = JSON.parse(e.data);
-                if (msg.event === "ms.channel.connect") {
-                  var token = msg.data && msg.data.token;
-                  log("<b>" + id + "</b>: 🎉 CONNECTED! Token: " + token, "g");
-                  // Try art mode after connect
-                  setTimeout(function () {
-                    log("<b>" + id + "</b>: Sending get_artmode_status...");
+            var msg = JSON.parse(e.data);
+            if (msg.event === "ms.channel.ready") {
+              show("Channel Ready", { text: "YES", good: true });
+              var reqs = [
+                { request: "get_api_version", id: "q1" },
+                { request: "get_device_info", id: "q2" },
+                { request: "get_artmode_status", id: "q3" },
+                { request: "get_content_list", id: "q4", category: "MY-C0004" },
+                { request: "get_auto_rotation_status", id: "q5" },
+              ];
+              reqs.forEach(function (r, i) {
+                setTimeout(
+                  function () {
                     ws.send(
                       JSON.stringify({
                         method: "ms.channel.emit",
                         params: {
                           event: "art_app_request",
                           to: "host",
-                          data: JSON.stringify({
-                            request: "get_artmode_status",
-                            id: "tizen-test-1",
-                          }),
+                          data: JSON.stringify(r),
                         },
                       }),
                     );
-                  }, 2000);
-                } else if (msg.event === "ms.channel.ready") {
-                  log("<b>" + id + "</b>: Channel ready", "b");
-                } else if (msg.event === "ms.channel.unauthorized") {
-                  log("<b>" + id + "</b>: ⚠ UNAUTHORIZED — need pairing", "w");
-                } else if (msg.event === "ms.channel.timeOut") {
-                  log(
-                    "<b>" + id + "</b>: ⚠ TV timeout (may need pairing)",
-                    "w",
-                  );
-                } else if (msg.event === "d2d_service_message") {
-                  var inner = JSON.parse(msg.data);
-                  log(
-                    "<b>" +
-                      id +
-                      "</b>: 🎨 ART MODE: " +
-                      inner.event +
-                      " = " +
-                      (inner.value || JSON.stringify(inner).substring(0, 150)),
-                    "g",
-                  );
-                } else {
-                  log("<b>" + id + "</b>: Event: " + msg.event, "b");
-                }
-              } catch (x) {
-                log(
-                  "<b>" + id + "</b>: Data: " + e.data.substring(0, 200),
-                  "b",
+                  },
+                  (i + 1) * 1000,
                 );
+              });
+              setTimeout(function () {
+                show("send_image test", { text: "sending...", good: null });
+                ws.send(
+                  JSON.stringify({
+                    method: "ms.channel.emit",
+                    params: {
+                      event: "art_app_request",
+                      to: "host",
+                      data: JSON.stringify({
+                        request: "send_image",
+                        id: "si",
+                        file_type: "jpg",
+                        request_id: "si",
+                        conn_info: {
+                          d2d_mode: "socket",
+                          connection_id: 12345,
+                          id: "si",
+                        },
+                        image_date: "2026:04:13 20:00:00",
+                        matte_id: "none",
+                        portrait_matte_id: "shadowbox_polar",
+                        file_size: 50000,
+                      }),
+                    },
+                  }),
+                );
+                setTimeout(function () {
+                  if (!results["send_image FOREGROUND"]) {
+                    show("send_image FOREGROUND", {
+                      text: "NO RESPONSE (blocked)",
+                      good: false,
+                    });
+                  }
+                  show("Status", { text: "DONE", good: true });
+                }, 8000);
+              }, 8000);
+            }
+            if (msg.event === "d2d_service_message") {
+              var inner = JSON.parse(msg.data);
+              if (inner.event === "api_version")
+                show("API Version", { text: inner.version, good: true });
+              if (inner.event === "get_device_info")
+                show("Flash", {
+                  text:
+                    inner.tv_flash_size +
+                    "GB | " +
+                    inner.resolution_type +
+                    " | Motion:" +
+                    inner.support_motion_sensor,
+                  good: true,
+                });
+              if (inner.event === "artmode_status")
+                show("Art Mode", { text: inner.value, good: true });
+              if (inner.event === "content_list") {
+                try {
+                  show("Gallery", {
+                    text: JSON.parse(inner.content_list).length + " images",
+                    good: true,
+                  });
+                } catch (ex) {
+                  show("Gallery", { text: "received", good: true });
+                }
               }
-            };
-
-            ws.onerror = function () {
-              if (!opened)
-                log("<b>" + id + "</b>: ❌ ERROR — refused or blocked", "r");
-            };
-
-            ws.onclose = function (e) {
-              var info = "code=" + e.code;
-              if (e.code === 1006) info += " (dropped — TLS or blocked)";
-              if (e.code === 1000) info += " (clean)";
-              log(
-                "<b>" + id + "</b>: CLOSED — " + info,
-                opened || gotMsg ? "b" : "r",
-              );
-            };
-
-            setTimeout(function () {
-              if (ws.readyState < 2) {
-                ws.close();
-              }
-            }, 12000);
-          } catch (e) {
-            log("<b>" + id + "</b>: ❌ EXCEPTION: " + e.message, "r");
-          }
-        }, delay);
-      }
-
-      function runHTTP(url, desc, delay) {
-        var num = ++testNum;
+              if (inner.event === "auto_rotation_status")
+                show("Auto Rotation", { text: inner.value, good: true });
+              if (inner.event === "ready_to_use")
+                show("send_image FOREGROUND", { text: "YES!!!", good: true });
+              if (inner.event === "error" && inner.id === "si")
+                show("send_image FOREGROUND", {
+                  text: "ERROR " + inner.error_code,
+                  good: false,
+                });
+            }
+          } catch (ex) {}
+        };
         setTimeout(function () {
-          var id = "T" + num;
-          log(
-            "<b>" + id + "</b>: " + desc + "<br><small>" + url + "</small>",
-            "t",
-          );
-          var xhr = new XMLHttpRequest();
-          xhr.timeout = 8000;
-          xhr.onload = function () {
-            log(
-              "<b>" +
-                id +
-                "</b>: ✅ HTTP " +
-                xhr.status +
-                " — " +
-                xhr.responseText.substring(0, 120),
-              "g",
-            );
-          };
-          xhr.onerror = function () {
-            log("<b>" + id + "</b>: ❌ HTTP FAILED", "r");
-          };
-          xhr.ontimeout = function () {
-            log("<b>" + id + "</b>: ❌ HTTP TIMEOUT 8s", "r");
-          };
           try {
-            xhr.open("GET", url, true);
-            xhr.send();
-          } catch (e) {
-            log("<b>" + id + "</b>: ❌ EXCEPTION: " + e.message, "r");
+            var ws2 = new WebSocket(
+              "wss://localhost:8002/api/v2/channels/com.samsung.art-app?name=" +
+                btoa("YuenTest2"),
+            );
+            ws2.onopen = function () {
+              show("WSS localhost:8002", { text: "OPEN!", good: true });
+              ws2.close();
+            };
+            ws2.onerror = function () {
+              show("WSS localhost:8002", {
+                text: "blocked (cert)",
+                good: false,
+              });
+            };
+          } catch (ex) {
+            show("WSS localhost:8002", { text: "exception", good: false });
           }
-        }, delay);
+        }, 18000);
       }
-
-      log(
-        "Running as TIZEN APP with network privileges. Starting 11 tests...",
-        "t",
-      );
-
-      // WebSocket tests — same as browser but with app privileges
-      runWS(
-        "wss://localhost:8002/api/v2/channels/samsung.remote.control?name=" +
-          n +
-          "&token=",
-        "WSS localhost:8002 remote-control",
-        1000,
-      );
-      runWS(
-        "ws://localhost:8001/api/v2/channels/samsung.remote.control?name=" +
-          n +
-          "&token=",
-        "WS localhost:8001 remote-control (no TLS)",
-        3000,
-      );
-      runWS(
-        "wss://127.0.0.1:8002/api/v2/channels/samsung.remote.control?name=" +
-          n +
-          "&token=",
-        "WSS 127.0.0.1:8002 remote-control",
-        5000,
-      );
-      runWS(
-        "ws://127.0.0.1:8001/api/v2/channels/samsung.remote.control?name=" +
-          n +
-          "&token=",
-        "WS 127.0.0.1:8001 remote-control (no TLS)",
-        7000,
-      );
-      runWS(
-        "ws://localhost:8002/api/v2/channels/samsung.remote.control?name=" +
-          n +
-          "&token=",
-        "WS localhost:8002 remote-control (no TLS)",
-        9000,
-      );
-      runWS(
-        "wss://localhost:8002/api/v2/channels/com.samsung.art-app?name=" +
-          n +
-          "&token=",
-        "WSS localhost:8002 art-app channel",
-        11000,
-      );
-      runWS(
-        "ws://localhost:8001/api/v2/channels/com.samsung.art-app?name=" +
-          n +
-          "&token=",
-        "WS localhost:8001 art-app channel (no TLS)",
-        13000,
-      );
-
-      // HTTP tests
-      runHTTP(
-        "http://localhost:8001/api/v2/",
-        "HTTP localhost:8001 REST API",
-        15500,
-      );
-      runHTTP(
-        "http://127.0.0.1:8001/api/v2/",
-        "HTTP 127.0.0.1:8001 REST API",
-        18000,
-      );
-      runHTTP("http://localhost:9197/dmr", "HTTP localhost:9197 DLNA", 20500);
-      runHTTP(
-        "http://localhost:8080/",
-        "HTTP localhost:8080 (control — should fail)",
-        23000,
-      );
     </script>
   </body>
 </html>

@@ -37,3 +37,24 @@ artifacts/
 
 # Claude Code
 .claude/
+
+# Tizen build artifacts
+apps/tizen-test/*.wgt
+apps/tizen-test/author-signature.xml
+apps/tizen-test/signature1.xml
+apps/tizen-test/.manifest.tmp
+apps/tizen/*.wgt
+apps/tizen/author-signature.xml
+apps/tizen/signature1.xml
+apps/tizen/.manifest.tmp
+
+# Environment files
+apps/cloud/.env
+
+# Binary downloads
+*.bin
+*.pdf
+*.p12
+
+# Editor temp files
+*.!*!*

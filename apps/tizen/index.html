@@ -1,0 +1,425 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1920, initial-scale=1.0" />
+    <title>Frame Art</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        background: #0a0a1a;
+        color: #fff;
+        font-family: -apple-system, "Helvetica Neue", sans-serif;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .logo {
+        font-size: 64px;
+        font-weight: 300;
+        color: #0ff;
+        letter-spacing: 8px;
+        margin-bottom: 20px;
+      }
+      .tagline {
+        font-size: 24px;
+        color: #666;
+        margin-bottom: 60px;
+      }
+
+      /* Pairing view */
+      .pairing-code {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 40px;
+      }
+      .pairing-code .char {
+        width: 90px;
+        height: 110px;
+        background: #1a1a2e;
+        border: 2px solid #333;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 56px;
+        font-weight: bold;
+        letter-spacing: 0;
+        color: #0ff;
+      }
+      .pairing-code .separator {
+        width: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 40px;
+        color: #333;
+      }
+
+      .instructions {
+        font-size: 28px;
+        color: #888;
+        text-align: center;
+        line-height: 1.6;
+        max-width: 800px;
+      }
+      .instructions strong {
+        color: #fff;
+      }
+
+      .step {
+        margin: 8px 0;
+      }
+      .step-num {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        background: #1a1a2e;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 40px;
+        font-size: 20px;
+        color: #0ff;
+        margin-right: 12px;
+      }
+
+      /* Status */
+      .status {
+        position: fixed;
+        bottom: 40px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-size: 20px;
+        color: #444;
+      }
+      .status.connected {
+        color: #0a3;
+      }
+      .status.error {
+        color: #a03;
+      }
+
+      /* Success view */
+      .success {
+        display: none;
+        text-align: center;
+      }
+      .success h2 {
+        font-size: 48px;
+        color: #0f9;
+        margin-bottom: 20px;
+      }
+      .success p {
+        font-size: 28px;
+        color: #888;
+        line-height: 1.6;
+      }
+
+      /* Art mode indicator */
+      .art-status {
+        position: fixed;
+        top: 40px;
+        right: 40px;
+        font-size: 18px;
+        color: #444;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="pairingView">
+      <div class="logo">FRAME ART</div>
+      <div class="tagline">AI-Powered Art for Your Frame TV</div>
+
+      <div class="pairing-code" id="codeDisplay">
+        <div class="char" id="c0">—</div>
+        <div class="char" id="c1">—</div>
+        <div class="char" id="c2">—</div>
+        <div class="separator">—</div>
+        <div class="char" id="c3">—</div>
+        <div class="char" id="c4">—</div>
+        <div class="char" id="c5">—</div>
+      </div>
+
+      <div class="instructions">
+        <div class="step">
+          <span class="step-num">1</span> On your phone, go to
+          <strong>frameapp.dmarantz.com/pair</strong>
+        </div>
+        <div class="step">
+          <span class="step-num">2</span> Enter the code shown above
+        </div>
+        <div class="step">
+          <span class="step-num">3</span> Your TV will start displaying fresh
+          art!
+        </div>
+      </div>
+    </div>
+
+    <div class="success" id="successView">
+      <h2>TV Linked!</h2>
+      <p>
+        Your Frame TV is now connected.<br />
+        Fresh art will appear in Art Mode automatically.<br /><br />
+        Press <strong>HOME</strong> to return to your TV.
+      </p>
+    </div>
+
+    <div class="status" id="status">Connecting to cloud...</div>
+    <div class="art-status" id="artStatus"></div>
+
+    <script>
+      // Configuration
+      var CLOUD_WS = "ws://frameapp.hopto.org:3847/ws/tv";
+      var TV_ID = "frame-tv-" + Math.random().toString(36).substring(2, 8);
+      var TV_IP = "10.199.1.210"; // TODO: auto-detect from REST API
+
+      // Detect TV IP from the art mode API
+      var artWs = null;
+      var cloudWs = null;
+
+      function setStatus(msg, type) {
+        var el = document.getElementById("status");
+        el.textContent = msg;
+        el.className = "status" + (type ? " " + type : "");
+      }
+
+      function setCode(code) {
+        for (var i = 0; i < 6; i++) {
+          document.getElementById("c" + i).textContent = code[i] || "—";
+        }
+      }
+
+      // Step 1: Connect to local art mode API to get device info
+      function connectArtMode() {
+        try {
+          artWs = new WebSocket(
+            "ws://localhost:8001/api/v2/channels/com.samsung.art-app?name=" +
+              btoa("FrameArt"),
+          );
+          artWs.onopen = function () {
+            document.getElementById("artStatus").textContent =
+              "Art Mode: connected";
+          };
+          artWs.onmessage = function (e) {
+            try {
+              var msg = JSON.parse(e.data);
+              if (
+                msg.event === "ms.channel.connect" &&
+                msg.data &&
+                msg.data.clients
+              ) {
+                // Try to find the host client which has the TV's info
+              }
+              if (msg.event === "ms.channel.ready") {
+                // Query device info
+                artWs.send(
+                  JSON.stringify({
+                    method: "ms.channel.emit",
+                    params: {
+                      event: "art_app_request",
+                      to: "host",
+                      data: JSON.stringify({
+                        request: "get_device_info",
+                        id: "init",
+                      }),
+                    },
+                  }),
+                );
+              }
+              if (msg.event === "d2d_service_message") {
+                var inner = JSON.parse(msg.data);
+                if (inner.event === "get_device_info") {
+                  document.getElementById("artStatus").textContent =
+                    "Art Mode: " +
+                    inner.resolution_type +
+                    " | Flash: " +
+                    inner.tv_flash_size +
+                    "GB";
+                }
+                if (inner.event === "artmode_status") {
+                  document.getElementById("artStatus").textContent +=
+                    " | Art: " + inner.value;
+                }
+                // When cloud tells us to select an image
+                if (inner.event === "image_selected") {
+                  document.getElementById("artStatus").textContent +=
+                    " | Showing: " + inner.content_id;
+                }
+              }
+            } catch (ex) {}
+          };
+          artWs.onerror = function () {
+            document.getElementById("artStatus").textContent =
+              "Art Mode: not available";
+          };
+        } catch (ex) {}
+      }
+
+      // Step 2: Connect to cloud
+      function connectCloud() {
+        // Clear code display while reconnecting
+        setCode("------");
+        setStatus("Connecting to cloud...");
+
+        // Close any existing connection
+        if (cloudWs) {
+          try {
+            cloudWs.onclose = null;
+            cloudWs.close();
+          } catch (e) {}
+          cloudWs = null;
+        }
+
+        try {
+          cloudWs = new WebSocket(CLOUD_WS);
+
+          cloudWs.onopen = function () {
+            // Show pairing view (in case we were on success view from stale session)
+            document.getElementById("pairingView").style.display = "block";
+            document.getElementById("successView").style.display = "none";
+
+            setStatus(
+              "Connected to cloud. Getting pairing code...",
+              "connected",
+            );
+            // Register this TV
+            cloudWs.send(
+              JSON.stringify({
+                type: "register",
+                tvId: TV_ID,
+                tvIp: TV_IP,
+              }),
+            );
+          };
+
+          cloudWs.onmessage = function (e) {
+            try {
+              var msg = JSON.parse(e.data);
+
+              if (msg.type === "pairing_code") {
+                setCode(msg.code);
+                setStatus(
+                  "Enter this code on your phone at frameapp.dmarantz.com/pair",
+                  "connected",
+                );
+              }
+
+              if (msg.type === "paired") {
+                // Show success view briefly, then exit app
+                document.getElementById("pairingView").style.display = "none";
+                document.getElementById("successView").style.display = "block";
+                setStatus(
+                  "Paired! Returning to Art Mode in 5 seconds...",
+                  "connected",
+                );
+
+                // Save paired state for next launch
+                try {
+                  localStorage.setItem(
+                    "frameart_paired",
+                    JSON.stringify({
+                      tvId: TV_ID,
+                      pairedAt: new Date().toISOString(),
+                    }),
+                  );
+                } catch (e) {}
+
+                // Auto-close after 5 seconds to let art mode resume
+                setTimeout(function () {
+                  try {
+                    if (typeof tizen !== "undefined" && tizen.application) {
+                      tizen.application.getCurrentApplication().exit();
+                    }
+                  } catch (e) {
+                    setStatus(
+                      "Paired! Press HOME to return to Art Mode.",
+                      "connected",
+                    );
+                  }
+                }, 5000);
+              }
+
+              if (msg.type === "new_art") {
+                // Cloud uploaded new art — select it via art mode API
+                if (artWs && artWs.readyState === 1) {
+                  artWs.send(
+                    JSON.stringify({
+                      method: "ms.channel.emit",
+                      params: {
+                        event: "art_app_request",
+                        to: "host",
+                        data: JSON.stringify({
+                          request: "select_image",
+                          content_id: msg.contentId,
+                          id: "cloud_art",
+                        }),
+                      },
+                    }),
+                  );
+                  setStatus("New art: " + msg.contentId, "connected");
+                }
+              }
+            } catch (ex) {}
+          };
+
+          cloudWs.onerror = function () {
+            setStatus("Cloud connection failed. Retrying in 5s...", "error");
+            setTimeout(connectCloud, 5000);
+          };
+
+          cloudWs.onclose = function () {
+            setStatus("Cloud disconnected. Retrying in 5s...", "error");
+            setTimeout(connectCloud, 5000);
+          };
+        } catch (ex) {
+          setStatus("Cloud connection error: " + ex.message, "error");
+          setTimeout(connectCloud, 5000);
+        }
+      }
+
+      // Check if already paired from previous session
+      var savedPairing = null;
+      try {
+        savedPairing = localStorage.getItem("frameart_paired");
+      } catch (e) {}
+
+      if (savedPairing) {
+        // Already paired — show linked state, still connect to cloud
+        document.getElementById("pairingView").style.display = "none";
+        document.getElementById("successView").style.display = "block";
+        document.getElementById("successView").innerHTML =
+          "<h2>Frame Art Active</h2>" +
+          "<p>Your TV is linked and receiving art.<br><br>" +
+          "Manage your art at <strong>frameapp.dmarantz.com</strong><br><br>" +
+          "<small>Press HOME to return to Art Mode.</small></p>" +
+          "<p style='margin-top:40px;font-size:20px;color:#666;'>" +
+          "<a href='#' onclick='localStorage.removeItem(\"frameart_paired\");location.reload();' " +
+          "style='color:#f66;text-decoration:none;'>Unpair this TV</a></p>";
+        setStatus("Linked — art updates active", "connected");
+      }
+
+      // Initialize
+      connectArtMode();
+      connectCloud();
+
+      // Health check: if WebSocket is dead but we don't know, force reconnect
+      setInterval(function () {
+        if (!cloudWs || cloudWs.readyState > 1) {
+          setCode("------");
+          setStatus("Connection lost. Reconnecting...", "error");
+          connectCloud();
+        }
+      }, 10000);
+    </script>
+  </body>
+</html>
