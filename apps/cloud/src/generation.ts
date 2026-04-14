@@ -31,7 +31,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   },
   holiday: { enabled: false },
   quotes: { enabled: true },
-  imageProvider: "openai",
+  imageProvider: "gemini",
   tv: { ip: "" },
   scheduler: { enabled: true, intervalMinutes: 15 },
 };
@@ -67,19 +67,28 @@ export function updateUserSettings(
 async function getImageProvider(name?: ImageProviderName) {
   const { OpenAIImageProvider, GeminiImageProvider, MockImageProvider } =
     await loadProviders();
-  const apiKey = process.env.OPENAI_API_KEY;
   switch (name) {
     case "openai":
-      if (!apiKey) {
-        console.warn("OPENAI_API_KEY not set");
+      if (!process.env.OPENAI_API_KEY) {
+        console.warn("OPENAI_API_KEY not set, falling back to mock");
         return new MockImageProvider();
       }
-      return new OpenAIImageProvider(apiKey);
+      return new OpenAIImageProvider(process.env.OPENAI_API_KEY);
     case "gemini":
-      if (!process.env.GEMINI_API_KEY) return new MockImageProvider();
+      if (!process.env.GEMINI_API_KEY) {
+        console.warn("GEMINI_API_KEY not set, falling back to mock");
+        return new MockImageProvider();
+      }
       return new GeminiImageProvider(process.env.GEMINI_API_KEY);
+    case "mock":
+      return new MockImageProvider();
     default:
-      return apiKey ? new OpenAIImageProvider(apiKey) : new MockImageProvider();
+      // Default: Gemini (cheaper), fallback to OpenAI, then mock
+      if (process.env.GEMINI_API_KEY)
+        return new GeminiImageProvider(process.env.GEMINI_API_KEY);
+      if (process.env.OPENAI_API_KEY)
+        return new OpenAIImageProvider(process.env.OPENAI_API_KEY);
+      return new MockImageProvider();
   }
 }
 
