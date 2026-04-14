@@ -191,6 +191,47 @@ app.get("/api/ping", (_req, res) => {
   res.json({ pong: true, time: new Date().toISOString() });
 });
 
+// --- Feedback ---
+
+const feedbackStore: Array<{
+  tvId: string;
+  contentId: string;
+  rating: string;
+  userId?: string;
+  timestamp: string;
+}> = [];
+
+app.post("/api/feedback", optionalAuth, (req, res) => {
+  const { tvId, contentId, rating } = req.body;
+  if (!tvId || !contentId || !rating) {
+    res.status(400).json({ error: "Missing tvId, contentId, or rating" });
+    return;
+  }
+  const userId = (req as any).user?.userId;
+  feedbackStore.push({
+    tvId,
+    contentId,
+    rating,
+    userId,
+    timestamp: new Date().toISOString(),
+  });
+  console.log(
+    `Feedback: ${rating} on ${contentId} for TV ${tvId} by ${userId || "anonymous"}`,
+  );
+  res.json({ success: true, totalFeedback: feedbackStore.length });
+});
+
+app.get("/api/feedback/:tvId", (req, res) => {
+  const tvFeedback = feedbackStore.filter((f) => f.tvId === req.params.tvId);
+  res.json(tvFeedback);
+});
+
+// --- Gallery Route ---
+
+app.get("/gallery", (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "gallery.html"));
+});
+
 app.get("/api/config", (_req, res) => {
   res.json({ googleClientId: GOOGLE_CLIENT_ID });
 });

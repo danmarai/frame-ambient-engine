@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Frame Art — Gallery</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #0f0f1a;
+        color: #fff;
+        min-height: 100vh;
+      }
+
+      .header {
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid #222;
+      }
+      .header h1 {
+        font-size: 20px;
+        color: #0ff;
+      }
+      .user-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #888;
+      }
+      .user-info img {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+      }
+
+      .tv-selector {
+        padding: 12px 20px;
+        background: #1a1a2e;
+        border-bottom: 1px solid #222;
+      }
+      .tv-selector select {
+        background: #0f0f1a;
+        color: #fff;
+        border: 1px solid #333;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        width: 100%;
+      }
+
+      .gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 12px;
+        padding: 16px;
+      }
+      .art-card {
+        background: #1a1a2e;
+        border-radius: 12px;
+        overflow: hidden;
+        position: relative;
+      }
+      .art-card img {
+        width: 100%;
+        aspect-ratio: 16/9;
+        object-fit: cover;
+        display: block;
+      }
+      .art-card .info {
+        padding: 8px 10px;
+        font-size: 12px;
+        color: #888;
+      }
+      .art-card .current {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        background: #0ff;
+        color: #000;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 4px;
+      }
+
+      .feedback {
+        display: flex;
+        gap: 4px;
+        padding: 0 10px 10px;
+      }
+      .feedback button {
+        flex: 1;
+        padding: 8px;
+        border: none;
+        border-radius: 8px;
+        font-size: 18px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .btn-up {
+        background: #1a2a1a;
+      }
+      .btn-up:hover,
+      .btn-up.active {
+        background: #0a5;
+      }
+      .btn-down {
+        background: #2a1a1a;
+      }
+      .btn-down:hover,
+      .btn-down.active {
+        background: #a03;
+      }
+      .btn-select {
+        background: #1a1a3a;
+        font-size: 12px;
+        color: #aaa;
+      }
+      .btn-select:hover {
+        background: #0a3a6a;
+        color: #fff;
+      }
+
+      .actions {
+        padding: 16px;
+        display: flex;
+        gap: 8px;
+      }
+      .actions button {
+        flex: 1;
+        padding: 14px;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .btn-sync {
+        background: #4a90d9;
+        color: #fff;
+      }
+      .btn-sync:hover {
+        background: #3a80c9;
+      }
+      .btn-sync:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .status-bar {
+        padding: 12px 20px;
+        font-size: 13px;
+        color: #888;
+        border-top: 1px solid #222;
+        text-align: center;
+      }
+      .status-bar.success {
+        color: #0a5;
+      }
+      .status-bar.error {
+        color: #a03;
+      }
+
+      .empty {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+      }
+      .empty h2 {
+        color: #888;
+        margin-bottom: 8px;
+      }
+
+      .login-prompt {
+        text-align: center;
+        padding: 80px 20px;
+      }
+      .login-prompt h1 {
+        color: #0ff;
+        margin-bottom: 8px;
+      }
+      .login-prompt p {
+        color: #666;
+        margin-bottom: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loginView" class="login-prompt">
+      <h1>Frame Art Gallery</h1>
+      <p>Sign in to manage your TV's art collection</p>
+      <div
+        id="googleBtn"
+        style="display: flex; justify-content: center; margin: 24px 0"
+      ></div>
+    </div>
+
+    <div id="appView" style="display: none">
+      <div class="header">
+        <h1>Gallery</h1>
+        <div class="user-info">
+          <span id="userName"></span>
+          <img id="userPic" src="" alt="" />
+        </div>
+      </div>
+
+      <div class="tv-selector">
+        <select id="tvSelect">
+          <option value="">Select a TV...</option>
+        </select>
+      </div>
+
+      <div id="galleryGrid" class="gallery"></div>
+
+      <div class="actions">
+        <button class="btn-sync" id="syncBtn" disabled>Sync New Art</button>
+      </div>
+
+      <div class="status-bar" id="statusBar">
+        Select a TV to view its art collection
+      </div>
+    </div>
+
+    <script>
+      var session = localStorage.getItem("frameArtSession");
+      var user = null;
+      try {
+        user = JSON.parse(localStorage.getItem("frameArtUser") || "null");
+      } catch (e) {}
+      var currentTvId = null;
+      var artList = [];
+
+      // Google Sign-In
+      function handleGoogleCredential(response) {
+        fetch("/api/auth/google", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken: response.credential }),
+        })
+          .then(function (res) {
+            return res.json();
+          })
+          .then(function (data) {
+            if (data.sessionId) {
+              session = data.sessionId;
+              user = data.user;
+              localStorage.setItem("frameArtSession", data.sessionId);
+              localStorage.setItem("frameArtUser", JSON.stringify(data.user));
+              showApp();
+            }
+          });
+      }
+
+      function showApp() {
+        document.getElementById("loginView").style.display = "none";
+        document.getElementById("appView").style.display = "block";
+        document.getElementById("userName").textContent = user.name;
+        if (user.picture) document.getElementById("userPic").src = user.picture;
+        loadDevices();
+      }
+
+      function loadDevices() {
+        fetch("/api/devices")
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (devices) {
+            var sel = document.getElementById("tvSelect");
+            sel.innerHTML = '<option value="">Select a TV...</option>';
+            devices.forEach(function (d) {
+              var opt = document.createElement("option");
+              opt.value = d.tvId;
+              opt.textContent =
+                (d.name || d.modelName || d.tvId) + " (" + d.tvIp + ")";
+              opt.dataset.ip = d.tvIp;
+              sel.appendChild(opt);
+            });
+          });
+      }
+
+      document
+        .getElementById("tvSelect")
+        .addEventListener("change", function () {
+          currentTvId = this.value;
+          var opt = this.options[this.selectedIndex];
+          if (currentTvId && opt.dataset.ip) {
+            loadGallery(opt.dataset.ip);
+            document.getElementById("syncBtn").disabled = false;
+          } else {
+            document.getElementById("galleryGrid").innerHTML = "";
+            document.getElementById("syncBtn").disabled = true;
+          }
+        });
+
+      function loadGallery(tvIp) {
+        setStatus("Loading art from TV...");
+        fetch("/api/tv/init", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tvIp: tvIp }),
+        })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (data) {
+            artList = data.imageIds || [];
+            renderGallery();
+            setStatus(
+              artList.length + " images on TV (" + data.maxImages + " max)",
+            );
+          })
+          .catch(function (e) {
+            setStatus("Failed to load: " + e.message, true);
+          });
+      }
+
+      function renderGallery() {
+        var grid = document.getElementById("galleryGrid");
+        if (artList.length === 0) {
+          grid.innerHTML =
+            '<div class="empty"><h2>No art yet</h2><p>Tap "Sync New Art" to upload some!</p></div>';
+          return;
+        }
+        grid.innerHTML = "";
+        artList.forEach(function (id, idx) {
+          // We don't have thumbnails yet — show placeholder with ID
+          var card = document.createElement("div");
+          card.className = "art-card";
+          card.innerHTML =
+            '<div style="width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,#1a2a3a,#2a1a3a);display:flex;align-items:center;justify-content:center;font-size:14px;color:#666;">' +
+            id +
+            "</div>" +
+            '<div class="info">#' +
+            (idx + 1) +
+            " · " +
+            id +
+            "</div>" +
+            '<div class="feedback">' +
+            '<button class="btn-up" onclick="rate(\'' +
+            id +
+            "','up',this)\">👍</button>" +
+            '<button class="btn-down" onclick="rate(\'' +
+            id +
+            "','down',this)\">👎</button>" +
+            '<button class="btn-select" onclick="selectArt(\'' +
+            id +
+            "')\">Display</button>" +
+            "</div>";
+          grid.appendChild(card);
+        });
+      }
+
+      function rate(contentId, rating, btn) {
+        // Visual feedback
+        var siblings = btn.parentElement.querySelectorAll("button");
+        siblings.forEach(function (b) {
+          b.classList.remove("active");
+        });
+        btn.classList.add("active");
+
+        // Send to server
+        fetch("/api/feedback", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + session,
+          },
+          body: JSON.stringify({
+            tvId: currentTvId,
+            contentId: contentId,
+            rating: rating,
+          }),
+        })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (data) {
+            setStatus(
+              rating === "up"
+                ? "Liked! More like this coming..."
+                : "Got it, less of this style.",
+            );
+          });
+      }
+
+      function selectArt(contentId) {
+        var sel = document.getElementById("tvSelect");
+        var opt = sel.options[sel.selectedIndex];
+        if (!opt.dataset.ip) return;
+
+        setStatus("Switching to " + contentId + "...");
+        fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tvId: currentTvId,
+            tvIp: opt.dataset.ip,
+            selectOnly: contentId,
+          }),
+        })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (data) {
+            setStatus("Now showing: " + contentId);
+          });
+      }
+
+      document.getElementById("syncBtn").addEventListener("click", function () {
+        var sel = document.getElementById("tvSelect");
+        var opt = sel.options[sel.selectedIndex];
+        if (!opt.dataset.ip) return;
+
+        this.disabled = true;
+        this.textContent = "Syncing...";
+        setStatus("Uploading new art to TV...");
+
+        fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tvId: currentTvId, tvIp: opt.dataset.ip }),
+        })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (data) {
+            if (data.success) {
+              setStatus("New art uploaded: " + data.contentId);
+              loadGallery(opt.dataset.ip);
+            } else {
+              setStatus("Upload failed: " + data.error, true);
+            }
+            document.getElementById("syncBtn").disabled = false;
+            document.getElementById("syncBtn").textContent = "Sync New Art";
+          })
+          .catch(function (e) {
+            setStatus("Error: " + e.message, true);
+            document.getElementById("syncBtn").disabled = false;
+            document.getElementById("syncBtn").textContent = "Sync New Art";
+          });
+      });
+
+      function setStatus(msg, isError) {
+        var bar = document.getElementById("statusBar");
+        bar.textContent = msg;
+        bar.className = "status-bar" + (isError ? " error" : " success");
+      }
+
+      // Init
+      if (session && user) {
+        fetch("/api/auth/me", {
+          headers: { Authorization: "Bearer " + session },
+        })
+          .then(function (r) {
+            if (r.ok) showApp();
+            else initLogin();
+          })
+          .catch(function () {
+            initLogin();
+          });
+      } else {
+        initLogin();
+      }
+
+      function initLogin() {
+        document.getElementById("loginView").style.display = "block";
+        fetch("/api/config")
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (cfg) {
+            if (!cfg.googleClientId) {
+              showApp();
+              return;
+            }
+            google.accounts.id.initialize({
+              client_id: cfg.googleClientId,
+              callback: handleGoogleCredential,
+            });
+            google.accounts.id.renderButton(
+              document.getElementById("googleBtn"),
+              {
+                theme: "filled_blue",
+                size: "large",
+                shape: "pill",
+                width: 300,
+              },
+            );
+          });
+      }
+    </script>
+  </body>
+</html>
