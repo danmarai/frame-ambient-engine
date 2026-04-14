@@ -136,6 +136,13 @@ export async function uploadToTv(
             console.error(
               "WARNING: Incomplete upload may have crashed the art mode service. TV restart may be needed.",
             );
+            clearTimeout(timeout);
+            cleanup();
+            resolve({
+              success: false,
+              error: `TCP upload failed: ${e.message}. Art mode service may need TV restart.`,
+              durationMs: Date.now() - start,
+            });
           });
         }
 

@@ -43,7 +43,7 @@ function withArtConnection(
 
     ws.on("message", (d: Buffer | string) => {
       const msg = JSON.parse(Buffer.isBuffer(d) ? d.toString() : d);
-      if (msg.event === "ms.channel.ready") {
+      if (msg.event === "ms.channel.connect") {
         fn(ws);
       }
     });
@@ -195,8 +195,14 @@ export async function makeRoom(tvIp: string, count: number): Promise<number> {
             // Remove from state
             const cidx = state!.ourImages.indexOf(inner.content_id);
             if (cidx >= 0) state!.ourImages.splice(cidx, 1);
+            deleteNext();
+          } else if (inner.event === "error") {
+            console.error(
+              `Delete failed for image at idx ${idx - 1}:`,
+              inner.error_code,
+            );
+            deleteNext();
           }
-          deleteNext();
         }
       });
 
@@ -231,9 +237,16 @@ export async function handleStorageFull(tvIp: string): Promise<void> {
     `TV ${tvIp}: storage full! Reducing max to ${state.maxImages} images`,
   );
 
-  // Delete oldest half
-  const deleteCount = Math.ceil(state.ourImages.length / 2);
-  await makeRoom(tvIp, deleteCount);
+  // Delete oldest half by making room for enough new images that half get removed.
+  // makeRoom calculates: spaceNeeded = ourImages.length + count - maxImages
+  // We want spaceNeeded = ceil(ourImages.length / 2)
+  // So: count = ceil(ourImages.length / 2) + maxImages - ourImages.length
+  const targetDeletions = Math.ceil(state.ourImages.length / 2);
+  const roomCount = Math.max(
+    1,
+    targetDeletions + state.maxImages - state.ourImages.length,
+  );
+  await makeRoom(tvIp, roomCount);
 }
 
 /** Get current state for a TV */

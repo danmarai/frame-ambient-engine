@@ -483,8 +483,14 @@ app.post("/api/tv/init", async (req, res) => {
   }
 });
 
-/** Upload a specific image file to TV */
+/** Upload a specific image file to TV — DEV ONLY, disabled in production */
 app.post("/api/upload-file", async (req, res) => {
+  // Security: this endpoint reads arbitrary files from the server filesystem.
+  // Only allow in development mode.
+  if (process.env.NODE_ENV === "production") {
+    res.status(403).json({ error: "This endpoint is disabled in production" });
+    return;
+  }
   const { tvIp, filePath } = req.body;
   if (!tvIp || !filePath) {
     res.status(400).json({ error: "Missing tvIp or filePath" });

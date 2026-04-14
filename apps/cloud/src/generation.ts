@@ -180,6 +180,10 @@ export async function generate(
 
 /** Load a previously generated image */
 export async function loadImage(sceneId: string): Promise<Buffer | null> {
+  // Validate sceneId to prevent path traversal (must be UUID-like)
+  if (!/^[a-f0-9-]{36}$/.test(sceneId)) {
+    return null;
+  }
   try {
     const imagePath = path.join(DATA_DIR, `${sceneId}.jpg`);
     return await readFile(imagePath);
