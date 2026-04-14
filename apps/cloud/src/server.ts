@@ -368,6 +368,65 @@ app.get("/pair", (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "pair.html"));
 });
 
+/** Pair by TV IP — scans the TV, registers it, returns device info */
+app.post("/api/pair-by-ip", optionalAuth, async (req, res) => {
+  const { tvIp } = req.body;
+  if (!tvIp) {
+    res.status(400).json({ error: "Missing tvIp" });
+    return;
+  }
+
+  try {
+    // Scan the TV
+    const apiRes = await fetch(`http://${tvIp}:8001/api/v2/`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    const apiData = (await apiRes.json()) as any;
+    const device = apiData.device || {};
+
+    if (device.FrameTVSupport !== "true") {
+      res.status(400).json({ error: "Not a Samsung Frame TV" });
+      return;
+    }
+
+    const tvId = `frame-${(device.wifiMac || "").replace(/:/g, "").slice(-6) || tvIp.replace(/\./g, "")}`;
+
+    // Register in device registry
+    const metadata = {
+      tvIp,
+      tvId,
+      scannedAt: new Date().toISOString(),
+      modelName: device.modelName,
+      modelCode: device.model,
+      name: device.name,
+      isFrameTV: true,
+      resolution: device.resolution,
+      wifiMac: device.wifiMac,
+      estimatedYear: device.model
+        ? 2000 + parseInt(device.model.substring(0, 2))
+        : null,
+    };
+    deviceRegistry.set(tvId, metadata);
+
+    const userId = (req as any).user?.userId;
+    console.log(
+      `Paired by IP: ${device.name} (${tvId}) at ${tvIp} by ${userId || "anonymous"}`,
+    );
+
+    res.json({ success: true, tvId, tvIp, device: metadata });
+  } catch (err: unknown) {
+    res
+      .status(500)
+      .json({
+        error: err instanceof Error ? err.message : "Could not reach TV",
+      });
+  }
+});
+
+app.get("/pairip", (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "pairip.html"));
+});
+
 app.post("/api/pair", (req, res) => {
   const { code, phoneSessionId } = req.body;
   if (!code || !phoneSessionId) {

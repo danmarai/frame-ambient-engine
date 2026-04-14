@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Frame Art — Pair by IP</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #0f0f1a;
+        color: #fff;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .card {
+        background: #1a1a2e;
+        border-radius: 20px;
+        padding: 40px;
+        max-width: 400px;
+        width: 100%;
+        text-align: center;
+      }
+      h1 {
+        font-size: 28px;
+        margin-bottom: 8px;
+        color: #0ff;
+      }
+      .subtitle {
+        color: #888;
+        margin-bottom: 24px;
+        font-size: 14px;
+      }
+      input[type="text"] {
+        width: 100%;
+        padding: 14px;
+        font-size: 18px;
+        border: 2px solid #333;
+        border-radius: 12px;
+        background: #0f0f1a;
+        color: #fff;
+        text-align: center;
+        margin-bottom: 16px;
+      }
+      input:focus {
+        border-color: #0ff;
+        outline: none;
+      }
+      button {
+        width: 100%;
+        padding: 16px;
+        border: none;
+        border-radius: 12px;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        background: #0ff;
+        color: #000;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .status {
+        margin-top: 16px;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        display: none;
+      }
+      .status.error {
+        display: block;
+        background: #3a1a1a;
+        color: #f66;
+      }
+      .status.success {
+        display: block;
+        background: #1a3a1a;
+        color: #6f6;
+      }
+      .instructions {
+        margin-top: 20px;
+        color: #666;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .device-info {
+        background: #0f0f1a;
+        padding: 16px;
+        border-radius: 12px;
+        margin-top: 16px;
+        text-align: left;
+        font-size: 13px;
+      }
+      .device-info dt {
+        color: #888;
+        font-size: 11px;
+        text-transform: uppercase;
+      }
+      .device-info dd {
+        color: #fff;
+        margin-bottom: 8px;
+      }
+      .nav-links {
+        margin-top: 20px;
+        font-size: 13px;
+      }
+      .nav-links a {
+        color: #0ff;
+        text-decoration: none;
+        margin: 0 8px;
+      }
+      .login-prompt {
+        text-align: center;
+      }
+      .login-prompt h1 {
+        color: #0ff;
+        margin-bottom: 8px;
+      }
+      .login-prompt p {
+        color: #666;
+        margin-bottom: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card" id="loginView">
+      <h1>Frame Art</h1>
+      <p class="subtitle">Sign in to pair your TV</p>
+      <div
+        id="googleBtn"
+        style="display: flex; justify-content: center; margin: 24px 0"
+      ></div>
+    </div>
+
+    <div class="card" id="pairView" style="display: none">
+      <h1>Pair by IP</h1>
+      <p class="subtitle">Enter your Samsung Frame TV's IP address</p>
+      <input
+        type="text"
+        id="tvIpInput"
+        placeholder="e.g. 192.168.1.100"
+        inputmode="decimal"
+      />
+      <button id="pairBtn">Find & Pair TV</button>
+      <div class="status" id="status"></div>
+      <div class="instructions">
+        Find your TV's IP in:<br />
+        <strong>Settings > General > Network > Network Status</strong>
+      </div>
+    </div>
+
+    <div class="card" id="successView" style="display: none">
+      <h1 style="color: #0f9">TV Paired!</h1>
+      <dl class="device-info" id="deviceInfo"></dl>
+      <div class="nav-links">
+        <a href="/studio">Studio</a> |
+        <a href="/gallery">Gallery</a>
+      </div>
+    </div>
+
+    <script>
+      var session = localStorage.getItem("frameArtSession");
+      var user = null;
+      try {
+        user = JSON.parse(localStorage.getItem("frameArtUser") || "null");
+      } catch (e) {}
+
+      function handleGoogleCredential(response) {
+        fetch("/api/auth/google", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken: response.credential }),
+        })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (data) {
+            if (data.sessionId) {
+              session = data.sessionId;
+              user = data.user;
+              localStorage.setItem("frameArtSession", data.sessionId);
+              localStorage.setItem("frameArtUser", JSON.stringify(data.user));
+              showPairView();
+            }
+          });
+      }
+
+      function showPairView() {
+        document.getElementById("loginView").style.display = "none";
+        document.getElementById("pairView").style.display = "block";
+      }
+
+      document.getElementById("pairBtn").addEventListener("click", function () {
+        var ip = document.getElementById("tvIpInput").value.trim();
+        if (!ip) return;
+
+        var btn = this;
+        var status = document.getElementById("status");
+        btn.disabled = true;
+        btn.textContent = "Scanning...";
+        status.className = "status";
+        status.style.display = "none";
+
+        fetch("/api/pair-by-ip", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: session ? "Bearer " + session : "",
+          },
+          body: JSON.stringify({ tvIp: ip }),
+        })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (data) {
+            if (data.success) {
+              localStorage.setItem(
+                "pairedTv",
+                JSON.stringify({ tvId: data.tvId, tvIp: data.tvIp }),
+              );
+
+              document.getElementById("pairView").style.display = "none";
+              document.getElementById("successView").style.display = "block";
+              var info = document.getElementById("deviceInfo");
+              var d = data.device;
+              info.innerHTML =
+                "<dt>Name</dt><dd>" +
+                (d.name || "—") +
+                "</dd>" +
+                "<dt>Model</dt><dd>" +
+                (d.modelName || "—") +
+                "</dd>" +
+                "<dt>Year</dt><dd>" +
+                (d.estimatedYear || "—") +
+                "</dd>" +
+                "<dt>Resolution</dt><dd>" +
+                (d.resolution || "—") +
+                "</dd>" +
+                "<dt>TV ID</dt><dd>" +
+                data.tvId +
+                "</dd>" +
+                "<dt>IP</dt><dd>" +
+                data.tvIp +
+                "</dd>";
+            } else {
+              status.textContent = data.error || "Pairing failed";
+              status.className = "status error";
+              btn.disabled = false;
+              btn.textContent = "Find & Pair TV";
+            }
+          })
+          .catch(function (err) {
+            status.textContent = "Error: " + err.message;
+            status.className = "status error";
+            btn.disabled = false;
+            btn.textContent = "Find & Pair TV";
+          });
+      });
+
+      // Init
+      if (session && user) {
+        fetch("/api/auth/me", {
+          headers: { Authorization: "Bearer " + session },
+        })
+          .then(function (r) {
+            if (r.ok) showPairView();
+            else initLogin();
+          })
+          .catch(function () {
+            initLogin();
+          });
+      } else {
+        window.onload = function () {
+          initLogin();
+        };
+      }
+
+      function initLogin() {
+        document.getElementById("loginView").style.display = "block";
+        fetch("/api/config")
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (cfg) {
+            if (!cfg.googleClientId) {
+              showPairView();
+              return;
+            }
+            google.accounts.id.initialize({
+              client_id: cfg.googleClientId,
+              callback: handleGoogleCredential,
+            });
+            google.accounts.id.renderButton(
+              document.getElementById("googleBtn"),
+              {
+                theme: "filled_blue",
+                size: "large",
+                shape: "pill",
+                width: 300,
+              },
+            );
+          });
+      }
+    </script>
+  </body>
+</html>
