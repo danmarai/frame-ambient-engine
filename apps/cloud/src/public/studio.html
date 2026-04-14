@@ -571,20 +571,36 @@
           });
       });
 
+      // Local upload server — for TV uploads when EC2 can't reach TV
+      var LOCAL_SERVER = localStorage.getItem("localServer") || "";
+      // Auto-detect: if URL has ?local=IP:PORT, save it
+      var localParam = new URLSearchParams(window.location.search).get("local");
+      if (localParam) {
+        LOCAL_SERVER = "http://" + localParam;
+        localStorage.setItem("localServer", LOCAL_SERVER);
+        setStatus("Local bridge set: " + LOCAL_SERVER, false);
+      }
+
       function doPublish() {
         if (!currentScene || !pairedTv) return;
         var btn = document.getElementById("publishBtn");
         btn.disabled = true;
         btn.textContent = "Publishing...";
-        setStatus("Uploading to TV...");
 
-        fetch("/api/upload", {
+        // Use local server for upload if available, cloud for image source
+        var uploadServer = LOCAL_SERVER || window.location.origin;
+        var imageSource = window.location.origin + currentScene.imageUrl;
+        setStatus(
+          "Uploading via " + (LOCAL_SERVER ? "local bridge" : "cloud") + "...",
+        );
+
+        fetch(uploadServer + "/api/upload", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             tvId: pairedTv.tvId,
             tvIp: pairedTv.tvIp,
-            imageUrl: window.location.origin + currentScene.imageUrl,
+            imageUrl: imageSource,
           }),
         })
           .then(function (r) {
