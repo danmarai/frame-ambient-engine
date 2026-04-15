@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Frame Art",
+    "slug": "frame-art",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "frameart",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.frameart.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0f0f1a"
+      },
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "extra": {
+      "cloudUrl": "https://frameapp.dmarantz.com",
+      "eas": {
+        "projectId": "frame-art-mobile"
+      }
+    }
+  }
+}
