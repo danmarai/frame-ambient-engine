@@ -21,6 +21,7 @@ import {
   getTvIp,
 } from "./tv-connections.js";
 import { uploadToTv, selectAndActivate } from "./tv-upload.js";
+import { pickQuote, getQuoteCategories, getQuoteStats } from "./quotes.js";
 import {
   generate,
   loadImage,
@@ -348,6 +349,51 @@ app.post("/api/settings", optionalAuth, (req, res) => {
   const userId = (req as any).user?.userId || "default";
   updateUserSettings(userId, req.body);
   res.json({ success: true });
+});
+
+// --- Quotes ---
+
+app.get("/api/quotes/categories", (_req, res) => {
+  res.json(getQuoteCategories());
+});
+
+app.get("/api/quotes/pick", (req, res) => {
+  const category = (req.query.category as string) || "random";
+  res.json(pickQuote(category));
+});
+
+app.get("/api/quotes/stats", (_req, res) => {
+  res.json(getQuoteStats());
+});
+
+// --- TV Controls ---
+
+app.post("/api/tv/control", async (req, res) => {
+  const { tvIp, action, contentId, value } = req.body;
+  if (!tvIp || !action) {
+    res.status(400).json({ error: "Missing tvIp or action" });
+    return;
+  }
+
+  try {
+    if (action === "select_image" && contentId) {
+      await selectAndActivate(tvIp, contentId);
+      res.json({ success: true, action, contentId });
+    } else if (action === "art_mode_on") {
+      await selectAndActivate(tvIp, contentId || ""); // just turns on art mode
+      res.json({ success: true, action: "art_mode_on" });
+    } else {
+      res.status(400).json({ error: "Unknown action: " + action });
+    }
+  } catch (err: unknown) {
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : "Failed" });
+  }
+});
+
+app.get("/controls", (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "controls.html"));
 });
 
 // --- Gallery Route ---
