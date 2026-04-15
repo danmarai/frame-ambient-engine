@@ -31,7 +31,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   },
   holiday: { enabled: false },
   quotes: { enabled: true },
-  imageProvider: "gemini",
+  imageProvider: "openai",
   tv: { ip: "" },
   scheduler: { enabled: true, intervalMinutes: 15 },
 };
@@ -83,11 +83,11 @@ async function getImageProvider(name?: ImageProviderName) {
     case "mock":
       return new MockImageProvider();
     default:
-      // Default: Gemini (cheaper), fallback to OpenAI, then mock
-      if (process.env.GEMINI_API_KEY)
-        return new GeminiImageProvider(process.env.GEMINI_API_KEY);
+      // Default: OpenAI (Gemini image gen currently broken), fallback to mock
       if (process.env.OPENAI_API_KEY)
         return new OpenAIImageProvider(process.env.OPENAI_API_KEY);
+      if (process.env.GEMINI_API_KEY)
+        return new GeminiImageProvider(process.env.GEMINI_API_KEY);
       return new MockImageProvider();
   }
 }
