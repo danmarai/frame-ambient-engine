@@ -487,8 +487,15 @@ app.post("/api/upload", async (req, res) => {
     // If imageUrl provided, fetch the image; otherwise use test image
     let imageData: Buffer;
     if (imageUrl) {
+      console.log(`Fetching image from: ${imageUrl}`);
       const response = await fetch(imageUrl);
-      imageData = Buffer.from(await response.arrayBuffer());
+      if (!response.ok)
+        throw new Error(`Image fetch failed: ${response.status}`);
+      const arrayBuf = await response.arrayBuffer();
+      imageData = Buffer.from(arrayBuf);
+      console.log(
+        `Fetched: ${imageData.length} bytes, header: ${imageData[0]?.toString(16)} ${imageData[1]?.toString(16)} ${imageData[2]?.toString(16)}`,
+      );
     } else {
       // Use Don Claude as default test image
       const fs = await import("fs");
@@ -527,7 +534,8 @@ app.post("/api/upload", async (req, res) => {
         message: "Fresh art from Don Claude!",
       });
 
-      // Also set it as active and turn on art mode
+      // Wait for TV to finish writing image, then set as display
+      await new Promise((r) => setTimeout(r, 2000));
       await selectAndActivate(tvIp, result.contentId);
 
       res.json({

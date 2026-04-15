@@ -117,17 +117,17 @@ export async function uploadToTv(
             socket.write(lenBuf);
             socket.write(headerBuf);
 
-            const CHUNK = 64 * 1024;
-            let offset = 0;
-            const sendChunk = () => {
-              if (offset >= imageData.length) return;
-              const end = Math.min(offset + CHUNK, imageData.length);
-              socket.write(imageData.slice(offset, end), () => {
-                offset = end;
-                sendChunk();
-              });
-            };
-            sendChunk();
+            // Write entire image buffer at once and flush
+            socket.write(imageData, () => {
+              console.log(
+                `TCP: all ${imageData.length} bytes written, flushing...`,
+              );
+              // End the socket to ensure all data is flushed to the TV
+              socket.end();
+            });
+          });
+          socket.on("close", () => {
+            console.log("TCP: socket closed (data flushed)");
           });
           socket.on("error", (e) => {
             console.error("TCP error:", e.message);
@@ -147,13 +147,19 @@ export async function uploadToTv(
         }
 
         if (inner.event === "image_added") {
-          clearTimeout(timeout);
-          cleanup();
-          resolve({
-            success: true,
-            contentId: inner.content_id,
-            durationMs: Date.now() - start,
-          });
+          // Wait a moment for TCP to fully flush before declaring success
+          console.log(
+            `image_added: ${inner.content_id}, waiting for TCP flush...`,
+          );
+          setTimeout(() => {
+            clearTimeout(timeout);
+            cleanup();
+            resolve({
+              success: true,
+              contentId: inner.content_id,
+              durationMs: Date.now() - start,
+            });
+          }, 1500);
         }
 
         if (inner.event === "error") {
