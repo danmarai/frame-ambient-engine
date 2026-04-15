@@ -19,7 +19,6 @@
         min-height: 100vh;
         padding-bottom: 80px;
       }
-
       .header {
         padding: 12px 16px;
         display: flex;
@@ -48,7 +47,6 @@
       .nav a:hover {
         color: #0ff;
       }
-
       .controls {
         padding: 12px 16px;
         background: #1a1a2e;
@@ -67,22 +65,49 @@
         border-radius: 8px;
         font-size: 14px;
       }
-      .overlay-toggles {
-        display: flex;
-        gap: 12px;
+      .overlay-section {
         padding: 8px 0;
       }
-      .overlay-toggles label {
+      .overlay-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 6px;
+        flex-wrap: wrap;
+      }
+      .overlay-row label {
         display: flex;
         align-items: center;
         gap: 6px;
         font-size: 13px;
         color: #888;
       }
-      .overlay-toggles input[type="checkbox"] {
+      .overlay-row input[type="checkbox"] {
         accent-color: #0ff;
       }
-
+      .overlay-sub {
+        display: none;
+        margin-left: 24px;
+      }
+      .overlay-sub.show {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .overlay-sub select,
+      .overlay-sub input {
+        background: #0f0f1a;
+        color: #fff;
+        border: 1px solid #333;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+      }
+      .overlay-sub .label {
+        font-size: 11px;
+        color: #666;
+      }
       .tv-status {
         padding: 8px 12px;
         margin-top: 4px;
@@ -90,14 +115,13 @@
         font-size: 13px;
       }
       .tv-status.paired {
-        background: #0a3;
-        color: #fff;
+        background: #143;
+        color: #4f4;
       }
       .tv-status.unpaired {
         background: #332;
         color: #fa0;
       }
-
       .generate-btn {
         width: 100%;
         padding: 14px;
@@ -128,7 +152,6 @@
           opacity: 0.7;
         }
       }
-
       .preview {
         padding: 16px;
       }
@@ -157,6 +180,7 @@
       .btn-saved {
         background: #1a3a1a;
         color: #4f4;
+        font-size: 12px;
       }
       .btn-icon {
         background: #222;
@@ -191,7 +215,6 @@
         color: #ccc;
         margin-bottom: 8px;
       }
-
       .progress {
         padding: 0 16px;
         margin-top: 8px;
@@ -213,7 +236,6 @@
         color: #666;
         margin-top: 4px;
       }
-
       .publish-bar {
         position: fixed;
         bottom: 0;
@@ -245,7 +267,6 @@
         background: #332;
         color: #fa0;
       }
-
       .status-msg {
         padding: 8px 16px;
         font-size: 13px;
@@ -257,7 +278,23 @@
       .status-msg.error {
         color: #a03;
       }
-
+      .debug {
+        background: #111;
+        border: 1px solid #333;
+        border-radius: 8px;
+        margin: 8px 16px;
+        padding: 10px;
+        font-size: 11px;
+        color: #666;
+        font-family: monospace;
+        white-space: pre-wrap;
+        max-height: 200px;
+        overflow-y: auto;
+        display: none;
+      }
+      .debug.show {
+        display: block;
+      }
       .login-prompt {
         text-align: center;
         padding: 80px 20px;
@@ -281,7 +318,6 @@
         style="display: flex; justify-content: center; margin: 24px 0"
       ></div>
     </div>
-
     <div id="appView" style="display: none">
       <div class="header">
         <h1>Studio</h1>
@@ -291,33 +327,56 @@
           <a href="/gallery">Gallery</a>
         </div>
       </div>
-
       <div class="controls">
         <div class="control-row">
           <select id="themeSelect"></select>
           <select id="styleSelect"></select>
         </div>
-        <div class="overlay-toggles">
-          <span style="color: #555">Overlays:</span>
-          <label><input type="checkbox" id="ovWeather" /> Weather</label>
-          <label><input type="checkbox" id="ovMarket" /> Market</label>
-          <label><input type="checkbox" id="ovQuote" /> Quote</label>
+        <div class="overlay-section">
+          <div class="overlay-row">
+            <label><input type="checkbox" id="ovWeather" /> Weather</label>
+            <label><input type="checkbox" id="ovMarket" /> Market</label>
+            <label><input type="checkbox" id="ovQuote" /> Quote</label>
+          </div>
+          <div class="overlay-sub" id="weatherOpts">
+            <span class="label">City:</span>
+            <input
+              type="text"
+              id="weatherCity"
+              placeholder="Auto-detect"
+              style="width: 120px"
+            />
+            <select id="tempUnit">
+              <option value="celsius">°C</option>
+              <option value="fahrenheit">°F</option>
+            </select>
+          </div>
+          <div class="overlay-sub" id="marketOpts">
+            <span class="label">Symbol:</span>
+            <select id="marketSymbol">
+              <option value="SPY">SPY (S&P 500)</option>
+              <option value="BTC" selected>BTC (Bitcoin)</option>
+              <option value="QQQ">QQQ (Nasdaq)</option>
+              <option value="AAPL">AAPL</option>
+              <option value="TSLA">TSLA</option>
+            </select>
+          </div>
         </div>
         <div id="tvStatus"></div>
         <button class="generate-btn" id="genBtn">Generate Art</button>
       </div>
-
       <div class="progress" id="progressSection" style="display: none">
         <div class="progress-bar">
           <div class="progress-fill" id="progressFill" style="width: 0%"></div>
         </div>
         <div class="progress-text" id="progressText">Starting...</div>
       </div>
-
       <div class="preview" id="previewSection" style="display: none">
         <img id="previewImg" src="" alt="Generated art" />
         <div class="preview-actions">
-          <button class="btn-saved" id="savedBadge">Saved to Gallery</button>
+          <button class="btn-saved" id="savedBadge">
+            &#10003; Saved to Gallery
+          </button>
           <button class="btn-icon" id="deleteBtn" title="Delete">
             &#128465;
           </button>
@@ -334,12 +393,10 @@
           <div class="value" id="statsText"></div>
         </div>
       </div>
-
       <div class="status-msg" id="statusMsg"></div>
-
+      <div class="debug" id="debugLog"></div>
       <div class="publish-bar" id="publishBar" style="display: none"></div>
     </div>
-
     <script>
       var session = localStorage.getItem("frameArtSession");
       var user = null;
@@ -352,6 +409,69 @@
         pairedTv = JSON.parse(localStorage.getItem("pairedTv") || "null");
       } catch (e) {}
       var devices = [];
+      var isDebug = window.location.search.includes("debug");
+      var LOCAL_SERVER = localStorage.getItem("localServer") || "";
+      var localParam = new URLSearchParams(window.location.search).get("local");
+      if (localParam) {
+        LOCAL_SERVER = "http://" + localParam;
+        localStorage.setItem("localServer", LOCAL_SERVER);
+      }
+
+      function dbg(msg) {
+        if (!isDebug) return;
+        var el = document.getElementById("debugLog");
+        el.className = "debug show";
+        el.textContent += new Date().toLocaleTimeString() + " " + msg + "\n";
+        el.scrollTop = el.scrollHeight;
+      }
+
+      // Overlay toggles
+      document
+        .getElementById("ovWeather")
+        .addEventListener("change", function () {
+          document.getElementById("weatherOpts").className =
+            "overlay-sub" + (this.checked ? " show" : "");
+          if (this.checked && !document.getElementById("weatherCity").value)
+            detectLocation();
+        });
+      document
+        .getElementById("ovMarket")
+        .addEventListener("change", function () {
+          document.getElementById("marketOpts").className =
+            "overlay-sub" + (this.checked ? " show" : "");
+        });
+
+      function detectLocation() {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function (pos) {
+            var lat = pos.coords.latitude.toFixed(2);
+            var lon = pos.coords.longitude.toFixed(2);
+            localStorage.setItem("weather.lat", lat);
+            localStorage.setItem("weather.lon", lon);
+            fetch("https://geocode.maps.co/reverse?lat=" + lat + "&lon=" + lon)
+              .then(function (r) {
+                return r.json();
+              })
+              .then(function (d) {
+                var city =
+                  d.address?.city ||
+                  d.address?.town ||
+                  d.address?.county ||
+                  "Detected";
+                document.getElementById("weatherCity").value = city;
+                localStorage.setItem("weather.city", city);
+                dbg("Location: " + city + " (" + lat + ", " + lon + ")");
+              })
+              .catch(function () {
+                document.getElementById("weatherCity").value = "Lat " + lat;
+              });
+          });
+        }
+      }
+
+      // Restore saved overlay settings
+      var savedCity = localStorage.getItem("weather.city");
+      if (savedCity) document.getElementById("weatherCity").value = savedCity;
 
       // Auth
       function handleGoogleCredential(response) {
@@ -373,7 +493,6 @@
             }
           });
       }
-
       function showApp() {
         document.getElementById("loginView").style.display = "none";
         document.getElementById("appView").style.display = "block";
@@ -381,44 +500,39 @@
         loadDevices();
         updateTvStatus();
       }
-
       function loadConfig() {
         fetch("/api/generation/config")
           .then(function (r) {
             return r.json();
           })
           .then(function (cfg) {
-            // Theme with default
             var themeSel = document.getElementById("themeSelect");
             var savedTheme = localStorage.getItem("studio.theme") || "forest";
             cfg.themes.forEach(function (t) {
-              var opt = document.createElement("option");
-              opt.value = t.id;
-              opt.textContent = t.label;
-              if (t.id === savedTheme) opt.selected = true;
-              themeSel.appendChild(opt);
+              var o = document.createElement("option");
+              o.value = t.id;
+              o.textContent = t.label;
+              if (t.id === savedTheme) o.selected = true;
+              themeSel.appendChild(o);
             });
             themeSel.addEventListener("change", function () {
               localStorage.setItem("studio.theme", themeSel.value);
             });
-
-            // Style with default
             var styleSel = document.getElementById("styleSelect");
             var savedStyle =
               localStorage.getItem("studio.style") || "photorealistic";
             cfg.styles.forEach(function (s) {
-              var opt = document.createElement("option");
-              opt.value = s.id;
-              opt.textContent = s.label;
-              if (s.id === savedStyle) opt.selected = true;
-              styleSel.appendChild(opt);
+              var o = document.createElement("option");
+              o.value = s.id;
+              o.textContent = s.label;
+              if (s.id === savedStyle) o.selected = true;
+              styleSel.appendChild(o);
             });
             styleSel.addEventListener("change", function () {
               localStorage.setItem("studio.style", styleSel.value);
             });
           });
       }
-
       function loadDevices() {
         fetch("/api/devices")
           .then(function (r) {
@@ -433,13 +547,12 @@
       function updateTvStatus() {
         var el = document.getElementById("tvStatus");
         var bar = document.getElementById("publishBar");
-
         if (pairedTv && pairedTv.tvIp) {
           el.innerHTML =
-            '<div class="tv-status paired">TV: ' +
+            '<div class="tv-status paired">&#9679; TV paired: ' +
             pairedTv.tvIp +
-            " (paired)</div>";
-          // Show publish button when we have a scene
+            (LOCAL_SERVER ? " (bridge: " + LOCAL_SERVER + ")" : "") +
+            "</div>";
           if (currentScene) {
             bar.style.display = "flex";
             bar.innerHTML =
@@ -448,22 +561,13 @@
               .getElementById("publishBtn")
               .addEventListener("click", doPublish);
           }
-        } else if (devices.length > 0) {
-          // Has scanned devices but not paired
-          el.innerHTML =
-            '<div class="tv-status unpaired">TV found but not paired. <a href="/pair" style="color:#0ff;">Pair now</a></div>';
-          if (currentScene) {
-            bar.style.display = "flex";
-            bar.innerHTML =
-              '<button class="btn-nopair" onclick="location.href=\'/pair\'">Pair a TV to publish</button>';
-          }
         } else {
           el.innerHTML =
             '<div class="tv-status unpaired">No TV paired. <a href="/pair" style="color:#0ff;">Pair your Frame TV</a></div>';
           if (currentScene) {
             bar.style.display = "flex";
             bar.innerHTML =
-              '<button class="btn-nopair" onclick="location.href=\'/pair\'">Pair a TV to publish</button>';
+              '<button class="btn-nopair" onclick="location.href=\'/pair\'">Pair a TV first</button>';
           }
         }
       }
@@ -474,16 +578,14 @@
         btn.disabled = true;
         btn.textContent = "Generating...";
         btn.className = "generate-btn generating";
-
         document.getElementById("progressSection").style.display = "block";
         document.getElementById("previewSection").style.display = "none";
         document.getElementById("publishBar").style.display = "none";
-
         var startTime = Date.now();
         var progressTimer = setInterval(function () {
           var elapsed = Math.floor((Date.now() - startTime) / 1000);
-          var pct = Math.min(95, (elapsed / 35) * 100);
-          document.getElementById("progressFill").style.width = pct + "%";
+          document.getElementById("progressFill").style.width =
+            Math.min(95, (elapsed / 35) * 100) + "%";
           var msg =
             elapsed < 5
               ? "Gathering weather & context..."
@@ -495,19 +597,18 @@
           document.getElementById("progressText").textContent =
             msg + " (" + elapsed + "s)";
         }, 1000);
-
         var body = {
           theme: document.getElementById("themeSelect").value || "forest",
           imageStyle:
             document.getElementById("styleSelect").value || "photorealistic",
-          provider: "openai",
+          provider: "gemini",
           overlays: {
             showWeather: document.getElementById("ovWeather").checked,
             showMarket: document.getElementById("ovMarket").checked,
             showQuote: document.getElementById("ovQuote").checked,
           },
         };
-
+        dbg("Generate: " + JSON.stringify(body));
         fetch("/api/generate", {
           method: "POST",
           headers: {
@@ -517,6 +618,7 @@
           body: JSON.stringify(body),
         })
           .then(function (r) {
+            dbg("Response: " + r.status);
             return r.json();
           })
           .then(function (data) {
@@ -525,41 +627,40 @@
             btn.disabled = false;
             btn.textContent = "Generate Art";
             btn.className = "generate-btn";
-
             if (data.error) {
               setStatus(data.error, true);
+              dbg("Error: " + data.error);
               return;
             }
-
             currentScene = data;
             document.getElementById("previewSection").style.display = "block";
             document.getElementById("previewImg").src = data.imageUrl;
             document.getElementById("promptText").textContent =
               data.prompt || "";
             var ctx = data.context || {};
-            var ctxParts = [];
+            var parts = [];
             if (ctx.weather)
-              ctxParts.push(
+              parts.push(
                 "Weather: " +
                   (ctx.weather.description || ctx.weather.sky || ""),
               );
             if (ctx.market)
-              ctxParts.push(
+              parts.push(
                 "Market: " +
                   (ctx.market.symbol || "") +
                   " " +
-                  (ctx.market.changePercent > 0 ? "+" : "") +
+                  ((ctx.market.changePercent || 0) > 0 ? "+" : "") +
                   (ctx.market.changePercent || 0).toFixed(2) +
                   "%",
               );
-            if (ctx.quote) ctxParts.push('"' + (ctx.quote.text || "") + '"');
+            if (ctx.quote) parts.push('"' + (ctx.quote.text || "") + '"');
             document.getElementById("contextText").textContent =
-              ctxParts.join(" | ") || "No context";
+              parts.join(" | ") || "No context";
             document.getElementById("statsText").textContent =
               (data.durationMs / 1000).toFixed(1) + "s via " + data.provider;
-
             updateTvStatus();
             setStatus("Art generated and saved to gallery!", false);
+            dbg("Scene: " + data.sceneId + " " + data.durationMs + "ms");
           })
           .catch(function (err) {
             clearInterval(progressTimer);
@@ -568,32 +669,21 @@
             btn.textContent = "Generate Art";
             btn.className = "generate-btn";
             setStatus("Error: " + err.message, true);
+            dbg("Fetch error: " + err.message);
           });
       });
-
-      // Local upload server — for TV uploads when EC2 can't reach TV
-      var LOCAL_SERVER = localStorage.getItem("localServer") || "";
-      // Auto-detect: if URL has ?local=IP:PORT, save it
-      var localParam = new URLSearchParams(window.location.search).get("local");
-      if (localParam) {
-        LOCAL_SERVER = "http://" + localParam;
-        localStorage.setItem("localServer", LOCAL_SERVER);
-        setStatus("Local bridge set: " + LOCAL_SERVER, false);
-      }
 
       function doPublish() {
         if (!currentScene || !pairedTv) return;
         var btn = document.getElementById("publishBtn");
         btn.disabled = true;
         btn.textContent = "Publishing...";
-
-        // Use local server for upload if available, cloud for image source
         var uploadServer = LOCAL_SERVER || window.location.origin;
         var imageSource = window.location.origin + currentScene.imageUrl;
         setStatus(
           "Uploading via " + (LOCAL_SERVER ? "local bridge" : "cloud") + "...",
         );
-
+        dbg("Publish: " + uploadServer + " image: " + imageSource);
         fetch(uploadServer + "/api/upload", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -607,16 +697,16 @@
             return r.json();
           })
           .then(function (data) {
+            dbg("Upload result: " + JSON.stringify(data));
             if (data.success) {
               setStatus(
-                "Published to TV! (" +
+                "Published! (" +
                   data.contentId +
                   ", " +
                   (data.durationMs / 1000).toFixed(1) +
-                  "s) — now displaying on TV",
+                  "s) — displaying on TV",
                 false,
               );
-              // Also call set as display
               fetch(uploadServer + "/api/set-display", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -633,12 +723,12 @@
           })
           .catch(function (err) {
             setStatus("Publish error: " + err.message, true);
+            dbg("Publish error: " + err.message);
             btn.disabled = false;
             btn.textContent = "Publish to TV";
           });
       }
 
-      // Delete
       document
         .getElementById("deleteBtn")
         .addEventListener("click", function () {
@@ -649,28 +739,23 @@
             setStatus("Image deleted.", false);
           }
         });
-
-      // Edit/Regenerate
       document.getElementById("editBtn").addEventListener("click", function () {
         if (currentScene) {
           var feedback = prompt(
-            "What would you change? (e.g., 'more vibrant colors', 'add mountains')",
+            "What would you change? (e.g., 'more vibrant', 'add mountains')",
           );
           if (feedback) {
-            setStatus("Regenerating with feedback: " + feedback, false);
-            // TODO: pass feedback as style hints to generation
+            setStatus("Regenerating with: " + feedback, false);
             document.getElementById("genBtn").click();
           }
         }
       });
-
       function setStatus(msg, isError) {
         var el = document.getElementById("statusMsg");
         el.textContent = msg;
         el.className = "status-msg " + (isError ? "error" : "success");
       }
 
-      // Init
       if (session && user) {
         fetch("/api/auth/me", {
           headers: { Authorization: "Bearer " + session },
@@ -687,7 +772,6 @@
           initLogin();
         };
       }
-
       function initLogin() {
         document.getElementById("loginView").style.display = "block";
         fetch("/api/config")

@@ -17,58 +17,80 @@
         background: #0f0f1a;
         color: #fff;
         min-height: 100vh;
+        padding-bottom: 80px;
       }
-
       .header {
-        padding: 16px 20px;
+        padding: 12px 16px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         border-bottom: 1px solid #222;
+        position: sticky;
+        top: 0;
+        background: #0f0f1a;
+        z-index: 10;
       }
       .header h1 {
-        font-size: 20px;
+        font-size: 18px;
+        color: #0ff;
+      }
+      .nav {
+        display: flex;
+        gap: 16px;
+        font-size: 13px;
+      }
+      .nav a {
+        color: #666;
+        text-decoration: none;
+      }
+      .nav a.active,
+      .nav a:hover {
         color: #0ff;
       }
       .user-info {
         display: flex;
         align-items: center;
-        gap: 8px;
-        font-size: 13px;
+        gap: 6px;
+        font-size: 12px;
         color: #888;
       }
       .user-info img {
-        width: 28px;
-        height: 28px;
+        width: 24px;
+        height: 24px;
         border-radius: 50%;
       }
-
-      .tv-selector {
-        padding: 12px 20px;
-        background: #1a1a2e;
-        border-bottom: 1px solid #222;
+      .section-title {
+        padding: 16px 16px 8px;
+        font-size: 15px;
+        color: #0ff;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
       }
-      .tv-selector select {
-        background: #0f0f1a;
-        color: #fff;
-        border: 1px solid #333;
-        padding: 8px 12px;
-        border-radius: 8px;
-        font-size: 14px;
-        width: 100%;
+      .section-title .count {
+        font-size: 12px;
+        color: #666;
+        font-weight: normal;
       }
-
       .gallery {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-        gap: 12px;
-        padding: 16px;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 10px;
+        padding: 8px 16px;
       }
       .art-card {
         background: #1a1a2e;
-        border-radius: 12px;
+        border-radius: 10px;
         overflow: hidden;
         position: relative;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+      .art-card:hover {
+        transform: scale(1.02);
+      }
+      .art-card.selected {
+        outline: 2px solid #0ff;
       }
       .art-card img {
         width: 100%;
@@ -77,35 +99,48 @@
         display: block;
       }
       .art-card .info {
-        padding: 8px 10px;
-        font-size: 12px;
+        padding: 6px 8px;
+        font-size: 11px;
         color: #888;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
-      .art-card .current {
+      .art-card .check {
         position: absolute;
-        top: 8px;
-        left: 8px;
-        background: #0ff;
-        color: #000;
-        font-size: 10px;
-        font-weight: 600;
-        padding: 2px 8px;
-        border-radius: 4px;
+        top: 6px;
+        right: 6px;
+        width: 22px;
+        height: 22px;
+        background: rgba(0, 0, 0, 0.6);
+        border: 2px solid #555;
+        border-radius: 50%;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        color: #0ff;
       }
-
+      .art-card.selected .check {
+        display: flex;
+        border-color: #0ff;
+        background: rgba(0, 255, 255, 0.2);
+      }
+      .art-card .check::after {
+        content: "✓";
+      }
       .feedback {
         display: flex;
-        gap: 4px;
-        padding: 0 10px 10px;
+        gap: 2px;
+        padding: 4px 8px 8px;
       }
       .feedback button {
         flex: 1;
-        padding: 8px;
+        padding: 6px;
         border: none;
-        border-radius: 8px;
-        font-size: 18px;
+        border-radius: 6px;
+        font-size: 14px;
         cursor: pointer;
-        transition: all 0.2s;
       }
       .btn-up {
         background: #1a2a1a;
@@ -121,47 +156,52 @@
       .btn-down.active {
         background: #a03;
       }
-      .btn-select {
-        background: #1a1a3a;
-        font-size: 12px;
-        color: #aaa;
+      .action-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 10px 16px;
+        background: #1a1a2e;
+        border-top: 1px solid #333;
+        display: none;
       }
-      .btn-select:hover {
-        background: #0a3a6a;
-        color: #fff;
-      }
-
-      .actions {
-        padding: 16px;
+      .action-bar.show {
         display: flex;
         gap: 8px;
       }
-      .actions button {
+      .action-bar button {
         flex: 1;
-        padding: 14px;
+        padding: 12px;
         border: none;
-        border-radius: 12px;
-        font-size: 16px;
+        border-radius: 10px;
+        font-size: 14px;
         font-weight: 600;
         cursor: pointer;
       }
-      .btn-sync {
-        background: #4a90d9;
+      .action-bar .btn-push {
+        background: #0a5;
         color: #fff;
       }
-      .btn-sync:hover {
-        background: #3a80c9;
-      }
-      .btn-sync:disabled {
+      .action-bar .btn-push:disabled {
         opacity: 0.5;
-        cursor: not-allowed;
       }
-
+      .action-bar .btn-clear {
+        background: #333;
+        color: #aaa;
+      }
+      .empty {
+        text-align: center;
+        padding: 40px 20px;
+        color: #666;
+        grid-column: 1/-1;
+      }
+      .empty a {
+        color: #0ff;
+      }
       .status-bar {
-        padding: 12px 20px;
+        padding: 10px 16px;
         font-size: 13px;
-        color: #888;
-        border-top: 1px solid #222;
         text-align: center;
       }
       .status-bar.success {
@@ -170,17 +210,6 @@
       .status-bar.error {
         color: #a03;
       }
-
-      .empty {
-        text-align: center;
-        padding: 60px 20px;
-        color: #666;
-      }
-      .empty h2 {
-        color: #888;
-        margin-bottom: 8px;
-      }
-
       .login-prompt {
         text-align: center;
         padding: 80px 20px;
@@ -198,63 +227,62 @@
   <body>
     <div id="loginView" class="login-prompt">
       <h1>Frame Art Gallery</h1>
-      <p>Sign in to manage your TV's art collection</p>
+      <p>Sign in to manage your art</p>
       <div
         id="googleBtn"
         style="display: flex; justify-content: center; margin: 24px 0"
       ></div>
     </div>
-
     <div id="appView" style="display: none">
       <div class="header">
         <h1>Gallery</h1>
-        <div class="user-info">
-          <span id="userName"></span>
-          <img id="userPic" src="" alt="" />
+        <div class="nav">
+          <a href="/pair">Pair</a>
+          <a href="/studio">Studio</a>
+          <a href="/gallery" class="active">Gallery</a>
         </div>
       </div>
 
-      <div class="tv-selector">
-        <select id="tvSelect">
-          <option value="">Select a TV...</option>
-        </select>
+      <div class="section-title">
+        Generated Art <span class="count" id="genCount"></span>
       </div>
+      <div id="genGrid" class="gallery"></div>
 
-      <h2 style="padding: 16px 16px 0; font-size: 16px; color: #0ff">
-        Generated Art
-      </h2>
-      <div id="generatedGrid" class="gallery"></div>
-
-      <h2 style="padding: 16px 16px 0; font-size: 16px; color: #888">On TV</h2>
-      <div id="galleryGrid" class="gallery"></div>
-
-      <div class="actions">
-        <button class="btn-sync" id="syncBtn" disabled>Sync New Art</button>
+      <div class="section-title">
+        On TV <span class="count" id="tvCount"></span>
       </div>
+      <div id="tvGrid" class="gallery"></div>
 
       <div class="status-bar" id="statusBar">
-        Select a TV to view its art collection
+        Tap images to select, then push to TV
+      </div>
+      <div class="action-bar" id="actionBar">
+        <button class="btn-clear" id="clearSelBtn">Clear</button>
+        <button class="btn-push" id="pushBtn">Push to TV</button>
       </div>
     </div>
-
     <script>
       var session = localStorage.getItem("frameArtSession");
       var user = null;
       try {
         user = JSON.parse(localStorage.getItem("frameArtUser") || "null");
       } catch (e) {}
-      var currentTvId = null;
-      var artList = [];
+      var pairedTv = null;
+      try {
+        pairedTv = JSON.parse(localStorage.getItem("pairedTv") || "null");
+      } catch (e) {}
+      var LOCAL_SERVER = localStorage.getItem("localServer") || "";
+      var selectedScenes = new Set();
+      var scenes = [];
 
-      // Google Sign-In
       function handleGoogleCredential(response) {
         fetch("/api/auth/google", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ idToken: response.credential }),
         })
-          .then(function (res) {
-            return res.json();
+          .then(function (r) {
+            return r.json();
           })
           .then(function (data) {
             if (data.sessionId) {
@@ -266,152 +294,194 @@
             }
           });
       }
-
       function showApp() {
         document.getElementById("loginView").style.display = "none";
         document.getElementById("appView").style.display = "block";
-        document.getElementById("userName").textContent = user.name;
-        if (user.picture) document.getElementById("userPic").src = user.picture;
-        loadDevices();
-        loadGeneratedScenes();
+        loadScenes();
+        if (pairedTv) loadTvArt();
       }
 
-      function loadGeneratedScenes() {
+      function loadScenes() {
         fetch("/api/scenes")
           .then(function (r) {
             return r.json();
           })
-          .then(function (scenes) {
-            var grid = document.getElementById("generatedGrid");
-            if (!scenes || scenes.length === 0) {
+          .then(function (data) {
+            scenes = data || [];
+            document.getElementById("genCount").textContent =
+              scenes.length + " images";
+            var grid = document.getElementById("genGrid");
+            if (!scenes.length) {
               grid.innerHTML =
-                '<div class="empty" style="grid-column:1/-1;"><h2>No generated art yet</h2><p>Go to <a href="/studio" style="color:#0ff">Studio</a> to create some!</p></div>';
+                '<div class="empty">No art yet. <a href="/studio">Generate some!</a></div>';
               return;
             }
             grid.innerHTML = "";
-            scenes.forEach(function (scene) {
+            scenes.forEach(function (s) {
               var card = document.createElement("div");
-              card.className = "art-card";
+              card.className =
+                "art-card" + (selectedScenes.has(s.sceneId) ? " selected" : "");
+              card.dataset.id = s.sceneId;
               card.innerHTML =
+                '<div class="check"></div>' +
                 '<img src="' +
-                scene.imageUrl +
-                '" alt="Generated art" style="width:100%;aspect-ratio:16/9;object-fit:cover;">' +
+                s.imageUrl +
+                '" alt="Art">' +
                 '<div class="info">' +
-                (scene.prompt || "").substring(0, 50) +
-                "...</div>" +
+                (s.prompt || "").substring(0, 40) +
+                "</div>" +
                 '<div class="feedback">' +
-                '<button class="btn-up" onclick="rate(\'' +
-                scene.sceneId +
+                '<button class="btn-up" onclick="event.stopPropagation();rate(\'' +
+                s.sceneId +
                 "','up',this)\">👍</button>" +
-                '<button class="btn-down" onclick="rate(\'' +
-                scene.sceneId +
+                '<button class="btn-down" onclick="event.stopPropagation();rate(\'' +
+                s.sceneId +
                 "','down',this)\">👎</button>" +
                 "</div>";
+              card.addEventListener("click", function () {
+                toggleSelect(s.sceneId, card);
+              });
               grid.appendChild(card);
             });
           });
       }
 
-      function loadDevices() {
-        fetch("/api/devices")
-          .then(function (r) {
-            return r.json();
-          })
-          .then(function (devices) {
-            var sel = document.getElementById("tvSelect");
-            sel.innerHTML = '<option value="">Select a TV...</option>';
-            devices.forEach(function (d) {
-              var opt = document.createElement("option");
-              opt.value = d.tvId;
-              opt.textContent =
-                (d.name || d.modelName || d.tvId) + " (" + d.tvIp + ")";
-              opt.dataset.ip = d.tvIp;
-              sel.appendChild(opt);
-            });
-          });
-      }
-
-      document
-        .getElementById("tvSelect")
-        .addEventListener("change", function () {
-          currentTvId = this.value;
-          var opt = this.options[this.selectedIndex];
-          if (currentTvId && opt.dataset.ip) {
-            loadGallery(opt.dataset.ip);
-            document.getElementById("syncBtn").disabled = false;
-          } else {
-            document.getElementById("galleryGrid").innerHTML = "";
-            document.getElementById("syncBtn").disabled = true;
-          }
-        });
-
-      function loadGallery(tvIp) {
-        setStatus("Loading art from TV...");
-        fetch("/api/tv/init", {
+      function loadTvArt() {
+        if (!pairedTv || !LOCAL_SERVER) {
+          document.getElementById("tvGrid").innerHTML =
+            '<div class="empty">Pair a TV and set local bridge to see TV art</div>';
+          return;
+        }
+        fetch(LOCAL_SERVER + "/api/tv/init", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tvIp: tvIp }),
+          body: JSON.stringify({ tvIp: pairedTv.tvIp }),
         })
           .then(function (r) {
             return r.json();
           })
           .then(function (data) {
-            artList = data.imageIds || [];
-            renderGallery();
-            setStatus(
-              artList.length + " images on TV (" + data.maxImages + " max)",
-            );
+            var ids = data.imageIds || [];
+            document.getElementById("tvCount").textContent =
+              ids.length + "/" + data.maxImages + " images";
+            var grid = document.getElementById("tvGrid");
+            if (!ids.length) {
+              grid.innerHTML = '<div class="empty">No art on TV yet</div>';
+              return;
+            }
+            grid.innerHTML = "";
+            ids.forEach(function (id) {
+              var card = document.createElement("div");
+              card.className = "art-card";
+              card.innerHTML =
+                '<div style="width:100%;aspect-ratio:16/9;background:#223;display:flex;align-items:center;justify-content:center;font-size:12px;color:#556;">' +
+                id +
+                '</div><div class="info">' +
+                id +
+                "</div>";
+              grid.appendChild(card);
+            });
           })
-          .catch(function (e) {
-            setStatus("Failed to load: " + e.message, true);
+          .catch(function () {
+            document.getElementById("tvGrid").innerHTML =
+              '<div class="empty">Could not reach TV</div>';
           });
       }
 
-      function renderGallery() {
-        var grid = document.getElementById("galleryGrid");
-        if (artList.length === 0) {
-          grid.innerHTML =
-            '<div class="empty"><h2>No art yet</h2><p>Tap "Sync New Art" to upload some!</p></div>';
-          return;
+      function toggleSelect(sceneId, card) {
+        if (selectedScenes.has(sceneId)) {
+          selectedScenes.delete(sceneId);
+          card.classList.remove("selected");
+        } else {
+          selectedScenes.add(sceneId);
+          card.classList.add("selected");
         }
-        grid.innerHTML = "";
-        artList.forEach(function (id, idx) {
-          // We don't have thumbnails yet — show placeholder with ID
-          var card = document.createElement("div");
-          card.className = "art-card";
-          card.innerHTML =
-            '<div style="width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,#1a2a3a,#2a1a3a);display:flex;align-items:center;justify-content:center;font-size:14px;color:#666;">' +
-            id +
-            "</div>" +
-            '<div class="info">#' +
-            (idx + 1) +
-            " · " +
-            id +
-            "</div>" +
-            '<div class="feedback">' +
-            '<button class="btn-up" onclick="rate(\'' +
-            id +
-            "','up',this)\">👍</button>" +
-            '<button class="btn-down" onclick="rate(\'' +
-            id +
-            "','down',this)\">👎</button>" +
-            '<button class="btn-select" onclick="selectArt(\'' +
-            id +
-            "')\">Display</button>" +
-            "</div>";
-          grid.appendChild(card);
-        });
+        document.getElementById("actionBar").className =
+          "action-bar" + (selectedScenes.size > 0 ? " show" : "");
+        document.getElementById("pushBtn").textContent =
+          "Push " + selectedScenes.size + " to TV";
       }
 
-      function rate(contentId, rating, btn) {
-        // Visual feedback
+      document
+        .getElementById("clearSelBtn")
+        .addEventListener("click", function () {
+          selectedScenes.clear();
+          document.querySelectorAll(".art-card.selected").forEach(function (c) {
+            c.classList.remove("selected");
+          });
+          document.getElementById("actionBar").className = "action-bar";
+        });
+
+      document.getElementById("pushBtn").addEventListener("click", function () {
+        if (!pairedTv || !LOCAL_SERVER || selectedScenes.size === 0) return;
+        var btn = this;
+        btn.disabled = true;
+        btn.textContent = "Pushing...";
+        setStatus("Uploading " + selectedScenes.size + " images to TV...");
+
+        var ids = Array.from(selectedScenes);
+        var idx = 0;
+        function pushNext() {
+          if (idx >= ids.length) {
+            btn.disabled = false;
+            btn.textContent = "Push " + ids.length + " to TV";
+            setStatus("Done! " + ids.length + " images pushed to TV.", false);
+            selectedScenes.clear();
+            document
+              .querySelectorAll(".art-card.selected")
+              .forEach(function (c) {
+                c.classList.remove("selected");
+              });
+            document.getElementById("actionBar").className = "action-bar";
+            loadTvArt();
+            return;
+          }
+          var scene = scenes.find(function (s) {
+            return s.sceneId === ids[idx];
+          });
+          if (!scene) {
+            idx++;
+            pushNext();
+            return;
+          }
+          setStatus("Uploading " + (idx + 1) + "/" + ids.length + "...");
+          fetch(LOCAL_SERVER + "/api/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tvId: pairedTv.tvId,
+              tvIp: pairedTv.tvIp,
+              imageUrl: window.location.origin + scene.imageUrl,
+            }),
+          })
+            .then(function (r) {
+              return r.json();
+            })
+            .then(function (data) {
+              if (data.success) {
+                idx++;
+                setTimeout(pushNext, 1000);
+              } else {
+                setStatus("Failed on " + (idx + 1) + ": " + data.error, true);
+                btn.disabled = false;
+                btn.textContent = "Push to TV";
+              }
+            })
+            .catch(function (e) {
+              setStatus("Error: " + e.message, true);
+              btn.disabled = false;
+              btn.textContent = "Push to TV";
+            });
+        }
+        pushNext();
+      });
+
+      function rate(sceneId, rating, btn) {
         var siblings = btn.parentElement.querySelectorAll("button");
         siblings.forEach(function (b) {
           b.classList.remove("active");
         });
         btn.classList.add("active");
-
-        // Send to server
         fetch("/api/feedback", {
           method: "POST",
           headers: {
@@ -419,87 +489,19 @@
             Authorization: "Bearer " + session,
           },
           body: JSON.stringify({
-            tvId: currentTvId,
-            contentId: contentId,
+            tvId: pairedTv?.tvId || "none",
+            contentId: sceneId,
             rating: rating,
           }),
-        })
-          .then(function (r) {
-            return r.json();
-          })
-          .then(function (data) {
-            setStatus(
-              rating === "up"
-                ? "Liked! More like this coming..."
-                : "Got it, less of this style.",
-            );
-          });
+        }).catch(function () {});
       }
-
-      function selectArt(contentId) {
-        var sel = document.getElementById("tvSelect");
-        var opt = sel.options[sel.selectedIndex];
-        if (!opt.dataset.ip) return;
-
-        setStatus("Switching to " + contentId + "...");
-        fetch("/api/upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tvId: currentTvId,
-            tvIp: opt.dataset.ip,
-            selectOnly: contentId,
-          }),
-        })
-          .then(function (r) {
-            return r.json();
-          })
-          .then(function (data) {
-            setStatus("Now showing: " + contentId);
-          });
-      }
-
-      document.getElementById("syncBtn").addEventListener("click", function () {
-        var sel = document.getElementById("tvSelect");
-        var opt = sel.options[sel.selectedIndex];
-        if (!opt.dataset.ip) return;
-
-        this.disabled = true;
-        this.textContent = "Syncing...";
-        setStatus("Uploading new art to TV...");
-
-        fetch("/api/upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tvId: currentTvId, tvIp: opt.dataset.ip }),
-        })
-          .then(function (r) {
-            return r.json();
-          })
-          .then(function (data) {
-            if (data.success) {
-              setStatus("New art uploaded: " + data.contentId);
-              loadGallery(opt.dataset.ip);
-            } else {
-              setStatus("Upload failed: " + data.error, true);
-            }
-            document.getElementById("syncBtn").disabled = false;
-            document.getElementById("syncBtn").textContent = "Sync New Art";
-          })
-          .catch(function (e) {
-            setStatus("Error: " + e.message, true);
-            document.getElementById("syncBtn").disabled = false;
-            document.getElementById("syncBtn").textContent = "Sync New Art";
-          });
-      });
 
       function setStatus(msg, isError) {
-        var bar = document.getElementById("statusBar");
-        bar.textContent = msg;
-        bar.className = "status-bar" + (isError ? " error" : " success");
+        var el = document.getElementById("statusBar");
+        el.textContent = msg;
+        el.className = "status-bar" + (isError ? " error" : " success");
       }
 
-      // Init
       if (session && user) {
         fetch("/api/auth/me", {
           headers: { Authorization: "Bearer " + session },
@@ -512,9 +514,10 @@
             initLogin();
           });
       } else {
-        initLogin();
+        window.onload = function () {
+          initLogin();
+        };
       }
-
       function initLogin() {
         document.getElementById("loginView").style.display = "block";
         fetch("/api/config")
