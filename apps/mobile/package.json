@@ -4,23 +4,25 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
-    "android": "expo run:android",
     "build:android": "eas build --platform android --profile preview"
   },
   "dependencies": {
     "expo": "~52.0.0",
+    "expo-asset": "^55.0.15",
+    "expo-constants": "^55.0.14",
+    "expo-font": "^55.0.6",
     "expo-router": "~4.0.0",
     "expo-status-bar": "~2.0.0",
+    "expo-web-browser": "~14.0.0",
     "react": "18.3.1",
     "react-native": "0.76.9",
     "react-native-safe-area-context": "4.14.0",
     "react-native-screens": "~4.4.0",
-    "react-native-tcp-socket": "^6.2.0",
-    "@react-native-google-signin/google-signin": "^13.0.0",
-    "expo-dev-client": "~5.0.0"
+    "react-native-webview": "13.12.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.0",
+    "@babel/runtime": "^7.25.0",
     "@types/react": "~18.3.0",
     "typescript": "~5.3.0"
   },

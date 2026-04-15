@@ -7,22 +7,17 @@
     "icon": "./assets/icon.png",
     "scheme": "frameart",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
     "android": {
       "package": "com.frameart.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0f0f1a"
-      },
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+      }
     },
-    "plugins": [
-      "expo-router"
-    ],
+    "plugins": ["expo-router"],
     "extra": {
-      "cloudUrl": "https://frameapp.dmarantz.com",
       "eas": {
-        "projectId": "frame-art-mobile"
+        "projectId": "8095f300-224a-4b4d-990b-2442e64ae275"
       }
     }
   }
