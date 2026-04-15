@@ -415,11 +415,9 @@ app.post("/api/pair-by-ip", optionalAuth, async (req, res) => {
 
     res.json({ success: true, tvId, tvIp, device: metadata });
   } catch (err: unknown) {
-    res
-      .status(500)
-      .json({
-        error: err instanceof Error ? err.message : "Could not reach TV",
-      });
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Could not reach TV",
+    });
   }
 });
 
@@ -567,6 +565,24 @@ app.post("/api/tv/init", async (req, res) => {
     res
       .status(500)
       .json({ error: err instanceof Error ? err.message : "Unknown error" });
+  }
+});
+
+/** Select an image and activate art mode display */
+app.post("/api/set-display", async (req, res) => {
+  const { tvIp, contentId } = req.body;
+  if (!tvIp || !contentId) {
+    res.status(400).json({ error: "Missing tvIp or contentId" });
+    return;
+  }
+  try {
+    console.log(`Setting display: ${contentId} on ${tvIp}`);
+    const result = await selectAndActivate(tvIp, contentId);
+    res.json({ success: result, contentId });
+  } catch (err: unknown) {
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : "Failed" });
   }
 });
 

@@ -613,9 +613,18 @@
                   data.contentId +
                   ", " +
                   (data.durationMs / 1000).toFixed(1) +
-                  "s)",
+                  "s) — now displaying on TV",
                 false,
               );
+              // Also call set as display
+              fetch(uploadServer + "/api/set-display", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  tvIp: pairedTv.tvIp,
+                  contentId: data.contentId,
+                }),
+              }).catch(function () {});
             } else {
               setStatus("Publish failed: " + (data.error || "unknown"), true);
             }
