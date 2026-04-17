@@ -5,6 +5,7 @@
 import { randomUUID } from "crypto";
 import { writeFile, mkdir, readFile } from "fs/promises";
 import path from "path";
+import { pickQuote } from "./quotes.js";
 // Types — use direct path to avoid ESM/CJS resolution issues
 type AppSettings = any;
 type ImageProviderName = "openai" | "gemini" | "mock";
@@ -101,6 +102,10 @@ export interface GenerateOptions {
     showWeather?: boolean;
     showMarket?: boolean;
     showQuote?: boolean;
+    quoteCategory?: string;
+    marketSymbol?: string;
+    weatherCity?: string;
+    tempUnit?: string;
   };
 }
 
@@ -127,12 +132,30 @@ export async function generate(
     settings.location.lon = parseFloat(process.env.DEFAULT_LONGITUDE ?? "0");
   }
 
-  const { OpenMeteoWeatherProvider, MockMarketProvider, MockQuoteProvider } =
+  const { OpenMeteoWeatherProvider, MockMarketProvider } =
     await loadProviders();
+  // Use server's 200-quote collection with category support
+  const quoteCategory = options.overlays?.quoteCategory || "random";
+  const quoteProvider = {
+    name: "server-quotes",
+    async getQuote() {
+      const q = pickQuote(quoteCategory);
+      return { text: q.text, author: q.author, source: q.category };
+    },
+    async healthCheck() {
+      return {
+        provider: "server-quotes",
+        status: "healthy" as const,
+        lastChecked: new Date().toISOString(),
+        latencyMs: 1,
+        message: "200 curated quotes available",
+      };
+    },
+  };
   const deps = {
     weather: new OpenMeteoWeatherProvider(),
     market: new MockMarketProvider(),
-    quote: new MockQuoteProvider(),
+    quote: quoteProvider,
     image: await getImageProvider(options.provider ?? settings.imageProvider),
   };
 
@@ -162,7 +185,7 @@ export async function generate(
       showWeather: overlayOpts.showWeather ?? false,
       showMarket: overlayOpts.showMarket ?? false,
       showQuote: overlayOpts.showQuote ?? false,
-      temperatureUnit: "celsius",
+      temperatureUnit: overlayOpts.tempUnit || "celsius",
     });
   }
 

@@ -361,6 +361,12 @@
               <option value="TSLA">TSLA</option>
             </select>
           </div>
+          <div class="overlay-sub" id="quoteOpts">
+            <span class="label">Category:</span>
+            <select id="quoteCategory">
+              <option value="random">Random</option>
+            </select>
+          </div>
         </div>
         <div id="tvStatus"></div>
         <button class="generate-btn" id="genBtn">Generate Art</button>
@@ -398,6 +404,10 @@
       <div class="publish-bar" id="publishBar" style="display: none"></div>
     </div>
     <script>
+      var params = new URLSearchParams(window.location.search);
+      var IS_APP = params.get("app") === "true" || !!window.__FRAME_ART_APP__;
+      var APP_TV_IP = params.get("tvIp") || "";
+
       var session = localStorage.getItem("frameArtSession");
       var user = null;
       try {
@@ -408,14 +418,12 @@
       try {
         pairedTv = JSON.parse(localStorage.getItem("pairedTv") || "null");
       } catch (e) {}
+      // In app mode, synthesize pairedTv from URL param
+      if (IS_APP && APP_TV_IP && !pairedTv) {
+        pairedTv = { tvIp: APP_TV_IP, tvId: "app" };
+      }
       var devices = [];
       var isDebug = window.location.search.includes("debug");
-      var LOCAL_SERVER = localStorage.getItem("localServer") || "";
-      var localParam = new URLSearchParams(window.location.search).get("local");
-      if (localParam) {
-        LOCAL_SERVER = "http://" + localParam;
-        localStorage.setItem("localServer", LOCAL_SERVER);
-      }
 
       function dbg(msg) {
         if (!isDebug) return;
@@ -439,6 +447,13 @@
         .addEventListener("change", function () {
           document.getElementById("marketOpts").className =
             "overlay-sub" + (this.checked ? " show" : "");
+        });
+      document
+        .getElementById("ovQuote")
+        .addEventListener("change", function () {
+          document.getElementById("quoteOpts").className =
+            "overlay-sub" + (this.checked ? " show" : "");
+          if (this.checked) loadQuoteCategories();
         });
 
       function detectLocation() {
@@ -472,6 +487,41 @@
       // Restore saved overlay settings
       var savedCity = localStorage.getItem("weather.city");
       if (savedCity) document.getElementById("weatherCity").value = savedCity;
+
+      var quoteCatsLoaded = false;
+      function loadQuoteCategories() {
+        if (quoteCatsLoaded) return;
+        fetch("/api/quotes/categories")
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (cats) {
+            var sel = document.getElementById("quoteCategory");
+            var saved =
+              localStorage.getItem("studio.quoteCategory") || "random";
+            cats.forEach(function (c) {
+              if (c.id === "random") return;
+              var o = document.createElement("option");
+              o.value = c.id;
+              o.textContent = c.label;
+              if (c.id === saved) o.selected = true;
+              sel.appendChild(o);
+            });
+            quoteCatsLoaded = true;
+          })
+          .catch(function () {});
+        document
+          .getElementById("quoteCategory")
+          .addEventListener("change", function () {
+            localStorage.setItem("studio.quoteCategory", this.value);
+          });
+      }
+
+      // App mode: hide nav header + skip login
+      if (IS_APP) {
+        var headerEl = document.querySelector(".header");
+        if (headerEl) headerEl.style.display = "none";
+      }
 
       // Auth
       function handleGoogleCredential(response) {
@@ -551,7 +601,6 @@
           el.innerHTML =
             '<div class="tv-status paired">&#9679; TV paired: ' +
             pairedTv.tvIp +
-            (LOCAL_SERVER ? " (bridge: " + LOCAL_SERVER + ")" : "") +
             "</div>";
           if (currentScene) {
             bar.style.display = "flex";
@@ -606,6 +655,12 @@
             showWeather: document.getElementById("ovWeather").checked,
             showMarket: document.getElementById("ovMarket").checked,
             showQuote: document.getElementById("ovQuote").checked,
+            quoteCategory:
+              document.getElementById("quoteCategory").value || "random",
+            marketSymbol:
+              document.getElementById("marketSymbol").value || "BTC",
+            weatherCity: document.getElementById("weatherCity").value || "",
+            tempUnit: document.getElementById("tempUnit").value || "celsius",
           },
         };
         dbg("Generate: " + JSON.stringify(body));
@@ -678,11 +733,25 @@
         var btn = document.getElementById("publishBtn");
         btn.disabled = true;
         btn.textContent = "Publishing...";
-        var uploadServer = LOCAL_SERVER || window.location.origin;
+
+        // App mode: use native bridge (TCP upload via React Native)
+        if (IS_APP && window.FrameArtBridge && window.ReactNativeWebView) {
+          setStatus("Sending to app for native upload...");
+          dbg("App bridge publish: " + currentScene.sceneId);
+          window.FrameArtBridge.publish(
+            currentScene.sceneId,
+            currentScene.imageUrl,
+          );
+          setStatus("Sent to app — uploading via native TCP", false);
+          btn.disabled = false;
+          btn.textContent = "Publish to TV";
+          return;
+        }
+
+        // Web mode: upload via cloud server
+        var uploadServer = window.location.origin;
         var imageSource = window.location.origin + currentScene.imageUrl;
-        setStatus(
-          "Uploading via " + (LOCAL_SERVER ? "local bridge" : "cloud") + "...",
-        );
+        setStatus("Uploading via cloud...");
         dbg("Publish: " + uploadServer + " image: " + imageSource);
         fetch(uploadServer + "/api/upload", {
           method: "POST",
@@ -707,7 +776,7 @@
                   "s) — displaying on TV",
                 false,
               );
-              fetch(uploadServer + "/api/set-display", {
+              fetch(window.location.origin + "/api/set-display", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -756,7 +825,10 @@
         el.className = "status-msg " + (isError ? "error" : "success");
       }
 
-      if (session && user) {
+      if (IS_APP) {
+        // App mode: skip login, go straight to studio
+        showApp();
+      } else if (session && user) {
         fetch("/api/auth/me", {
           headers: { Authorization: "Bearer " + session },
         })
