@@ -366,6 +366,84 @@ app.get("/api/quotes/stats", (_req, res) => {
   res.json(getQuoteStats());
 });
 
+// --- Telemetry ---
+
+interface TelemetryEntry {
+  deviceId: string;
+  sessionId: string;
+  tvIp: string;
+  screen: string;
+  timestamp: string;
+  logs: string[];
+  receivedAt: string;
+}
+
+const telemetryStore: TelemetryEntry[] = [];
+
+app.post("/api/telemetry", (req, res) => {
+  const { deviceId, sessionId, tvIp, screen, timestamp, logs } = req.body;
+  const entry: TelemetryEntry = {
+    deviceId: deviceId || "unknown",
+    sessionId: sessionId || "unknown",
+    tvIp: tvIp || "",
+    screen: screen || "",
+    timestamp: timestamp || new Date().toISOString(),
+    logs: (logs || []).slice(-200),
+    receivedAt: new Date().toISOString(),
+  };
+  telemetryStore.push(entry);
+  // Keep last 500 entries in memory
+  if (telemetryStore.length > 500)
+    telemetryStore.splice(0, telemetryStore.length - 500);
+  console.log(
+    `Telemetry: ${entry.deviceId}/${entry.sessionId} (${entry.screen}) — ${entry.logs.length} log lines`,
+  );
+  res.json({ ok: true, id: telemetryStore.length - 1 });
+});
+
+app.get("/api/telemetry", (_req, res) => {
+  // Return summary of all sessions
+  const sessions: Record<
+    string,
+    {
+      deviceId: string;
+      sessionId: string;
+      entries: number;
+      lastSeen: string;
+      screens: string[];
+    }
+  > = {};
+  for (const e of telemetryStore) {
+    const key = e.deviceId + "/" + e.sessionId;
+    if (!sessions[key]) {
+      sessions[key] = {
+        deviceId: e.deviceId,
+        sessionId: e.sessionId,
+        entries: 0,
+        lastSeen: e.receivedAt,
+        screens: [],
+      };
+    }
+    sessions[key].entries++;
+    sessions[key].lastSeen = e.receivedAt;
+    if (!sessions[key].screens.includes(e.screen))
+      sessions[key].screens.push(e.screen);
+  }
+  res.json(Object.values(sessions));
+});
+
+app.get("/api/telemetry/:deviceId/:sessionId", (req, res) => {
+  const { deviceId, sessionId } = req.params;
+  const entries = telemetryStore.filter(
+    (e) => e.deviceId === deviceId && e.sessionId === sessionId,
+  );
+  res.json(entries);
+});
+
+app.get("/telemetry", (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "telemetry.html"));
+});
+
 // --- TV Controls ---
 
 app.post("/api/tv/control", async (req, res) => {

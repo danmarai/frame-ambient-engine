@@ -527,6 +527,29 @@
           });
       }
 
+      // Receive progress messages from native app
+      window.__onNativeMessage = function (msg) {
+        dbg("NATIVE: " + msg.type + " " + (msg.stage || msg.error || ""));
+        if (msg.type === "uploadProgress") {
+          setStatus(msg.stage, false);
+        }
+        if (msg.type === "uploadComplete") {
+          setStatus(
+            "Art displayed on TV! (" +
+              (msg.durationMs / 1000).toFixed(1) +
+              "s)",
+            false,
+          );
+          var btn = document.getElementById("publishBtn");
+          resetPublishBtn(btn);
+        }
+        if (msg.type === "uploadError") {
+          setStatus("Upload failed: " + msg.error, true);
+          var btn2 = document.getElementById("publishBtn");
+          resetPublishBtn(btn2);
+        }
+      };
+
       // App mode: hide nav header (native app has its own)
       if (IS_APP) {
         var headerEl = document.querySelector(".header");
@@ -779,17 +802,13 @@
             resetPublishBtn(btn);
             return;
           }
-          dbg("Sending to native upload handler...");
+          dbg("Requesting upload to TV at " + pairedTv.tvIp + "...");
           setStatus("Preparing upload to TV...");
           window.FrameArtBridge.publish(
             currentScene.sceneId,
             currentScene.imageUrl,
           );
-          // The native side handles all stages and status updates
-          // Reset button after a delay (native upload takes time)
-          setTimeout(function () {
-            resetPublishBtn(btn);
-          }, 10000);
+          // Button stays disabled — native side sends progress via __onNativeMessage
           return;
         }
 
