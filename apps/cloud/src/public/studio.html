@@ -181,6 +181,10 @@
         background: #1a3a1a;
         color: #4f4;
         font-size: 12px;
+        cursor: pointer;
+      }
+      .btn-saved:hover {
+        background: #1a4a1a;
       }
       .btn-icon {
         background: #222;
@@ -423,14 +427,20 @@
         pairedTv = { tvIp: APP_TV_IP, tvId: "app" };
       }
       var devices = [];
-      var isDebug = window.location.search.includes("debug");
+      // In app mode, always show debug; in web mode, require ?debug
+      var isDebug = IS_APP || window.location.search.includes("debug");
+      var isPublishing = false;
 
       function dbg(msg) {
-        if (!isDebug) return;
         var el = document.getElementById("debugLog");
+        if (!isDebug) return;
         el.className = "debug show";
         el.textContent += new Date().toLocaleTimeString() + " " + msg + "\n";
         el.scrollTop = el.scrollHeight;
+        // Also forward to native app log
+        if (IS_APP && window.FrameArtBridge && window.FrameArtBridge.log) {
+          window.FrameArtBridge.log(msg);
+        }
       }
 
       // Overlay toggles
@@ -517,10 +527,29 @@
           });
       }
 
-      // App mode: hide nav header + skip login
+      // App mode: hide nav header (native app has its own)
       if (IS_APP) {
         var headerEl = document.querySelector(".header");
         if (headerEl) headerEl.style.display = "none";
+      }
+      // Web mode: make nav links work (they're just hrefs, already work)
+      // App mode: intercept any remaining internal links
+      if (IS_APP) {
+        document.addEventListener("click", function (e) {
+          var link = e.target.closest && e.target.closest("a[href]");
+          if (link) {
+            var href = link.getAttribute("href");
+            if (href === "/gallery") {
+              e.preventDefault();
+              if (window.FrameArtBridge)
+                window.FrameArtBridge.navigate("gallery");
+            } else if (href === "/pair" || href === "/") {
+              e.preventDefault();
+              if (window.FrameArtBridge)
+                window.FrameArtBridge.navigate("connect");
+            }
+          }
+        });
       }
 
       // Auth
@@ -730,30 +759,45 @@
 
       function doPublish() {
         if (!currentScene || !pairedTv) return;
+        if (isPublishing) return; // prevent double-tap
+        isPublishing = true;
         var btn = document.getElementById("publishBtn");
         btn.disabled = true;
-        btn.textContent = "Publishing...";
+        btn.textContent = "Uploading...";
+        btn.style.opacity = "0.5";
 
-        // App mode: use native bridge (TCP upload via React Native)
+        dbg("=== PUBLISH START ===");
+        dbg("Scene: " + currentScene.sceneId);
+        dbg("Image: " + currentScene.imageUrl);
+        dbg("TV IP: " + (pairedTv.tvIp || "none"));
+
+        // App mode: upload via native TCP
         if (IS_APP && window.FrameArtBridge && window.ReactNativeWebView) {
-          setStatus("Sending to app for native upload...");
-          dbg("App bridge publish: " + currentScene.sceneId);
+          if (!pairedTv.tvIp || pairedTv.tvIp === "unknown") {
+            setStatus("No TV connected. Go to Connect to find your TV.", true);
+            dbg("ERROR: No TV IP set");
+            resetPublishBtn(btn);
+            return;
+          }
+          dbg("Sending to native upload handler...");
+          setStatus("Preparing upload to TV...");
           window.FrameArtBridge.publish(
             currentScene.sceneId,
             currentScene.imageUrl,
           );
-          setStatus("Sent to app — uploading via native TCP", false);
-          btn.disabled = false;
-          btn.textContent = "Publish to TV";
+          // The native side handles all stages and status updates
+          // Reset button after a delay (native upload takes time)
+          setTimeout(function () {
+            resetPublishBtn(btn);
+          }, 10000);
           return;
         }
 
         // Web mode: upload via cloud server
-        var uploadServer = window.location.origin;
         var imageSource = window.location.origin + currentScene.imageUrl;
         setStatus("Uploading via cloud...");
-        dbg("Publish: " + uploadServer + " image: " + imageSource);
-        fetch(uploadServer + "/api/upload", {
+        dbg("Cloud upload: " + imageSource);
+        fetch(window.location.origin + "/api/upload", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -763,19 +807,19 @@
           }),
         })
           .then(function (r) {
+            dbg("Response status: " + r.status);
             return r.json();
           })
           .then(function (data) {
             dbg("Upload result: " + JSON.stringify(data));
             if (data.success) {
               setStatus(
-                "Published! (" +
-                  data.contentId +
-                  ", " +
+                "Art displayed on TV (" +
                   (data.durationMs / 1000).toFixed(1) +
-                  "s) — displaying on TV",
+                  "s)",
                 false,
               );
+              dbg("Selecting image on TV...");
               fetch(window.location.origin + "/api/set-display", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -785,19 +829,36 @@
                 }),
               }).catch(function () {});
             } else {
-              setStatus("Publish failed: " + (data.error || "unknown"), true);
+              setStatus("Upload failed: " + (data.error || "unknown"), true);
+              dbg("FAILED: " + (data.error || "unknown"));
             }
-            btn.disabled = false;
-            btn.textContent = "Publish to TV";
+            resetPublishBtn(btn);
           })
           .catch(function (err) {
-            setStatus("Publish error: " + err.message, true);
-            dbg("Publish error: " + err.message);
-            btn.disabled = false;
-            btn.textContent = "Publish to TV";
+            setStatus("Upload error: " + err.message, true);
+            dbg("ERROR: " + err.message);
+            resetPublishBtn(btn);
           });
       }
 
+      function resetPublishBtn(btn) {
+        isPublishing = false;
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Publish to TV";
+          btn.style.opacity = "1";
+        }
+      }
+
+      document
+        .getElementById("savedBadge")
+        .addEventListener("click", function () {
+          if (IS_APP && window.FrameArtBridge) {
+            window.FrameArtBridge.navigate("gallery");
+          } else {
+            window.location.href = "/gallery";
+          }
+        });
       document
         .getElementById("deleteBtn")
         .addEventListener("click", function () {
