@@ -65,6 +65,20 @@ app.use(express.static(path.join(__dirname, "public")));
 const server = createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 
+/**
+ * Wrap an async Express handler so that thrown errors are forwarded
+ * to the Express error middleware instead of crashing the process.
+ */
+type AsyncHandler = (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+) => Promise<void>;
+
+function asyncHandler(fn: AsyncHandler): AsyncHandler {
+  return (req, res, next) => fn(req, res, next).catch(next);
+}
+
 // --- HTTP API ---
 
 // Log all requests
@@ -79,32 +93,35 @@ app.get("/", (_req, res) => {
 
 // --- Auth Routes ---
 
-app.post("/api/auth/google", async (req, res) => {
-  const { idToken } = req.body;
-  if (!idToken) {
-    res.status(400).json({ error: "Missing idToken" });
-    return;
-  }
+app.post(
+  "/api/auth/google",
+  asyncHandler(async (req, res) => {
+    const { idToken } = req.body;
+    if (!idToken) {
+      res.status(400).json({ error: "Missing idToken" });
+      return;
+    }
 
-  const user = await verifyGoogleToken(idToken);
-  if (!user) {
-    res.status(401).json({ error: "Invalid Google token" });
-    return;
-  }
+    const user = await verifyGoogleToken(idToken);
+    if (!user) {
+      res.status(401).json({ error: "Invalid Google token" });
+      return;
+    }
 
-  const sessionId = createSession(user);
-  console.log(`User signed in: ${user.name} (${user.email})`);
+    const sessionId = createSession(user);
+    console.log(`User signed in: ${user.name} (${user.email})`);
 
-  res.json({
-    sessionId,
-    user: {
-      id: user.userId,
-      email: user.email,
-      name: user.name,
-      picture: user.picture,
-    },
-  });
-});
+    res.json({
+      sessionId,
+      user: {
+        id: user.userId,
+        email: user.email,
+        name: user.name,
+        picture: user.picture,
+      },
+    });
+  }),
+);
 
 app.get("/api/auth/me", (req, res) => {
   const auth = req.headers.authorization;
@@ -348,16 +365,19 @@ app.get("/api/scenes", (_req, res) => {
   res.json(rows);
 });
 
-app.get("/api/images/:sceneId", async (req, res) => {
-  const data = await loadImage(req.params.sceneId);
-  if (!data) {
-    res.status(404).json({ error: "Image not found" });
-    return;
-  }
-  res.setHeader("Content-Type", "image/jpeg");
-  res.setHeader("Cache-Control", "public, max-age=86400");
-  res.send(data);
-});
+app.get(
+  "/api/images/:sceneId",
+  asyncHandler(async (req, res) => {
+    const data = await loadImage(req.params.sceneId);
+    if (!data) {
+      res.status(404).json({ error: "Image not found" });
+      return;
+    }
+    res.setHeader("Content-Type", "image/jpeg");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.send(data);
+  }),
+);
 
 // --- User Settings ---
 
@@ -968,6 +988,43 @@ function handlePhoneConnection(ws: WebSocket) {
     removePhoneConnection(sessionId);
   });
 }
+
+// --- Global Error Handling ---
+
+// Express error middleware — catches errors thrown in route handlers.
+// Must be registered AFTER all routes (4-arg signature tells Express this is an error handler).
+app.use(
+  (
+    err: Error,
+    _req: express.Request,
+    res: express.Response,
+    _next: express.NextFunction,
+  ) => {
+    console.error("Unhandled route error:", err.message, err.stack);
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: "Internal server error",
+        // Only include details in development
+        ...(process.env.NODE_ENV !== "production" && {
+          detail: err.message,
+        }),
+      });
+    }
+  },
+);
+
+// Process-level error handlers — prevent silent crashes
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled promise rejection:", reason);
+  console.error("Promise:", promise);
+  // Don't exit — let the server keep running, but log loudly
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("FATAL: Uncaught exception:", err.message, err.stack);
+  // For uncaught exceptions, exit after logging so process manager can restart
+  process.exit(1);
+});
 
 // Periodic cleanup — runs every hour
 setInterval(
