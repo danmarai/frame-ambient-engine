@@ -2,6 +2,7 @@ import express from "express";
 import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import path from "path";
 import { fileURLToPath } from "url";
 import {
@@ -58,12 +59,66 @@ const CLOUD_URL = process.env.CLOUD_URL || "http://localhost:3847";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 
 const app = express();
-app.use(cors());
+
+// --- CORS: restrict to known origins (ALLOWED_ORIGINS env, or CLOUD_URL) ---
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  : [CLOUD_URL, "http://localhost:3847", "http://localhost:3000"];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, server-to-server)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin ${origin} not allowed`));
+      }
+    },
+    credentials: true,
+  }),
+);
+
+// --- Rate Limiting ---
+// General limiter: 200 requests per minute per IP
+app.use(
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests, please try again later" },
+  }),
+);
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
 const server = createServer(app);
 const wss = new WebSocketServer({ noServer: true });
+
+/**
+ * Validate that a TV IP is a private/local network address.
+ * Prevents SSRF attacks where an attacker could make the server
+ * fetch from arbitrary internal or external IPs.
+ */
+function isValidTvIp(ip: string): boolean {
+  // Must be a valid IPv4 format
+  const parts = ip.split(".");
+  if (parts.length !== 4) return false;
+  const nums = parts.map(Number);
+  if (nums.some((n) => isNaN(n) || n < 0 || n > 255)) return false;
+
+  // Must be a private/local IP range (RFC 1918 + link-local)
+  const [a, b] = nums;
+  return (
+    a === 10 || // 10.0.0.0/8
+    (a === 172 && b >= 16 && b <= 31) || // 172.16.0.0/12
+    (a === 192 && b === 168) || // 192.168.0.0/16
+    (a === 169 && b === 254) || // 169.254.0.0/16 (link-local)
+    a === 127 // 127.0.0.0/8 (loopback)
+  );
+}
 
 /**
  * Wrap an async Express handler so that thrown errors are forwarded
@@ -78,6 +133,29 @@ type AsyncHandler = (
 function asyncHandler(fn: AsyncHandler): AsyncHandler {
   return (req, res, next) => fn(req, res, next).catch(next);
 }
+
+// --- Per-endpoint rate limiters for expensive/sensitive operations ---
+
+// Auth: 10 attempts per 15 minutes per IP (brute force protection)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: "Too many auth attempts, try again later" },
+});
+
+// Generation: 20 per hour per IP (each call hits OpenAI/Gemini API)
+const generateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  message: { error: "Generation rate limit reached, try again later" },
+});
+
+// Telemetry: 60 per minute per IP (spam protection)
+const telemetryLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { error: "Telemetry rate limit reached" },
+});
 
 // --- HTTP API ---
 
@@ -95,6 +173,7 @@ app.get("/", (_req, res) => {
 
 app.post(
   "/api/auth/google",
+  authLimiter,
   asyncHandler(async (req, res) => {
     const { idToken } = req.body;
     if (!idToken) {
@@ -171,6 +250,12 @@ app.post("/api/devices/scan", async (req, res) => {
   const { tvIp } = req.body;
   if (!tvIp) {
     res.status(400).json({ error: "Missing tvIp" });
+    return;
+  }
+  if (!isValidTvIp(tvIp)) {
+    res
+      .status(400)
+      .json({ error: "Invalid TV IP — must be a private network address" });
     return;
   }
 
@@ -283,7 +368,7 @@ app.get("/api/generation/config", (_req, res) => {
   res.json(getGenerationConfig());
 });
 
-app.post("/api/generate", optionalAuth, async (req, res) => {
+app.post("/api/generate", generateLimiter, optionalAuth, async (req, res) => {
   const {
     theme,
     imageStyle,
@@ -411,7 +496,7 @@ app.get("/api/quotes/stats", (_req, res) => {
 
 const TELEMETRY_MAX_ENTRIES = 2000;
 
-app.post("/api/telemetry", (req, res) => {
+app.post("/api/telemetry", telemetryLimiter, (req, res) => {
   const { deviceId, sessionId, tvIp, screen, timestamp, logs } = req.body;
   const receivedAt = new Date().toISOString();
   const trimmedLogs = (logs || []).slice(-200);
@@ -502,6 +587,12 @@ app.post("/api/tv/control", async (req, res) => {
     res.status(400).json({ error: "Missing tvIp or action" });
     return;
   }
+  if (!isValidTvIp(tvIp)) {
+    res
+      .status(400)
+      .json({ error: "Invalid TV IP — must be a private network address" });
+    return;
+  }
 
   try {
     if (action === "select_image" && contentId) {
@@ -547,6 +638,12 @@ app.post("/api/pair-by-ip", optionalAuth, async (req, res) => {
   const { tvIp } = req.body;
   if (!tvIp) {
     res.status(400).json({ error: "Missing tvIp" });
+    return;
+  }
+  if (!isValidTvIp(tvIp)) {
+    res
+      .status(400)
+      .json({ error: "Invalid TV IP — must be a private network address" });
     return;
   }
 
@@ -753,6 +850,12 @@ app.post("/api/tv/init", async (req, res) => {
     res.status(400).json({ error: "Missing tvIp" });
     return;
   }
+  if (!isValidTvIp(tvIp)) {
+    res
+      .status(400)
+      .json({ error: "Invalid TV IP — must be a private network address" });
+    return;
+  }
   try {
     const state = await initTvState(tvIp);
     res.json({
@@ -773,6 +876,12 @@ app.post("/api/set-display", async (req, res) => {
   const { tvIp, contentId } = req.body;
   if (!tvIp || !contentId) {
     res.status(400).json({ error: "Missing tvIp or contentId" });
+    return;
+  }
+  if (!isValidTvIp(tvIp)) {
+    res
+      .status(400)
+      .json({ error: "Invalid TV IP — must be a private network address" });
     return;
   }
   try {
