@@ -1,4 +1,10 @@
-/** Direct TV upload using our proven WebSocket + d2d TCP protocol */
+/**
+ * Direct TV upload using WebSocket + d2d TCP protocol.
+ *
+ * CRITICAL: Concurrent uploads to the same TV will crash the art mode service,
+ * requiring a TV restart. The upload mutex ensures only one upload runs per TV
+ * at a time — additional requests queue behind the active one.
+ */
 import WebSocket from "ws";
 import net from "net";
 import crypto from "crypto";
@@ -10,7 +16,40 @@ interface UploadResult {
   durationMs: number;
 }
 
-export async function uploadToTv(
+/**
+ * Per-TV upload mutex. Maps tvIp -> the promise chain for that TV.
+ * Each new upload is chained after the previous one completes,
+ * ensuring serial execution per TV while allowing parallel uploads
+ * to different TVs.
+ */
+const uploadMutex = new Map<string, Promise<UploadResult>>();
+
+/**
+ * Upload an image to a TV, serialized per tvIp to prevent concurrent uploads.
+ * If another upload is in progress to the same TV, this call waits for it to finish.
+ */
+export function uploadToTv(
+  tvIp: string,
+  imageData: Buffer,
+  token?: string,
+): Promise<UploadResult> {
+  // Chain this upload after any in-progress upload to the same TV
+  const previous = uploadMutex.get(tvIp) || Promise.resolve({} as UploadResult);
+  const current = previous.then(() => doUpload(tvIp, imageData, token));
+  uploadMutex.set(tvIp, current);
+
+  // Clean up the mutex entry when done (only if we're still the latest)
+  current.finally(() => {
+    if (uploadMutex.get(tvIp) === current) {
+      uploadMutex.delete(tvIp);
+    }
+  });
+
+  return current;
+}
+
+/** Internal: perform the actual WebSocket + TCP upload. Do not call directly. */
+function doUpload(
   tvIp: string,
   imageData: Buffer,
   token?: string,
