@@ -5,6 +5,7 @@ import { getRawDb } from "../db.js";
 import { claimCode, validateCode } from "../pairing.js";
 import { sendToTv } from "../tv-connections.js";
 import { isValidTvIp } from "../middleware.js";
+import { logger } from "../logger.js";
 
 const router = Router();
 
@@ -72,8 +73,9 @@ router.post("/api/pair-by-ip", optionalAuth, async (req, res) => {
     );
 
     const userId = (req as any).user?.userId;
-    console.log(
-      `Paired by IP: ${device.name} (${tvId}) at ${tvIp} by ${userId || "anonymous"}`,
+    logger.info(
+      { deviceName: device.name, tvId, tvIp, userId: userId || "anonymous" },
+      "Paired by IP",
     );
 
     res.json({ success: true, tvId, tvIp, device: metadata });
@@ -97,8 +99,9 @@ router.post("/api/pair", (req, res) => {
     return;
   }
 
-  console.log(
-    `Paired! TV ${session.tvId} (${session.tvIp}) ↔ phone ${phoneSessionId}`,
+  logger.info(
+    { tvId: session.tvId, tvIp: session.tvIp, phoneSessionId },
+    "Paired via code",
   );
 
   sendToTv(session.tvId, {

@@ -3,6 +3,7 @@ import { Router } from "express";
 import path from "path";
 import { getRawDb } from "../db.js";
 import { telemetryLimiter } from "../middleware.js";
+import { logger } from "../logger.js";
 
 const TELEMETRY_MAX_ENTRIES = 2000;
 
@@ -37,8 +38,14 @@ export function createTelemetryRouter(staticDir: string) {
        )`,
     ).run(TELEMETRY_MAX_ENTRIES);
 
-    console.log(
-      `Telemetry: ${deviceId || "unknown"}/${sessionId || "unknown"} (${screen || ""}) — ${trimmedLogs.length} log lines`,
+    logger.info(
+      {
+        deviceId: deviceId || "unknown",
+        sessionId: sessionId || "unknown",
+        screen: screen || "",
+        logLines: trimmedLogs.length,
+      },
+      "Telemetry received",
     );
     res.json({ ok: true, id: result.lastInsertRowid });
   });

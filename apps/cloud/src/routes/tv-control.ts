@@ -9,6 +9,7 @@ import {
 } from "../tv-storage.js";
 import { sendToTv, getTvIp } from "../tv-connections.js";
 import { isValidTvIp } from "../middleware.js";
+import { logger } from "../logger.js";
 
 const router = Router();
 
@@ -59,15 +60,13 @@ router.post("/api/upload", async (req, res) => {
   try {
     let imageData: Buffer;
     if (imageUrl) {
-      console.log(`Fetching image from: ${imageUrl}`);
+      logger.info({ imageUrl }, "Fetching image");
       const response = await fetch(imageUrl);
       if (!response.ok)
         throw new Error(`Image fetch failed: ${response.status}`);
       const arrayBuf = await response.arrayBuffer();
       imageData = Buffer.from(arrayBuf);
-      console.log(
-        `Fetched: ${imageData.length} bytes, header: ${imageData[0]?.toString(16)} ${imageData[1]?.toString(16)} ${imageData[2]?.toString(16)}`,
-      );
+      logger.info({ bytes: imageData.length }, "Image fetched");
     } else {
       const fs = await import("fs");
       const testPath = "/tmp/tv-test/don-claude.jpg";
@@ -83,18 +82,18 @@ router.post("/api/upload", async (req, res) => {
 
     await makeRoom(tvIp, 1);
 
-    console.log(`Uploading ${imageData.length} bytes to TV at ${tvIp}...`);
+    logger.info({ bytes: imageData.length, tvIp }, "Uploading to TV");
     let result = await uploadToTv(tvIp, imageData);
 
     // Handle storage full — clean up and retry once
     if (!result.success && result.error?.includes("-11")) {
-      console.log("Storage full! Cleaning up and retrying...");
+      logger.info("Storage full, cleaning up and retrying");
       await handleStorageFull(tvIp);
       result = await uploadToTv(tvIp, imageData);
     }
 
     if (result.success && result.contentId) {
-      console.log(`Upload success! content_id: ${result.contentId}`);
+      logger.info({ contentId: result.contentId }, "Upload success");
       recordUpload(tvIp, result.contentId);
 
       sendToTv(tvId, {
@@ -112,12 +111,12 @@ router.post("/api/upload", async (req, res) => {
         durationMs: result.durationMs,
       });
     } else {
-      console.error("Upload failed:", result.error);
+      logger.error({ error: result.error }, "Upload failed");
       res.status(500).json({ error: result.error });
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("Upload error:", message);
+    logger.error({ error: message }, "Upload error");
     res.status(500).json({ error: message });
   }
 });
@@ -164,7 +163,7 @@ router.post("/api/set-display", async (req, res) => {
     return;
   }
   try {
-    console.log(`Setting display: ${contentId} on ${tvIp}`);
+    logger.info({ contentId, tvIp }, "Setting display");
     const result = await selectAndActivate(tvIp, contentId);
     res.json({ success: result, contentId });
   } catch (err: unknown) {
@@ -188,8 +187,9 @@ router.post("/api/upload-file", async (req, res) => {
   try {
     const fs = await import("fs");
     const imageData = fs.readFileSync(filePath);
-    console.log(
-      `Uploading ${filePath} (${imageData.length} bytes) to ${tvIp}...`,
+    logger.info(
+      { filePath, bytes: imageData.length, tvIp },
+      "Uploading file to TV",
     );
     const result = await uploadToTv(tvIp, imageData);
     if (result.success) {
@@ -217,23 +217,27 @@ router.post("/api/cycle", async (req, res) => {
   let idx = 0;
   const interval = intervalMs || 30000;
 
-  console.log(
-    `Starting art cycle: ${images.length} images, ${interval}ms interval`,
-  );
+  logger.info({ imageCount: images.length, interval }, "Starting art cycle");
 
   async function showNext() {
     const filePath = images[idx % images.length];
     try {
       const fs = await import("fs");
       const imageData = fs.readFileSync(filePath);
-      console.log(`Cycle [${idx + 1}/${images.length}]: ${filePath}`);
+      logger.info(
+        { index: idx + 1, total: images.length, filePath },
+        "Cycle image",
+      );
       const result = await uploadToTv(tvIp, imageData);
       if (result.success && result.contentId) {
         await selectAndActivate(tvIp, result.contentId);
-        console.log(`  → ${result.contentId} (${result.durationMs}ms)`);
+        logger.info(
+          { contentId: result.contentId, durationMs: result.durationMs },
+          "Cycle image displayed",
+        );
       }
     } catch (err) {
-      console.error(`Cycle error:`, err);
+      logger.error({ error: err }, "Cycle error");
     }
     idx++;
   }
@@ -248,7 +252,7 @@ router.post("/api/cycle/stop", (_req, res) => {
   if (cycleTimer) {
     clearInterval(cycleTimer);
     cycleTimer = null;
-    console.log("Art cycle stopped");
+    logger.info("Art cycle stopped");
     res.json({ success: true, message: "Cycle stopped" });
   } else {
     res.json({ success: true, message: "No cycle running" });

@@ -8,6 +8,7 @@
 import WebSocket from "ws";
 import net from "net";
 import crypto from "crypto";
+import { logger } from "./logger.js";
 
 interface UploadResult {
   success: boolean;
@@ -90,7 +91,7 @@ function doUpload(
       if (msg.event === "ms.channel.connect") {
         // Save token for future use
         if (msg.data?.token) {
-          console.log(`TV token: ${msg.data.token}`);
+          logger.info({ token: msg.data.token }, "TV token received");
         }
 
         setTimeout(() => {
@@ -158,21 +159,22 @@ function doUpload(
 
             // Write entire image buffer at once and flush
             socket.write(imageData, () => {
-              console.log(
-                `TCP: all ${imageData.length} bytes written, flushing...`,
+              logger.info(
+                { bytes: imageData.length },
+                "TCP: all bytes written, flushing",
               );
               // End the socket to ensure all data is flushed to the TV
               socket.end();
             });
           });
           socket.on("close", () => {
-            console.log("TCP: socket closed (data flushed)");
+            logger.info("TCP: socket closed (data flushed)");
           });
           socket.on("error", (e) => {
-            console.error("TCP error:", e.message);
+            logger.error({ error: e.message }, "TCP error");
             // CRITICAL: if TCP fails, the art mode service will crash
             // We can't prevent this, but we should log it prominently
-            console.error(
+            logger.error(
               "WARNING: Incomplete upload may have crashed the art mode service. TV restart may be needed.",
             );
             clearTimeout(timeout);
@@ -187,8 +189,9 @@ function doUpload(
 
         if (inner.event === "image_added") {
           // Wait a moment for TCP to fully flush before declaring success
-          console.log(
-            `image_added: ${inner.content_id}, waiting for TCP flush...`,
+          logger.info(
+            { contentId: inner.content_id },
+            "image_added, waiting for TCP flush",
           );
           setTimeout(() => {
             clearTimeout(timeout);

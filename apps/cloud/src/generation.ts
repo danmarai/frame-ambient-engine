@@ -6,6 +6,7 @@ import { randomUUID } from "crypto";
 import { writeFile, mkdir, readFile } from "fs/promises";
 import path from "path";
 import { pickQuote } from "./quotes.js";
+import { logger } from "./logger.js";
 // Types — use direct path to avoid ESM/CJS resolution issues
 type AppSettings = any;
 type ImageProviderName = "openai" | "gemini" | "mock";
@@ -89,13 +90,13 @@ async function getImageProvider(name?: ImageProviderName) {
   switch (name) {
     case "openai":
       if (!process.env.OPENAI_API_KEY) {
-        console.warn("OPENAI_API_KEY not set, falling back to mock");
+        logger.warn("OPENAI_API_KEY not set, falling back to mock");
         return new MockImageProvider();
       }
       return new OpenAIImageProvider(process.env.OPENAI_API_KEY);
     case "gemini":
       if (!process.env.GEMINI_API_KEY) {
-        console.warn("GEMINI_API_KEY not set, falling back to mock");
+        logger.warn("GEMINI_API_KEY not set, falling back to mock");
         return new MockImageProvider();
       }
       return new GeminiImageProvider(process.env.GEMINI_API_KEY);
@@ -177,8 +178,13 @@ export async function generate(
     image: await getImageProvider(options.provider ?? settings.imageProvider),
   };
 
-  console.log(
-    `Generating: theme=${options.theme || settings.theme}, style=${options.imageStyle || settings.imageStyle}, provider=${options.provider || settings.imageProvider}`,
+  logger.info(
+    {
+      theme: options.theme || settings.theme,
+      style: options.imageStyle || settings.imageStyle,
+      provider: options.provider || settings.imageProvider,
+    },
+    "Generating scene",
   );
 
   const { generateScene: genScene } = await loadRendering();
@@ -213,8 +219,9 @@ export async function generate(
   const imagePath = path.join(DATA_DIR, `${sceneId}.jpg`);
   await writeFile(imagePath, processedImage);
 
-  console.log(
-    `Generated: ${sceneId} (${processedImage.length} bytes, ${scene.durationMs}ms)`,
+  logger.info(
+    { sceneId, bytes: processedImage.length, durationMs: scene.durationMs },
+    "Scene generated",
   );
 
   return {

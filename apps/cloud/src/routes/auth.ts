@@ -2,6 +2,7 @@
 import { Router } from "express";
 import { verifyGoogleToken, createSession, getSession } from "../auth.js";
 import { asyncHandler, authLimiter } from "../middleware.js";
+import { logger } from "../logger.js";
 
 const router = Router();
 
@@ -22,7 +23,7 @@ router.post(
     }
 
     const sessionId = createSession(user);
-    console.log(`User signed in: ${user.name} (${user.email})`);
+    logger.info({ name: user.name, email: user.email }, "User signed in");
 
     res.json({
       sessionId,

@@ -3,6 +3,7 @@ import { Router } from "express";
 import { optionalAuth } from "../auth.js";
 import { getRawDb } from "../db.js";
 import { isValidTvIp } from "../middleware.js";
+import { logger } from "../logger.js";
 
 const router = Router();
 
@@ -94,8 +95,13 @@ router.post("/api/devices/scan", async (req, res) => {
       now,
     );
 
-    console.log(
-      `Device scanned: ${metadata.modelName} (${metadata.estimatedYear}) at ${tvIp}`,
+    logger.info(
+      {
+        modelName: metadata.modelName,
+        estimatedYear: metadata.estimatedYear,
+        tvIp,
+      },
+      "Device scanned",
     );
     res.json(metadata);
   } catch (err: unknown) {

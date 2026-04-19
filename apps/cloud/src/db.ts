@@ -8,6 +8,7 @@
  * configurable via DATABASE_URL env var.
  */
 import { getDb, getRawDb } from "@frame/db";
+import { logger } from "./logger.js";
 
 // Re-export for convenience
 export { getDb, getRawDb };
@@ -149,5 +150,5 @@ export function initDatabase(): void {
       ON user_preferences(user_id, key);
   `);
 
-  console.log("Database initialized");
+  logger.info("Database initialized");
 }

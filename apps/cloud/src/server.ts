@@ -39,6 +39,7 @@ import feedbackRoutes from "./routes/feedback.js";
 import quotesRoutes from "./routes/quotes.js";
 
 // Load .env
+import { logger } from "./logger.js";
 import { config } from "dotenv";
 config({ path: new URL("../.env", import.meta.url).pathname });
 
@@ -90,7 +91,7 @@ const wss = new WebSocketServer({ noServer: true });
 
 // --- Request logging ---
 app.use((req, _res, next) => {
-  console.log(`${req.method} ${req.url}`);
+  logger.info({ method: req.method, url: req.url }, "Request");
   next();
 });
 
@@ -164,7 +165,7 @@ function handleTvConnection(ws: WebSocket) {
         const code = createPairingCode(tvId!, tvIp);
         addTvConnection(tvId!, tvIp, code, ws);
 
-        console.log(`TV registered: ${tvId} (${tvIp}) — pairing code: ${code}`);
+        logger.info({ tvId, tvIp, code }, "TV registered");
 
         ws.send(
           JSON.stringify({
@@ -176,7 +177,7 @@ function handleTvConnection(ws: WebSocket) {
       }
 
       if (msg.type === "art_status") {
-        console.log(`TV ${tvId} art status:`, msg);
+        logger.info({ tvId, status: msg }, "TV art status");
         if (tvId) {
           const session = getSessionByTvId(tvId);
           if (session?.phoneSessionId) {
@@ -188,13 +189,13 @@ function handleTvConnection(ws: WebSocket) {
         }
       }
     } catch (err) {
-      console.error("TV message parse error:", err);
+      logger.error({ error: err }, "TV message parse error");
     }
   });
 
   ws.on("close", () => {
     if (tvId) {
-      console.log(`TV disconnected: ${tvId}`);
+      logger.info({ tvId }, "TV disconnected");
       removeTvConnection(tvId);
     }
   });
@@ -235,7 +236,7 @@ function handlePhoneConnection(ws: WebSocket) {
         }
       }
     } catch (err) {
-      console.error("Phone message parse error:", err);
+      logger.error({ error: err }, "Phone message parse error");
     }
   });
 
@@ -253,7 +254,10 @@ app.use(
     res: express.Response,
     _next: express.NextFunction,
   ) => {
-    console.error("Unhandled route error:", err.message, err.stack);
+    logger.error(
+      { error: err.message, stack: err.stack },
+      "Unhandled route error",
+    );
     if (!res.headersSent) {
       res.status(500).json({
         error: "Internal server error",
@@ -266,12 +270,14 @@ app.use(
 );
 
 process.on("unhandledRejection", (reason, promise) => {
-  console.error("Unhandled promise rejection:", reason);
-  console.error("Promise:", promise);
+  logger.error({ error: reason, promise }, "Unhandled promise rejection");
 });
 
 process.on("uncaughtException", (err) => {
-  console.error("FATAL: Uncaught exception:", err.message, err.stack);
+  logger.error(
+    { error: err.message, stack: err.stack },
+    "FATAL: Uncaught exception",
+  );
   process.exit(1);
 });
 
@@ -286,10 +292,5 @@ setInterval(
 
 // --- Start ---
 server.listen(PORT, () => {
-  console.log(`\n🎨 Frame Art Cloud Server`);
-  console.log(`   HTTP:  ${CLOUD_URL}`);
-  console.log(`   WS TV: ${CLOUD_URL.replace("http", "ws")}/ws/tv`);
-  console.log(`   WS Phone: ${CLOUD_URL.replace("http", "ws")}/ws/phone`);
-  console.log(`   Pair:  ${CLOUD_URL}/pair`);
-  console.log(`   Port:  ${PORT}\n`);
+  logger.info({ port: PORT, url: CLOUD_URL }, "Frame Art Cloud Server started");
 });

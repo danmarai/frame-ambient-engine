@@ -7,6 +7,7 @@
 import type { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
 import { getRawDb } from "./db.js";
+import { logger } from "./logger.js";
 
 // Google OAuth client ID — set via environment variable
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
@@ -37,7 +38,7 @@ export async function verifyGoogleToken(
 
     // Verify audience matches our client ID
     if (GOOGLE_CLIENT_ID && payload.aud !== GOOGLE_CLIENT_ID) {
-      console.error("Token audience mismatch");
+      logger.error("Token audience mismatch");
       return null;
     }
 
@@ -49,7 +50,7 @@ export async function verifyGoogleToken(
       token: idToken,
     };
   } catch (err) {
-    console.error("Token verification failed:", err);
+    logger.error("Token verification failed:", err);
     return null;
   }
 }
@@ -201,7 +202,7 @@ export function cleanExpiredSessions(): number {
     .prepare("DELETE FROM auth_sessions WHERE expires_at < datetime('now')")
     .run();
   if (result.changes > 0) {
-    console.log(`Cleaned ${result.changes} expired sessions`);
+    logger.info(`Cleaned ${result.changes} expired sessions`);
   }
   return result.changes;
 }

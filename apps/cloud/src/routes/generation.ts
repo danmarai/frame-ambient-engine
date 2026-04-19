@@ -13,6 +13,7 @@ import { uploadToTv, selectAndActivate } from "../tv-upload.js";
 import { makeRoom, recordUpload } from "../tv-storage.js";
 import { sendToTv, getTvIp } from "../tv-connections.js";
 import { asyncHandler, generateLimiter } from "../middleware.js";
+import { logger } from "../logger.js";
 
 const router = Router();
 
@@ -36,9 +37,7 @@ router.post(
     const userId = (req as any).user?.userId;
 
     try {
-      console.log(
-        `Generation request: theme=${theme}, style=${imageStyle}, provider=${provider}`,
-      );
+      logger.info({ theme, imageStyle, provider }, "Generation request");
       const result = await generate({
         userId,
         theme,
@@ -51,7 +50,7 @@ router.post(
       let uploadResult = null;
       const tvIp = explicitIp || (tvId ? getTvIp(tvId) : null);
       if (tvIp && tvIp !== "unknown") {
-        console.log(`Auto-uploading to TV at ${tvIp}...`);
+        logger.info({ tvIp }, "Auto-uploading to TV");
         await makeRoom(tvIp, 1);
         const upload = await uploadToTv(tvIp, result.imageData);
         if (upload.success && upload.contentId) {
@@ -93,7 +92,7 @@ router.post(
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Generation failed";
-      console.error("Generation error:", message);
+      logger.error({ error: message }, "Generation error");
       res.status(500).json({ error: message });
     }
   },

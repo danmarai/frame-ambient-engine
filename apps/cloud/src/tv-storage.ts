@@ -1,5 +1,6 @@
 /** TV art storage management — tracks uploads, handles cleanup, manages capacity */
 import WebSocket from "ws";
+import { logger } from "./logger.js";
 
 // Configurable cache size per TV (adjust based on TV flash size)
 const DEFAULT_CACHE_SIZE = 20;
@@ -109,8 +110,13 @@ export async function initTvState(tvIp: string): Promise<TvArtState> {
         if (inner.event === "get_device_info") {
           state.flashSizeGB = parseInt(inner.tv_flash_size) || 8;
           state.maxImages = getCacheSize(state.flashSizeGB);
-          console.log(
-            `TV ${tvIp}: ${state.flashSizeGB}GB flash, max ${state.maxImages} images`,
+          logger.info(
+            {
+              tvIp,
+              flashSizeGB: state.flashSizeGB,
+              maxImages: state.maxImages,
+            },
+            "TV storage info",
           );
         }
 
@@ -125,8 +131,9 @@ export async function initTvState(tvIp: string): Promise<TvArtState> {
                   item.content_type === "mobile",
               )
               .map((item: any) => item.content_id);
-            console.log(
-              `TV ${tvIp}: ${state.ourImages.length} custom images on TV`,
+            logger.info(
+              { tvIp, count: state.ourImages.length },
+              "Custom images on TV",
             );
           } catch {}
           ws.close();
@@ -146,15 +153,17 @@ export async function makeRoom(tvIp: string, count: number): Promise<number> {
 
   const spaceNeeded = state.ourImages.length + count - state.maxImages;
   if (spaceNeeded <= 0) {
-    console.log(
-      `TV ${tvIp}: room for ${count} more (${state.ourImages.length}/${state.maxImages})`,
+    logger.info(
+      { tvIp, count, current: state.ourImages.length, max: state.maxImages },
+      "Room available on TV",
     );
     return 0;
   }
 
   const toDelete = state.ourImages.slice(0, spaceNeeded);
-  console.log(
-    `TV ${tvIp}: deleting ${toDelete.length} oldest images to make room...`,
+  logger.info(
+    { tvIp, deleteCount: toDelete.length },
+    "Deleting oldest images to make room",
   );
 
   let deleted = 0;
@@ -197,9 +206,9 @@ export async function makeRoom(tvIp: string, count: number): Promise<number> {
             if (cidx >= 0) state!.ourImages.splice(cidx, 1);
             deleteNext();
           } else if (inner.event === "error") {
-            console.error(
-              `Delete failed for image at idx ${idx - 1}:`,
-              inner.error_code,
+            logger.error(
+              { idx: idx - 1, error: inner.error_code },
+              "Delete failed for image",
             );
             deleteNext();
           }
@@ -211,8 +220,9 @@ export async function makeRoom(tvIp: string, count: number): Promise<number> {
     30000,
   );
 
-  console.log(
-    `TV ${tvIp}: deleted ${deleted} images, now ${state.ourImages.length}/${state.maxImages}`,
+  logger.info(
+    { tvIp, deleted, current: state.ourImages.length, max: state.maxImages },
+    "Images deleted from TV",
   );
   return deleted;
 }
@@ -233,8 +243,9 @@ export async function handleStorageFull(tvIp: string): Promise<void> {
 
   // Reduce max images for this TV since we hit the limit
   state.maxImages = Math.max(5, Math.floor(state.maxImages * 0.7));
-  console.log(
-    `TV ${tvIp}: storage full! Reducing max to ${state.maxImages} images`,
+  logger.info(
+    { tvIp, maxImages: state.maxImages },
+    "TV storage full, reducing max",
   );
 
   // Delete oldest half by making room for enough new images that half get removed.

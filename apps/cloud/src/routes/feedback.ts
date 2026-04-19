@@ -2,6 +2,7 @@
 import { Router } from "express";
 import { optionalAuth } from "../auth.js";
 import { getRawDb } from "../db.js";
+import { logger } from "../logger.js";
 
 const router = Router();
 
@@ -20,8 +21,9 @@ router.post("/api/feedback", optionalAuth, (req, res) => {
   const count = db.prepare("SELECT COUNT(*) as cnt FROM feedback").get() as {
     cnt: number;
   };
-  console.log(
-    `Feedback: ${rating} on ${contentId} for TV ${tvId} by ${userId || "anonymous"}`,
+  logger.info(
+    { rating, contentId, tvId, userId: userId || "anonymous" },
+    "Feedback received",
   );
   res.json({ success: true, totalFeedback: count.cnt });
 });
