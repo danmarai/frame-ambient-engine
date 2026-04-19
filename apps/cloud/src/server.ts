@@ -25,7 +25,7 @@ import {
   sendToPhone,
 } from "./tv-connections.js";
 import { claimCode } from "./pairing.js";
-import { cleanExpiredSessions } from "./auth.js";
+import { cleanExpiredSessions, getSession } from "./auth.js";
 import { initDatabase } from "./db.js";
 
 // Route modules
@@ -131,11 +131,46 @@ app.use(quotesRoutes);
 
 // --- WebSocket handling ---
 
+// API key for TV WebSocket connections (set via WS_TV_API_KEY env var).
+// When set, TV Tizen apps must pass ?key=<value> to connect.
+// When unset, TV connections are allowed without auth (dev mode).
+const WS_TV_API_KEY = process.env.WS_TV_API_KEY || "";
+
 server.on("upgrade", (request, socket, head) => {
   const url = new URL(request.url || "/", `http://${request.headers.host}`);
   const pathname = url.pathname;
 
-  if (pathname === "/ws/tv" || pathname === "/ws/phone") {
+  if (pathname === "/ws/tv") {
+    // TV auth: require API key when configured
+    if (WS_TV_API_KEY) {
+      const key = url.searchParams.get("key");
+      if (key !== WS_TV_API_KEY) {
+        logger.warn(
+          { ip: request.socket.remoteAddress },
+          "WS TV auth rejected: invalid API key",
+        );
+        socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+        socket.destroy();
+        return;
+      }
+    }
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit("connection", ws, request, pathname);
+    });
+  } else if (pathname === "/ws/phone") {
+    // Phone auth: require valid session token when in production
+    const token = url.searchParams.get("token");
+    if (process.env.NODE_ENV === "production") {
+      if (!token || !getSession(token)) {
+        logger.warn(
+          { ip: request.socket.remoteAddress },
+          "WS phone auth rejected: invalid session",
+        );
+        socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+        socket.destroy();
+        return;
+      }
+    }
     wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit("connection", ws, request, pathname);
     });
