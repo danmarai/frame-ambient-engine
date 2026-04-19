@@ -155,3 +155,65 @@ export const healthSnapshots = sqliteTable("health_snapshots", {
   data: text("data").notNull(), // JSON-serialized SystemHealth
   capturedAt: text("captured_at").notNull(),
 });
+
+// ============================================
+// Cloud service session & telemetry tables
+// ============================================
+
+/**
+ * Auth sessions — tracks authenticated user sessions with TTL.
+ * Replaces the in-memory session Map for persistence across restarts.
+ */
+export const authSessions = sqliteTable("auth_sessions", {
+  id: text("id").primaryKey(), // sess-{uuid}
+  userId: text("user_id").notNull(), // Google sub ID
+  email: text("email").notNull(),
+  name: text("name"),
+  picture: text("picture"),
+  googleToken: text("google_token"), // Original ID token (not sent to clients)
+  createdAt: text("created_at").notNull(),
+  expiresAt: text("expires_at").notNull(), // TTL-based expiry
+  lastAccessedAt: text("last_accessed_at"),
+});
+
+/**
+ * Telemetry entries — device debug logs from Tizen/mobile apps.
+ * Capped to prevent unbounded growth (cleanup handled by application).
+ */
+export const telemetryEntries = sqliteTable("telemetry_entries", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  deviceId: text("device_id").notNull(),
+  sessionId: text("session_id").notNull(),
+  tvIp: text("tv_ip"),
+  screen: text("screen"),
+  timestamp: text("timestamp"),
+  logs: text("logs"), // JSON array of log strings
+  receivedAt: text("received_at").notNull(),
+});
+
+/**
+ * Feedback — user ratings on generated art.
+ * Persists thumbs up/down data for taste learning.
+ */
+export const feedback = sqliteTable("feedback", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  tvId: text("tv_id").notNull(),
+  contentId: text("content_id").notNull(),
+  rating: text("rating").notNull(), // 'up' | 'down'
+  userId: text("user_id"),
+  timestamp: text("timestamp").notNull(),
+});
+
+/**
+ * Scene archive — generated art metadata for gallery display.
+ * Image files are stored on disk; this table tracks metadata.
+ */
+export const sceneArchive = sqliteTable("scene_archive", {
+  id: text("id").primaryKey(), // sceneId (UUID)
+  prompt: text("prompt"),
+  contextJson: text("context_json"), // JSON
+  durationMs: integer("duration_ms"),
+  provider: text("provider"),
+  imageUrl: text("image_url"),
+  createdAt: text("created_at").notNull(),
+});

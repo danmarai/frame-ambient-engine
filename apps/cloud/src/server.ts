@@ -35,6 +35,7 @@ import {
   getSession,
   optionalAuth,
   requireAuth,
+  cleanExpiredSessions,
 } from "./auth.js";
 import {
   initTvState,
@@ -42,10 +43,14 @@ import {
   recordUpload,
   handleStorageFull,
 } from "./tv-storage.js";
+import { initDatabase, getRawDb } from "./db.js";
 
 // Load .env
 import { config } from "dotenv";
 config({ path: new URL("../.env", import.meta.url).pathname });
+
+// Initialize database before anything else
+initDatabase();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || "3847");
@@ -122,17 +127,21 @@ app.get("/api/auth/me", (req, res) => {
   });
 });
 
-// --- Device Registry ---
-
-// In-memory device store (will move to DB)
-const deviceRegistry = new Map<string, Record<string, unknown>>();
+// --- Device Registry (persisted to SQLite) ---
 
 app.get("/api/devices", optionalAuth, (_req, res) => {
-  res.json(Array.from(deviceRegistry.values()));
+  const db = getRawDb();
+  const devices = db
+    .prepare("SELECT * FROM tv_devices ORDER BY last_seen_at DESC")
+    .all();
+  res.json(devices);
 });
 
 app.get("/api/devices/:tvId", (req, res) => {
-  const device = deviceRegistry.get(req.params.tvId);
+  const db = getRawDb();
+  const device = db
+    .prepare("SELECT * FROM tv_devices WHERE id = ?")
+    .get(req.params.tvId);
   if (!device) {
     res.status(404).json({ error: "Device not found" });
     return;
@@ -179,10 +188,31 @@ app.post("/api/devices/scan", async (req, res) => {
         : null,
     };
 
-    // Store in registry
+    // Persist to database
     const tvId = `frame-${device.wifiMac?.replace(/:/g, "").slice(-6) || tvIp}`;
     metadata.tvId = tvId;
-    deviceRegistry.set(tvId, metadata);
+    const now = new Date().toISOString();
+
+    const db = getRawDb();
+    db.prepare(
+      `INSERT INTO tv_devices (id, tv_ip, model_name, model_code, name, resolution, is_frame_tv, firmware_version, last_seen_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         tv_ip = excluded.tv_ip,
+         model_name = excluded.model_name,
+         firmware_version = excluded.firmware_version,
+         last_seen_at = excluded.last_seen_at`,
+    ).run(
+      tvId,
+      tvIp,
+      device.modelName,
+      device.model,
+      device.name,
+      device.resolution,
+      device.FrameTVSupport === "true" ? 1 : 0,
+      device.firmwareVersion,
+      now,
+    );
 
     console.log(
       `Device scanned: ${metadata.modelName} (${metadata.estimatedYear}) at ${tvIp}`,
@@ -199,15 +229,7 @@ app.get("/api/ping", (_req, res) => {
   res.json({ pong: true, time: new Date().toISOString() });
 });
 
-// --- Feedback ---
-
-const feedbackStore: Array<{
-  tvId: string;
-  contentId: string;
-  rating: string;
-  userId?: string;
-  timestamp: string;
-}> = [];
+// --- Feedback (persisted to SQLite) ---
 
 app.post("/api/feedback", optionalAuth, (req, res) => {
   const { tvId, contentId, rating } = req.body;
@@ -216,22 +238,26 @@ app.post("/api/feedback", optionalAuth, (req, res) => {
     return;
   }
   const userId = (req as any).user?.userId;
-  feedbackStore.push({
-    tvId,
-    contentId,
-    rating,
-    userId,
-    timestamp: new Date().toISOString(),
-  });
+  const db = getRawDb();
+  db.prepare(
+    "INSERT INTO feedback (tv_id, content_id, rating, user_id, timestamp) VALUES (?, ?, ?, ?, ?)",
+  ).run(tvId, contentId, rating, userId || null, new Date().toISOString());
+
+  const count = db.prepare("SELECT COUNT(*) as cnt FROM feedback").get() as {
+    cnt: number;
+  };
   console.log(
     `Feedback: ${rating} on ${contentId} for TV ${tvId} by ${userId || "anonymous"}`,
   );
-  res.json({ success: true, totalFeedback: feedbackStore.length });
+  res.json({ success: true, totalFeedback: count.cnt });
 });
 
 app.get("/api/feedback/:tvId", (req, res) => {
-  const tvFeedback = feedbackStore.filter((f) => f.tvId === req.params.tvId);
-  res.json(tvFeedback);
+  const db = getRawDb();
+  const rows = db
+    .prepare("SELECT * FROM feedback WHERE tv_id = ? ORDER BY timestamp DESC")
+    .all(req.params.tvId);
+  res.json(rows);
 });
 
 // --- Generation ---
@@ -283,17 +309,20 @@ app.post("/api/generate", optionalAuth, async (req, res) => {
       }
     }
 
-    // Archive for gallery
-    const sceneRecord = {
-      sceneId: result.sceneId,
-      prompt: result.prompt,
-      context: result.context,
-      durationMs: result.durationMs,
-      provider: result.provider,
-      imageUrl: `/api/images/${result.sceneId}`,
-      createdAt: new Date().toISOString(),
-    };
-    sceneArchive.push(sceneRecord);
+    // Persist to gallery database
+    const db = getRawDb();
+    db.prepare(
+      `INSERT INTO scene_archive (id, prompt, context_json, duration_ms, provider, image_url, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      result.sceneId,
+      result.prompt,
+      JSON.stringify(result.context),
+      result.durationMs,
+      result.provider,
+      `/api/images/${result.sceneId}`,
+      new Date().toISOString(),
+    );
 
     res.json({
       sceneId: result.sceneId,
@@ -311,20 +340,12 @@ app.post("/api/generate", optionalAuth, async (req, res) => {
   }
 });
 
-// Scene archive — stores all generated scenes for gallery
-const sceneArchive: Array<{
-  sceneId: string;
-  prompt: string;
-  context: Record<string, unknown>;
-  durationMs: number;
-  provider: string;
-  imageUrl: string;
-  createdAt: string;
-}> = [];
-
 app.get("/api/scenes", (_req, res) => {
-  // Return newest first
-  res.json([...sceneArchive].reverse());
+  const db = getRawDb();
+  const rows = db
+    .prepare("SELECT * FROM scene_archive ORDER BY created_at DESC")
+    .all();
+  res.json(rows);
 });
 
 app.get("/api/images/:sceneId", async (req, res) => {
@@ -366,77 +387,86 @@ app.get("/api/quotes/stats", (_req, res) => {
   res.json(getQuoteStats());
 });
 
-// --- Telemetry ---
+// --- Telemetry (persisted to SQLite, capped at 2000 entries) ---
 
-interface TelemetryEntry {
-  deviceId: string;
-  sessionId: string;
-  tvIp: string;
-  screen: string;
-  timestamp: string;
-  logs: string[];
-  receivedAt: string;
-}
-
-const telemetryStore: TelemetryEntry[] = [];
+const TELEMETRY_MAX_ENTRIES = 2000;
 
 app.post("/api/telemetry", (req, res) => {
   const { deviceId, sessionId, tvIp, screen, timestamp, logs } = req.body;
-  const entry: TelemetryEntry = {
-    deviceId: deviceId || "unknown",
-    sessionId: sessionId || "unknown",
-    tvIp: tvIp || "",
-    screen: screen || "",
-    timestamp: timestamp || new Date().toISOString(),
-    logs: (logs || []).slice(-200),
-    receivedAt: new Date().toISOString(),
-  };
-  telemetryStore.push(entry);
-  // Keep last 500 entries in memory
-  if (telemetryStore.length > 500)
-    telemetryStore.splice(0, telemetryStore.length - 500);
+  const receivedAt = new Date().toISOString();
+  const trimmedLogs = (logs || []).slice(-200);
+
+  const db = getRawDb();
+  const result = db
+    .prepare(
+      `INSERT INTO telemetry_entries (device_id, session_id, tv_ip, screen, timestamp, logs, received_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      deviceId || "unknown",
+      sessionId || "unknown",
+      tvIp || "",
+      screen || "",
+      timestamp || receivedAt,
+      JSON.stringify(trimmedLogs),
+      receivedAt,
+    );
+
+  // Cap total entries to prevent unbounded growth
+  db.prepare(
+    `DELETE FROM telemetry_entries WHERE id NOT IN (
+       SELECT id FROM telemetry_entries ORDER BY received_at DESC LIMIT ?
+     )`,
+  ).run(TELEMETRY_MAX_ENTRIES);
+
   console.log(
-    `Telemetry: ${entry.deviceId}/${entry.sessionId} (${entry.screen}) — ${entry.logs.length} log lines`,
+    `Telemetry: ${deviceId || "unknown"}/${sessionId || "unknown"} (${screen || ""}) — ${trimmedLogs.length} log lines`,
   );
-  res.json({ ok: true, id: telemetryStore.length - 1 });
+  res.json({ ok: true, id: result.lastInsertRowid });
 });
 
 app.get("/api/telemetry", (_req, res) => {
-  // Return summary of all sessions
-  const sessions: Record<
-    string,
-    {
-      deviceId: string;
-      sessionId: string;
-      entries: number;
-      lastSeen: string;
-      screens: string[];
-    }
-  > = {};
-  for (const e of telemetryStore) {
-    const key = e.deviceId + "/" + e.sessionId;
-    if (!sessions[key]) {
-      sessions[key] = {
-        deviceId: e.deviceId,
-        sessionId: e.sessionId,
-        entries: 0,
-        lastSeen: e.receivedAt,
-        screens: [],
-      };
-    }
-    sessions[key].entries++;
-    sessions[key].lastSeen = e.receivedAt;
-    if (!sessions[key].screens.includes(e.screen))
-      sessions[key].screens.push(e.screen);
-  }
-  res.json(Object.values(sessions));
+  const db = getRawDb();
+  // Aggregate telemetry into session summaries using SQL
+  const rows = db
+    .prepare(
+      `SELECT device_id, session_id,
+              COUNT(*) as entries,
+              MAX(received_at) as last_seen,
+              GROUP_CONCAT(DISTINCT screen) as screens
+       FROM telemetry_entries
+       GROUP BY device_id, session_id
+       ORDER BY last_seen DESC`,
+    )
+    .all() as Array<{
+    device_id: string;
+    session_id: string;
+    entries: number;
+    last_seen: string;
+    screens: string;
+  }>;
+
+  res.json(
+    rows.map((r) => ({
+      deviceId: r.device_id,
+      sessionId: r.session_id,
+      entries: r.entries,
+      lastSeen: r.last_seen,
+      screens: r.screens ? r.screens.split(",") : [],
+    })),
+  );
 });
 
 app.get("/api/telemetry/:deviceId/:sessionId", (req, res) => {
   const { deviceId, sessionId } = req.params;
-  const entries = telemetryStore.filter(
-    (e) => e.deviceId === deviceId && e.sessionId === sessionId,
-  );
+  const db = getRawDb();
+  const entries = db
+    .prepare(
+      `SELECT * FROM telemetry_entries
+       WHERE device_id = ? AND session_id = ?
+       ORDER BY received_at ASC`,
+    )
+    .all(deviceId, sessionId);
   res.json(entries);
 });
 
@@ -515,7 +545,7 @@ app.post("/api/pair-by-ip", optionalAuth, async (req, res) => {
 
     const tvId = `frame-${(device.wifiMac || "").replace(/:/g, "").slice(-6) || tvIp.replace(/\./g, "")}`;
 
-    // Register in device registry
+    // Persist device to database
     const metadata = {
       tvIp,
       tvId,
@@ -530,7 +560,25 @@ app.post("/api/pair-by-ip", optionalAuth, async (req, res) => {
         ? 2000 + parseInt(device.model.substring(0, 2))
         : null,
     };
-    deviceRegistry.set(tvId, metadata);
+    const db = getRawDb();
+    const now = new Date().toISOString();
+    db.prepare(
+      `INSERT INTO tv_devices (id, tv_ip, model_name, model_code, name, resolution, is_frame_tv, paired_at, last_seen_at)
+       VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         tv_ip = excluded.tv_ip,
+         paired_at = excluded.paired_at,
+         last_seen_at = excluded.last_seen_at`,
+    ).run(
+      tvId,
+      tvIp,
+      device.modelName,
+      device.model,
+      device.name,
+      device.resolution,
+      now,
+      now,
+    );
 
     const userId = (req as any).user?.userId;
     console.log(
@@ -921,8 +969,14 @@ function handlePhoneConnection(ws: WebSocket) {
   });
 }
 
-// Cleanup timer
-setInterval(cleanExpired, 60 * 60 * 1000);
+// Periodic cleanup — runs every hour
+setInterval(
+  () => {
+    cleanExpired(); // Pairing codes
+    cleanExpiredSessions(); // Auth sessions
+  },
+  60 * 60 * 1000,
+);
 
 // Start
 server.listen(PORT, () => {

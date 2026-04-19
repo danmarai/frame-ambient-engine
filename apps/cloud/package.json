@@ -13,9 +13,11 @@
   },
   "dependencies": {
     "@frame/core": "workspace:*",
+    "@frame/db": "workspace:*",
     "@frame/providers": "workspace:*",
     "@frame/rendering": "workspace:*",
     "@frame/tv": "workspace:*",
+    "better-sqlite3": "^11.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^4.21.0",

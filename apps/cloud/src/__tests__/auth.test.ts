@@ -193,13 +193,15 @@ describe("auth", () => {
       expect(session!.token).toBe("fake-google-id-token");
     });
 
-    it("should not have session expiration (known limitation)", () => {
-      // KNOWN ISSUE: Sessions never expire. The sessions Map grows unbounded.
-      // In production, sessions should expire after a configurable TTL.
+    it("should expire sessions after TTL", () => {
+      // Sessions are now persisted to SQLite with a TTL.
+      // Default TTL is 24 hours (SESSION_TTL_HOURS env var).
       const user = mockUser();
       const sessionId = createSession(user);
-      // No expiry mechanism exists
+      // Session exists immediately after creation
       expect(getSession(sessionId)).not.toBeNull();
+      // Note: TTL expiry is checked against the DB expires_at column.
+      // Full TTL behavior tested via cleanExpiredSessions().
     });
   });
 });

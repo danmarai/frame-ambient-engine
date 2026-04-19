@@ -49,20 +49,38 @@ async function loadRendering() {
 // Data directory for generated images
 const DATA_DIR = path.resolve(process.cwd(), "../../data/images");
 
-// Per-user settings store (in-memory for MVP, will move to DB)
-const userSettings = new Map<string, Partial<AppSettings>>();
+// User settings persisted to SQLite via the settings table
+import { getRawDb } from "./db.js";
 
 export function getUserSettings(userId: string): AppSettings {
-  const overrides = userSettings.get(userId) || {};
-  return { ...DEFAULT_SETTINGS, ...overrides };
+  const db = getRawDb();
+  const row = db
+    .prepare("SELECT data FROM settings WHERE id = ?")
+    .get(userId) as { data: string } | undefined;
+  if (!row) return { ...DEFAULT_SETTINGS };
+  try {
+    const overrides = JSON.parse(row.data);
+    return { ...DEFAULT_SETTINGS, ...overrides };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
 }
 
 export function updateUserSettings(
   userId: string,
   updates: Partial<AppSettings>,
 ): void {
-  const current = userSettings.get(userId) || {};
-  userSettings.set(userId, { ...current, ...updates });
+  const current = getUserSettings(userId);
+  const merged = { ...current, ...updates };
+  const now = new Date().toISOString();
+  const db = getRawDb();
+  db.prepare(
+    `INSERT INTO settings (id, data, updated_at)
+     VALUES (?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       data = excluded.data,
+       updated_at = excluded.updated_at`,
+  ).run(userId, JSON.stringify(merged), now);
 }
 
 async function getImageProvider(name?: ImageProviderName) {
