@@ -189,8 +189,8 @@ export async function generate(
 
   const { generateScene: genScene } = await loadRendering();
   const { scene, imageData: rawImage } = await genScene(deps, settings, {
-    theme: options.theme,
-    imageStyle: options.imageStyle,
+    theme: options.theme as any,
+    imageStyle: options.imageStyle as any,
   });
 
   // Prepare for TV (resize to 3840x2160 JPEG)
@@ -209,7 +209,9 @@ export async function generate(
       showWeather: overlayOpts.showWeather ?? false,
       showMarket: overlayOpts.showMarket ?? false,
       showQuote: overlayOpts.showQuote ?? false,
-      temperatureUnit: overlayOpts.tempUnit || "celsius",
+      temperatureUnit: (overlayOpts.tempUnit || "celsius") as
+        | "celsius"
+        | "fahrenheit",
     });
   }
 

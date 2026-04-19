@@ -109,7 +109,7 @@ router.get("/api/scenes", (_req, res) => {
 router.get(
   "/api/images/:sceneId",
   asyncHandler(async (req, res) => {
-    const data = await loadImage(req.params.sceneId);
+    const data = await loadImage(req.params.sceneId as string);
     if (!data) {
       res.status(404).json({ error: "Image not found" });
       return;

@@ -50,7 +50,10 @@ export async function verifyGoogleToken(
       token: idToken,
     };
   } catch (err) {
-    logger.error("Token verification failed:", err);
+    logger.error(
+      { error: err instanceof Error ? err.message : String(err) },
+      "Token verification failed",
+    );
     return null;
   }
 }
