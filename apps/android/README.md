@@ -45,9 +45,16 @@ npm run android           # Run on connected device/emulator
 - `app.json` — Expo configuration (package name, plugins, EAS project ID)
 - `eas.json` — EAS Build configuration (for cloud builds, optional)
 
+## Workspace integration
+
+This package is **excluded from pnpm workspaces** (`!apps/android` in `pnpm-workspace.yaml`).
+It uses `npm` for dependency management because Expo manages native deps separately from the
+monorepo's pnpm setup. Run `npm install` in this directory, not `pnpm install` from the root.
+
 ## Notes
 
 - `usesCleartextTraffic: true` is required for HTTP connections to TV port 8001
 - The WebView loads the cloud Studio page with `?app=true` to trigger native bridge mode
 - Native TCP upload uses `react-native-tcp-socket` for the Samsung d2d protocol
 - Subnet detection uses a TCP socket to 8.8.8.8:53 to find the phone's local IP
+- `Buffer` is available globally at runtime via React Native's Hermes engine and the `buffer` polyfill pulled in transitively by `react-native-tcp-socket`. No explicit `buffer` dependency is needed in this package.

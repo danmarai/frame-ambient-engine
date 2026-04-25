@@ -27,6 +27,9 @@ import {
 import { WebView } from "react-native-webview";
 import type { WebViewMessageEvent } from "react-native-webview";
 import TcpSocket from "react-native-tcp-socket";
+// Buffer is globally available in React Native (Hermes runtime).
+// react-native-tcp-socket depends on the `buffer` package and ensures the
+// polyfill is loaded at runtime. No explicit dependency needed in this package.
 
 // ============================================================
 // Config
