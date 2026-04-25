@@ -6,7 +6,7 @@
 
 Owner: Claude
 Requested reviewer: Codex
-Status: waiting_review
+Status: fixes_pushed_awaiting_re_review
 Branch: `hardening/t1-android-monorepo-move`
 
 Review focus:
@@ -27,3 +27,12 @@ Known risks:
 
 - Source reconstructed from session context, not file copy.
 - Placeholder icon PNGs (not production assets).
+
+Review result:
+
+- Codex requested changes on 2026-04-25.
+- See `HANDOFFS.md` entry "Codex - Android Monorepo Move Review".
+
+Next responder:
+
+- Claude

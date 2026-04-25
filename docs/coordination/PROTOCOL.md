@@ -21,6 +21,25 @@ Discord is not used for now. A human relay should handle urgent blockers that ar
 - `DECISIONS.md`: durable architecture and workflow decisions.
 - `HANDOFFS.md`: chronological handoffs, blockers, context-loss notes, and review requests.
 - `PR_REVIEW_QUEUE.md`: branches/PRs ready for cross-agent review.
+- `DESIGN_QUEUE.md`: design, brainstorming, and spec discussions that need agent input before code.
+
+## Human-Turned Async Model
+
+The human is the crank-turner. Agents do not assume the other agent is polling files in real time.
+
+When the human says "your turn" or "check coordination", the agent should:
+
+1. Read the start-of-session files listed below.
+2. Check whether their name appears in `DESIGN_QUEUE.md`, `PR_REVIEW_QUEUE.md`, `HANDOFFS.md`, or `STATUS.md`.
+3. Take the highest-priority waiting action assigned to them.
+4. Write their response, review, or handoff back into the coordination files.
+5. Set the next requested responder where applicable.
+
+The human should not need to summarize context. A sufficient prompt should be:
+
+```text
+It is your turn. Check docs/coordination and take the next appropriate action.
+```
 
 ## Start Of Session Checklist
 
@@ -30,7 +49,8 @@ Before starting work, read:
 2. `docs/coordination/STATUS.md`
 3. `docs/coordination/HANDOFFS.md`
 4. `docs/coordination/PR_REVIEW_QUEUE.md`
-5. `docs/HARDENING_PLAN.md`
+5. `docs/coordination/DESIGN_QUEUE.md`
+6. `docs/HARDENING_PLAN.md`
 
 Then:
 
@@ -60,7 +80,74 @@ If a branch or PR is ready for review, also update:
 
 3. `docs/coordination/PR_REVIEW_QUEUE.md`
 
+If design input, spec review, or brainstorming is needed, also update:
+
+4. `docs/coordination/DESIGN_QUEUE.md`
+
 If the session is interrupted or context is lost before a clean handoff, add a `context_lost` handoff as soon as possible in the next session.
+
+## Design / Brainstorm / Spec Workflow
+
+Use `DESIGN_QUEUE.md` for technical design work before code changes.
+
+Use this workflow for:
+
+- Brainstorming approaches.
+- Specifying an implementation plan.
+- Reviewing a proposed contract or state machine.
+- Asking for tradeoff analysis.
+- Resolving cross-track design dependencies.
+
+Process:
+
+1. The initiating agent adds or updates a design item in `DESIGN_QUEUE.md`.
+2. The item includes status, owner, requested responder, question, context, options, recommendation, and response format.
+3. The initiating agent updates `STATUS.md` or `HANDOFFS.md` if the design question blocks active work.
+4. The human tells the requested responder: "It is your turn. Check docs/coordination."
+5. The responder appends their response under the item.
+6. If more discussion is needed, the responder sets `Next responder`.
+7. When aligned, the final responder records the decision in `DECISIONS.md` or creates an ADR if it is architectural.
+8. The design item is marked `accepted`, `rejected`, `superseded`, or `implemented`.
+
+Design queue status values:
+
+- `open`
+- `needs_codex`
+- `needs_claude`
+- `needs_human`
+- `accepted`
+- `rejected`
+- `superseded`
+- `implemented`
+
+Design items should be concise. Long design docs may live under `docs/` or `docs/adr/`, with `DESIGN_QUEUE.md` linking to them.
+
+## Code / PR Workflow
+
+Use `PR_REVIEW_QUEUE.md` and `HANDOFFS.md` for implementation handoffs.
+
+Process:
+
+1. Implementing agent creates or updates a branch using the branch naming convention.
+2. Implementing agent updates their `STATUS.md` row with branch, task, status, and files being edited.
+3. When ready, implementing agent adds:
+   - A `ready_for_review` entry in `HANDOFFS.md`.
+   - A waiting review entry in `PR_REVIEW_QUEUE.md`.
+4. The human tells the requested reviewer: "It is your turn. Check docs/coordination."
+5. Reviewer reads the queue, checks out/reviews the branch or PR, and records findings.
+6. Reviewer updates `HANDOFFS.md` with `review_complete`.
+7. If changes are required, reviewer marks the queue item `changes_requested` and sets next responder to the implementer.
+8. If accepted, reviewer marks the queue item `approved` and updates task status where appropriate.
+
+Review outcomes:
+
+- `approved`
+- `approved_with_notes`
+- `changes_requested`
+- `blocked`
+- `needs_human`
+
+Review findings should lead with correctness, robustness, security, and missing tests. Summaries come after findings.
 
 ## Branch Naming
 
@@ -157,4 +244,3 @@ Ask the human before:
 - Changing crash cooldown policy.
 - Editing or reverting another agent's branch without explicit handoff.
 - Taking destructive git actions.
-

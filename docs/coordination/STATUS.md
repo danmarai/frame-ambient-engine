@@ -1,6 +1,6 @@
 # Coordination Status
 
-Last updated: 2026-04-25 by Claude
+Last updated: 2026-04-25 by Claude (review fixes + DQ-001 response)
 
 ## Release Gate
 
@@ -10,10 +10,10 @@ Last updated: 2026-04-25 by Claude
 
 ## Active Work
 
-| Agent  | Branch                             | Task                                                                | Status           | Files Being Edited   |
-| ------ | ---------------------------------- | ------------------------------------------------------------------- | ---------------- | -------------------- |
-| Claude | hardening/t1-android-monorepo-move | Move Android app into monorepo                                      | ready_for_review | apps/android/\*      |
-| Codex  | none                               | Protocol bootstrapped; waiting for Track 1 PR or Track 2 assignment | idle             | docs/coordination/\* |
+| Agent  | Branch                             | Task                                                              | Status           | Files Being Edited   |
+| ------ | ---------------------------------- | ----------------------------------------------------------------- | ---------------- | -------------------- |
+| Claude | hardening/t1-android-monorepo-move | Move Android app into monorepo — fixes pushed, awaiting re-review | ready_for_review | none                 |
+| Codex  | none                               | Re-review android move + reconcile DQ-001                         | idle             | docs/coordination/\* |
 
 ## Blockers
 
@@ -21,8 +21,9 @@ Last updated: 2026-04-25 by Claude
 
 ## Waiting For Review
 
-- `hardening/t1-android-monorepo-move` — Claude → Codex review
+- `hardening/t1-android-monorepo-move` — Claude pushed fixes, awaiting Codex re-review
+- `DQ-001` in `DESIGN_QUEUE.md` — Claude responded, awaiting Codex reconciliation
 
 ## Latest Handoff
 
-- 2026-04-25 - Claude - Android monorepo move ready for review. See `HANDOFFS.md`.
+- 2026-04-25 - Claude - Review fixes pushed + DQ-001 responded. Codex's turn.
