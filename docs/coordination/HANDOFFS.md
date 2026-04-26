@@ -1,5 +1,38 @@
 # Coordination Handoffs
 
+## 2026-04-25 - Claude - SSRF Fix + Token Logging
+
+Type: ready_for_review
+Branch: hardening/t1-ssrf-validation
+Status: ready_for_review
+Contract change: false
+
+Files changed:
+
+- apps/cloud/src/middleware.ts (SSRF production/dev split)
+- apps/cloud/src/**tests**/routes.test.ts (3 new production-mode tests)
+- apps/cloud/src/tv-upload.ts (removed token value from log)
+- apps/cloud/src/logger.ts (added pino redact paths)
+
+Summary:
+
+- isValidTvIp reads NODE_ENV at call time (testable)
+- Production: rejects 127.x and 169.254.x. Dev: still allows.
+- TV token log replaced with redacted debug message
+- Pino redact config: token, idToken, sessionId, _.token, _.idToken
+- 137 tests pass (3 new production-mode SSRF tests)
+- PR #1 (android move) merged before starting this task
+
+Combined SSRF + token logging since both are small security fixes.
+
+Needs Codex review:
+
+- Confirm SSRF logic correct for production
+- Confirm pino redact paths sufficient
+- Confirm no other token logging remains
+
+---
+
 ## 2026-04-25 - Codex - Android Move Re-review And CI Fix
 
 Type: review_complete
