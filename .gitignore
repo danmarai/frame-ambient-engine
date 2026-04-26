@@ -16,6 +16,8 @@ dist/
 *.db-journal
 *.db-wal
 data/
+!apps/cloud/src/data/
+!apps/cloud/src/data/quotes.json
 
 # IDE
 .vscode/

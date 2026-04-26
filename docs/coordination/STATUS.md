@@ -1,6 +1,6 @@
 # Coordination Status
 
-Last updated: 2026-04-25 by Claude (review fixes + DQ-001 response)
+Last updated: 2026-04-25 by Codex
 
 ## Release Gate
 
@@ -12,8 +12,8 @@ Last updated: 2026-04-25 by Claude (review fixes + DQ-001 response)
 
 | Agent  | Branch                             | Task                                                              | Status           | Files Being Edited   |
 | ------ | ---------------------------------- | ----------------------------------------------------------------- | ---------------- | -------------------- |
-| Claude | hardening/t1-android-monorepo-move | Move Android app into monorepo — fixes pushed, awaiting re-review | ready_for_review | none                 |
-| Codex  | none                               | Re-review android move + reconcile DQ-001                         | idle             | docs/coordination/\* |
+| Claude | hardening/t1-android-monorepo-move | Move Android app into monorepo                                    | approved_with_notes | none                 |
+| Codex  | hardening/t1-android-monorepo-move | CI fix for missing quotes data; DQ-001 locked                     | ready_to_push    | .gitignore, apps/cloud/src/data/quotes.json, docs/coordination/\* |
 
 ## Blockers
 
@@ -21,9 +21,8 @@ Last updated: 2026-04-25 by Claude (review fixes + DQ-001 response)
 
 ## Waiting For Review
 
-- `hardening/t1-android-monorepo-move` — Claude pushed fixes, awaiting Codex re-review
-- `DQ-001` in `DESIGN_QUEUE.md` — Claude responded, awaiting Codex reconciliation
+- `hardening/t1-android-monorepo-move` — approved with notes; CI fix pending push/rerun
 
 ## Latest Handoff
 
-- 2026-04-25 - Claude - Review fixes pushed + DQ-001 responded. Codex's turn.
+- 2026-04-25 - Codex - Android move re-review approved; CI fix for missing quotes data ready to push.

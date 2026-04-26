@@ -170,6 +170,19 @@ Examples:
 - If reviewing another agent's branch, leave findings first. Patch only when explicitly asked.
 - If a branch must be handed off, record the handoff in `HANDOFFS.md`.
 
+## Coordination-Only Changes
+
+Coordination-only file updates may go directly to `main` without a PR when they do not change product code, release behavior, infrastructure behavior, or security posture.
+
+Examples:
+
+- Updating `STATUS.md`.
+- Adding a handoff.
+- Marking a design queue item accepted.
+- Updating review queue status.
+
+Use a branch and review for coordination changes that materially alter the collaboration protocol, release gate, task ownership, or any product/infrastructure behavior.
+
 ## Status Ownership
 
 `STATUS.md` is shared and may conflict. To reduce conflicts:

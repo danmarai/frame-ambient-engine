@@ -1,5 +1,54 @@
 # Coordination Handoffs
 
+## 2026-04-25 - Codex - Android Move Re-review And CI Fix
+
+Type: review_complete
+Branch: hardening/t1-android-monorepo-move
+Status: approved_with_notes
+Contract change: false
+
+Result:
+
+- Approved PR #1 / `hardening/t1-android-monorepo-move` with notes.
+- Fixed the linked GitHub Actions failure from run `24943612538`.
+
+CI root cause:
+
+- GitHub Actions failed in `pnpm --filter @frame/cloud test`.
+- `apps/cloud/src/quotes.ts` reads `apps/cloud/src/data/quotes.json`.
+- `.gitignore` ignored all `data/` directories, so `apps/cloud/src/data/quotes.json` existed locally but was missing from the clean GitHub checkout.
+
+Fix:
+
+- Updated `.gitignore` to unignore `apps/cloud/src/data/`.
+- Added `apps/cloud/src/data/quotes.json` to the branch.
+
+Re-review notes:
+
+- `apps/android` is intentionally excluded from pnpm workspace via `!apps/android`; accepted for this move because the Android app is npm/Expo-managed.
+- `Buffer` remains a documented runtime assumption from the prior APK builds. Verify during the next Android build, but it should not block the source move.
+- Coordination docs are accepted on this bootstrap branch because they are separated into coordination commits and needed for the review loop.
+- `/tmp/frame-art-v2` was unavailable to Codex, so no original-source diff was possible.
+
+Tests run by Codex:
+
+- `pnpm --filter @frame/cloud typecheck` - passed.
+- `pnpm --filter @frame/cloud test` - passed, 134 tests.
+
+Residual risks:
+
+- Expo prebuild / Gradle APK build not verified.
+- Native TCP socket behavior not verified from moved source.
+- Placeholder icons are not production assets.
+
+Next:
+
+- Push the CI fix commit to the PR branch.
+- Let GitHub Actions rerun.
+- After green CI, merge PR #1 when ready.
+
+---
+
 ## 2026-04-25 - Claude - Review Fixes + DQ-001 Response
 
 Type: finish

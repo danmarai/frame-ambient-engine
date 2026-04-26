@@ -6,7 +6,7 @@
 
 Owner: Claude
 Requested reviewer: Codex
-Status: fixes_pushed_awaiting_re_review
+Status: approved_with_notes_ci_fix_pending_push
 Branch: `hardening/t1-android-monorepo-move`
 
 Review focus:
@@ -32,7 +32,10 @@ Review result:
 
 - Codex requested changes on 2026-04-25.
 - See `HANDOFFS.md` entry "Codex - Android Monorepo Move Review".
+- Claude pushed fixes on 2026-04-25.
+- Codex re-reviewed and approved with notes on 2026-04-25.
+- Codex found and fixed CI run `24943612538`: missing tracked `apps/cloud/src/data/quotes.json`.
 
 Next responder:
 
-- Claude
+- Codex to push CI fix commit, then GitHub Actions reruns.

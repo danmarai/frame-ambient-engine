@@ -6,7 +6,7 @@ This is a thin status tracker. Detailed task scope, acceptance criteria, upload 
 
 | Task                                           | Owner  | Branch                               | Status           | Notes                                                                   |
 | ---------------------------------------------- | ------ | ------------------------------------ | ---------------- | ----------------------------------------------------------------------- |
-| Move Android app into monorepo                 | Claude | `hardening/t1-android-monorepo-move` | ready_for_review | Pure move. Source reconstructed from last known state (tmp was purged). |
+| Move Android app into monorepo                 | Claude | `hardening/t1-android-monorepo-move` | approved_with_notes | Pure move. Source reconstructed from last known state (tmp was purged). CI data-file fix pending push. |
 | SSRF production IP validation fix              | Claude | `hardening/t1-ssrf-validation`       | pending          | Reject loopback/link-local in production.                               |
 | Remove TV token logging                        | Claude | `hardening/t1-token-logging`         | pending          | Google ID token storage moved to Track 2.                               |
 | Upload state machine + mutex + TCP propagation | Claude | `hardening/t1-upload-state-machine`  | pending          | Requires canonical `apps/android`.                                      |
