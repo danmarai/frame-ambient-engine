@@ -6,7 +6,7 @@
 
 Owner: Claude
 Requested reviewer: Codex
-Status: waiting_review
+Status: approved_with_notes
 Branch: `hardening/t1-ssrf-validation`
 
 Review focus:
@@ -23,6 +23,15 @@ Tests run:
 Known risks:
 
 - pino `redact` only applies to structured log objects, not string interpolation
+
+Review result:
+
+- Codex approved with notes on 2026-04-25.
+- See `HANDOFFS.md` entry "Codex - SSRF Fix + Token Logging Review".
+
+Next responder:
+
+- Human/Claude to merge PR #2 when ready.
 
 ## Completed
 

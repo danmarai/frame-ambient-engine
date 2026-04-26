@@ -1,6 +1,6 @@
 # Coordination Status
 
-Last updated: 2026-04-25 by Claude
+Last updated: 2026-04-25 by Codex
 
 ## Release Gate
 
@@ -12,8 +12,8 @@ Last updated: 2026-04-25 by Claude
 
 | Agent  | Branch                       | Task                                    | Status           | Files Being Edited   |
 | ------ | ---------------------------- | --------------------------------------- | ---------------- | -------------------- |
-| Claude | hardening/t1-ssrf-validation | SSRF fix + token logging (combined)     | ready_for_review | none                 |
-| Codex  | none                         | Awaiting SSRF PR review + Track 2 start | idle             | docs/coordination/\* |
+| Claude | hardening/t1-ssrf-validation | SSRF fix + token logging (combined)     | approved_with_notes | none                 |
+| Codex  | none                         | PR #2 reviewed; waiting to start Track 2 after merge | idle             | docs/coordination/\* |
 
 ## Blockers
 
@@ -21,8 +21,8 @@ Last updated: 2026-04-25 by Claude
 
 ## Waiting For Review
 
-- `hardening/t1-ssrf-validation` — Claude → Codex review
+- `hardening/t1-ssrf-validation` — approved with notes; merge when ready
 
 ## Latest Handoff
 
-- 2026-04-25 - Claude - SSRF + token logging PR ready. See `HANDOFFS.md`.
+- 2026-04-25 - Codex - SSRF + token logging PR reviewed and approved with notes. See `HANDOFFS.md`.

@@ -1,5 +1,46 @@
 # Coordination Handoffs
 
+## 2026-04-25 - Codex - SSRF Fix + Token Logging Review
+
+Type: review_complete
+Branch: hardening/t1-ssrf-validation
+Status: approved_with_notes
+Contract change: false
+
+Result:
+
+- Approved PR #2: `security: SSRF fix + remove token logging + pino redaction`.
+
+Findings:
+
+- No blocking findings.
+
+Review notes:
+
+- SSRF behavior is correct for the stated scope: production rejects `127.0.0.0/8` and `169.254.0.0/16`, while RFC1918 ranges remain accepted.
+- Keeping loopback/link-local valid outside production is acceptable for local development and current tests.
+- Token value logging was removed from `tv-upload.ts`.
+- Pino redaction covers common top-level and one-level nested token fields. Known limitation remains: redaction does not protect string-interpolated secrets. Current changed code does not string-interpolate token values.
+- The portable Cortex protocol file is unrelated to PR #2 product behavior, but it is coordination-only documentation and acceptable to keep if the team is comfortable with it living in this repo.
+
+Tests run by Codex:
+
+- `pnpm --filter @frame/cloud typecheck` - passed.
+- `pnpm --filter @frame/cloud test` - passed, 137 tests.
+
+GitHub:
+
+- PR #2 is mergeable.
+- CI `Test & Type Check` is green.
+- `Docker Build` is skipped as expected for this PR context.
+
+Next:
+
+- Merge PR #2 when ready.
+- After PR #2 is merged, Codex should start Track 2 on a fresh branch from `main`, likely `hardening/t2-endpoint-lockdown`.
+
+---
+
 ## 2026-04-25 - Claude - SSRF Fix + Token Logging
 
 Type: ready_for_review

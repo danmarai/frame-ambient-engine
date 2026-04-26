@@ -7,8 +7,8 @@ This is a thin status tracker. Detailed task scope, acceptance criteria, upload 
 | Task                                           | Owner  | Branch                               | Status           | Notes                                            |
 | ---------------------------------------------- | ------ | ------------------------------------ | ---------------- | ------------------------------------------------ |
 | Move Android app into monorepo                 | Claude | `hardening/t1-android-monorepo-move` | merged           | PR #1 merged.                                    |
-| SSRF production IP validation fix              | Claude | `hardening/t1-ssrf-validation`       | ready_for_review | Combined with token logging fix. 137 tests pass. |
-| Remove TV token logging                        | Claude | `hardening/t1-ssrf-validation`       | ready_for_review | Combined with SSRF fix on same branch.           |
+| SSRF production IP validation fix              | Claude | `hardening/t1-ssrf-validation`       | approved_with_notes | Combined with token logging fix. 137 tests pass. |
+| Remove TV token logging                        | Claude | `hardening/t1-ssrf-validation`       | approved_with_notes | Combined with SSRF fix on same branch.           |
 | Upload state machine + mutex + TCP propagation | Claude | `hardening/t1-upload-state-machine`  | pending          | Requires canonical `apps/android`.               |
 | Circuit breaker + 30s cooldown                 | Claude | `hardening/t1-circuit-breaker`       | pending          | No auto-retry after crash-class failures.        |
 | Mark `apps/web` legacy                         | Claude | `hardening/t1-mark-web-legacy`       | pending          | Remove from CI if applicable.                    |
