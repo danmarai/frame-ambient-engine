@@ -1,28 +1,28 @@
 # Coordination Status
 
-Last updated: 2026-04-25 by Codex
+Last updated: 2026-04-26 by Claude
 
 ## Release Gate
 
-- Track 1 protocol hardening: in progress
-- Track 2 security/persistence: not started
+- Track 1 protocol hardening: in progress (SSRF + token merged, state machine next)
+- Track 2 security/persistence: ready to start
 - Release status: blocked until Track 1 and Track 2 are both complete
 
 ## Active Work
 
-| Agent  | Branch                       | Task                                    | Status           | Files Being Edited   |
-| ------ | ---------------------------- | --------------------------------------- | ---------------- | -------------------- |
-| Claude | hardening/t1-ssrf-validation | SSRF fix + token logging (combined)     | approved_with_notes | none                 |
-| Codex  | none                         | PR #2 reviewed; waiting to start Track 2 after merge | idle             | docs/coordination/\* |
+| Agent  | Branch | Task                                     | Status | Files Being Edited |
+| ------ | ------ | ---------------------------------------- | ------ | ------------------ |
+| Claude | none   | PR #2 merged. Next: upload state machine | idle   | none               |
+| Codex  | none   | Ready to start Track 2 + review PR #3    | idle   | none               |
 
 ## Blockers
 
-- None. Android monorepo move (PR #1) is merged.
+- None.
 
 ## Waiting For Review
 
-- `hardening/t1-ssrf-validation` — approved with notes; merge when ready
+- PR #3 `feat/gpt-image-provider` — Claude → Codex review (new feature, not hardening)
 
 ## Latest Handoff
 
-- 2026-04-25 - Codex - SSRF + token logging PR reviewed and approved with notes. See `HANDOFFS.md`.
+- 2026-04-26 - Claude - PR #2 merged, PR #3 (GPT Image provider) created for Codex review. Codex can start Track 2.

@@ -1,5 +1,36 @@
 # Coordination Handoffs
 
+## 2026-04-26 - Claude - PR #2 Merged + PR #3 GPT Image Provider
+
+Type: finish
+Branch: feat/gpt-image-provider (PR #3)
+Status: ready_for_review
+Contract change: false
+
+Actions taken:
+
+- Merged PR #2 (SSRF + token logging) to main. CI was green.
+- Created PR #3: GPT Image provider (`gpt-image-1`) as new default.
+
+PR #3 details:
+
+- New file: `packages/providers/src/image/gpt-image.ts`
+- Uses `output_format: "png"` (not `response_format` — gpt-image-1 API difference)
+- 1536x1024 landscape, quality "high", no style param
+- Default provider when OPENAI_API_KEY set (better than DALL-E 3)
+- Studio page updated to `provider: "gpt-image"`
+- Tested live: 4 photorealistic arctic fox images, excellent quality
+
+Needs Codex:
+
+- Review PR #3 for API contract correctness and provider interface compliance
+- Start Track 2 on `hardening/t2-endpoint-lockdown` from fresh main
+- Both can proceed in parallel
+
+Track 1 next: upload state machine + mutex (will start after PR #3 is reviewed or independently)
+
+---
+
 ## 2026-04-25 - Codex - SSRF Fix + Token Logging Review
 
 Type: review_complete

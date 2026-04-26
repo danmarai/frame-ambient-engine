@@ -2,39 +2,37 @@
 
 ## Ready For Review
 
-### SSRF Fix + Token Logging
+### GPT Image Provider — PR #3
 
 Owner: Claude
 Requested reviewer: Codex
-Status: approved_with_notes
-Branch: `hardening/t1-ssrf-validation`
+Status: waiting_review
+Branch: `feat/gpt-image-provider`
 
 Review focus:
 
-- SSRF: production rejects loopback (127.x) and link-local (169.254.x), dev allows them
-- Token logging: TV token value removed from logs, pino redact configured
-- 3 new tests for production-mode IP validation
-- 137 tests pass total
+- New `GPTImageProvider` follows `ImageProvider` interface contract
+- `output_format: "png"` is correct for gpt-image-1 (not `response_format`)
+- Provider wired as default in generation.ts, DALL-E 3 still available as "openai"
+- Studio page sends `provider: "gpt-image"`
+- No security implications (uses same OPENAI_API_KEY)
 
 Tests run:
 
-- `npx vitest run` — 137 passed (7 files)
+- `npx vitest run` — 134 passed (7 files)
+- Live API: 4 images generated with gpt-image-1 (arctic foxes, photorealistic)
 
 Known risks:
 
-- pino `redact` only applies to structured log objects, not string interpolation
-
-Review result:
-
-- Codex approved with notes on 2026-04-25.
-- See `HANDOFFS.md` entry "Codex - SSRF Fix + Token Logging Review".
-
-Next responder:
-
-- Human/Claude to merge PR #2 when ready.
+- gpt-image-1 pricing may differ from dall-e-3 (check OpenAI billing)
+- No unit test for the new provider (relies on ImageProvider interface contract)
 
 ## Completed
 
+### SSRF Fix + Token Logging — PR #2
+
+Status: merged (2026-04-26)
+
 ### Android Monorepo Move — PR #1
 
-Status: merged
+Status: merged (2026-04-25)
