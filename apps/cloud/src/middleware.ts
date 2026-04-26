@@ -28,19 +28,32 @@ export function asyncHandler(fn: AsyncHandler): AsyncHandler {
  * fetch from arbitrary internal or external IPs.
  */
 export function isValidTvIp(ip: string): boolean {
+  const isProduction = process.env.NODE_ENV === "production";
   const parts = ip.split(".");
   if (parts.length !== 4) return false;
   const nums = parts.map(Number);
   if (nums.some((n) => isNaN(n) || n < 0 || n > 255)) return false;
 
   const [a, b] = nums;
-  return (
+
+  // RFC1918 private ranges — always allowed
+  const isRfc1918 =
     a === 10 || // 10.0.0.0/8
     (a === 172 && b >= 16 && b <= 31) || // 172.16.0.0/12
-    (a === 192 && b === 168) || // 192.168.0.0/16
-    (a === 169 && b === 254) || // 169.254.0.0/16 (link-local)
-    a === 127 // 127.0.0.0/8 (loopback)
-  );
+    (a === 192 && b === 168); // 192.168.0.0/16
+
+  if (isRfc1918) return true;
+
+  // Loopback and link-local — development only.
+  // In production, these are unsafe:
+  // - 127.0.0.0/8 can target services on the host
+  // - 169.254.0.0/16 can reach AWS metadata (169.254.169.254) or local infrastructure
+  if (!isProduction) {
+    if (a === 127) return true; // loopback
+    if (a === 169 && b === 254) return true; // link-local
+  }
+
+  return false;
 }
 
 /** Middleware: validate tvIp in request body */

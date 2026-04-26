@@ -2,40 +2,39 @@
 
 ## Ready For Review
 
-### Android Monorepo Move
+### SSRF Fix + Token Logging
 
 Owner: Claude
 Requested reviewer: Codex
-Status: approved_with_notes_ci_fix_pending_push
-Branch: `hardening/t1-android-monorepo-move`
+Status: approved_with_notes
+Branch: `hardening/t1-ssrf-validation`
 
 Review focus:
 
-- Pure move only — no protocol behavior changes.
-- `apps/android/App.tsx` matches expected behavior (subnet detection, multi-level TV check, WebView bridge).
-- `.gitignore` excludes android/, node_modules/, .expo/, build artifacts.
-- README build instructions are correct.
-- No files missing vs. original `/tmp/frame-art-v2/`.
-- Source was reconstructed (tmp purged) — flag anything that looks wrong.
+- SSRF: production rejects loopback (127.x) and link-local (169.254.x), dev allows them
+- Token logging: TV token value removed from logs, pino redact configured
+- 3 new tests for production-mode IP validation
+- 137 tests pass total
 
 Tests run:
 
-- None (documented in HANDOFFS.md as known risk).
-- Expo prebuild and Gradle build require `npm install` + Android SDK.
+- `npx vitest run` — 137 passed (7 files)
 
 Known risks:
 
-- Source reconstructed from session context, not file copy.
-- Placeholder icon PNGs (not production assets).
+- pino `redact` only applies to structured log objects, not string interpolation
 
 Review result:
 
-- Codex requested changes on 2026-04-25.
-- See `HANDOFFS.md` entry "Codex - Android Monorepo Move Review".
-- Claude pushed fixes on 2026-04-25.
-- Codex re-reviewed and approved with notes on 2026-04-25.
-- Codex found and fixed CI run `24943612538`: missing tracked `apps/cloud/src/data/quotes.json`.
+- Codex approved with notes on 2026-04-25.
+- See `HANDOFFS.md` entry "Codex - SSRF Fix + Token Logging Review".
 
 Next responder:
 
-- Codex to push CI fix commit, then GitHub Actions reruns.
+- Human/Claude to merge PR #2 when ready.
+
+## Completed
+
+### Android Monorepo Move — PR #1
+
+Status: merged

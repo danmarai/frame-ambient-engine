@@ -4,14 +4,14 @@ This is a thin status tracker. Detailed task scope, acceptance criteria, upload 
 
 ## Track 1 - Protocol And Quick Fixes
 
-| Task                                           | Owner  | Branch                               | Status           | Notes                                                                   |
-| ---------------------------------------------- | ------ | ------------------------------------ | ---------------- | ----------------------------------------------------------------------- |
-| Move Android app into monorepo                 | Claude | `hardening/t1-android-monorepo-move` | approved_with_notes | Pure move. Source reconstructed from last known state (tmp was purged). CI data-file fix pending push. |
-| SSRF production IP validation fix              | Claude | `hardening/t1-ssrf-validation`       | pending          | Reject loopback/link-local in production.                               |
-| Remove TV token logging                        | Claude | `hardening/t1-token-logging`         | pending          | Google ID token storage moved to Track 2.                               |
-| Upload state machine + mutex + TCP propagation | Claude | `hardening/t1-upload-state-machine`  | pending          | Requires canonical `apps/android`.                                      |
-| Circuit breaker + 30s cooldown                 | Claude | `hardening/t1-circuit-breaker`       | pending          | No auto-retry after crash-class failures.                               |
-| Mark `apps/web` legacy                         | Claude | `hardening/t1-mark-web-legacy`       | pending          | Remove from CI if applicable.                                           |
+| Task                                           | Owner  | Branch                               | Status           | Notes                                            |
+| ---------------------------------------------- | ------ | ------------------------------------ | ---------------- | ------------------------------------------------ |
+| Move Android app into monorepo                 | Claude | `hardening/t1-android-monorepo-move` | merged           | PR #1 merged.                                    |
+| SSRF production IP validation fix              | Claude | `hardening/t1-ssrf-validation`       | approved_with_notes | Combined with token logging fix. 137 tests pass. |
+| Remove TV token logging                        | Claude | `hardening/t1-ssrf-validation`       | approved_with_notes | Combined with SSRF fix on same branch.           |
+| Upload state machine + mutex + TCP propagation | Claude | `hardening/t1-upload-state-machine`  | pending          | Requires canonical `apps/android`.               |
+| Circuit breaker + 30s cooldown                 | Claude | `hardening/t1-circuit-breaker`       | pending          | No auto-retry after crash-class failures.        |
+| Mark `apps/web` legacy                         | Claude | `hardening/t1-mark-web-legacy`       | pending          | Remove from CI if applicable.                    |
 
 ## Track 2 - Security And Persistence
 
