@@ -7,7 +7,7 @@
  *
  * DB state is provided by setup.ts (in-memory SQLite).
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { isValidTvIp, requireValidTvIp } from "../middleware.js";
 import { getRawDb } from "../db.js";
 import { getGenerationConfig } from "../generation.js";
@@ -85,18 +85,44 @@ describe("isValidTvIp", () => {
     });
   });
 
-  describe("accepts link-local and loopback", () => {
-    it("should accept 169.254.0.0/16 (link-local)", () => {
+  describe("accepts link-local and loopback in non-production", () => {
+    it("should accept 169.254.0.0/16 (link-local) in dev mode", () => {
       expect(isValidTvIp("169.254.0.1")).toBe(true);
       expect(isValidTvIp("169.254.255.255")).toBe(true);
       expect(isValidTvIp("169.254.1.1")).toBe(true);
     });
 
-    it("should accept 127.0.0.0/8 (loopback)", () => {
+    it("should accept 127.0.0.0/8 (loopback) in dev mode", () => {
       expect(isValidTvIp("127.0.0.1")).toBe(true);
       expect(isValidTvIp("127.0.0.0")).toBe(true);
       expect(isValidTvIp("127.255.255.255")).toBe(true);
       expect(isValidTvIp("127.1.2.3")).toBe(true);
+    });
+  });
+
+  describe("rejects loopback and link-local in production", () => {
+    const origEnv = process.env.NODE_ENV;
+    beforeEach(() => {
+      process.env.NODE_ENV = "production";
+    });
+    afterEach(() => {
+      process.env.NODE_ENV = origEnv;
+    });
+
+    it("should reject 127.0.0.1 in production", () => {
+      expect(isValidTvIp("127.0.0.1")).toBe(false);
+      expect(isValidTvIp("127.0.0.0")).toBe(false);
+    });
+
+    it("should reject 169.254.169.254 (AWS metadata) in production", () => {
+      expect(isValidTvIp("169.254.169.254")).toBe(false);
+      expect(isValidTvIp("169.254.0.1")).toBe(false);
+    });
+
+    it("should still accept RFC1918 in production", () => {
+      expect(isValidTvIp("192.168.254.31")).toBe(true);
+      expect(isValidTvIp("10.0.0.1")).toBe(true);
+      expect(isValidTvIp("172.16.0.1")).toBe(true);
     });
   });
 

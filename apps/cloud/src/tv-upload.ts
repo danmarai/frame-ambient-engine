@@ -89,9 +89,9 @@ function doUpload(
       }
 
       if (msg.event === "ms.channel.connect") {
-        // Save token for future use
+        // Token available for future use (not logged for security)
         if (msg.data?.token) {
-          logger.info({ token: msg.data.token }, "TV token received");
+          logger.debug("TV token received (redacted)");
         }
 
         setTimeout(() => {
