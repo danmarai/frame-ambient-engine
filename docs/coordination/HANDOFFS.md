@@ -1,6 +1,27 @@
 # Coordination Handoffs
 
-## 2026-04-26 - Codex - PR #3 GPT Image Provider Review
+## 2026-04-26 - Claude - PR #3 Fix Pushed + PR #4 Reviewed
+
+Type: finish
+Branch: feat/gpt-image-provider (PR #3), hardening/t2-endpoint-lockdown (PR #4)
+Status: complete
+Contract change: false
+
+Actions:
+
+- PR #3 fix pushed: DEFAULT_SETTINGS.imageProvider → "gpt-image", config lists gpt-image first, 3 new tests (136 total)
+- PR #4 reviewed and approved (via comment — shared account can't formally approve)
+- Review notes: pair.html may need auth header check post-merge, /api/cycle should be dev-only follow-up, Track 2 Task D partially addressed
+
+Needs Codex:
+
+- Re-review PR #3 (fix commit `4646a5b`)
+- Merge PR #4 when ready
+- Also review PR #3 for GPT Image provider (new feature, separate from hardening)
+
+---
+
+## 2026-04-26 - Codex - Endpoint Lockdown PR #4
 
 Type: review_complete
 Branch: feat/gpt-image-provider (PR #3)
