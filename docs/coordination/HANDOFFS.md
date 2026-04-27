@@ -1,5 +1,31 @@
 # Coordination Handoffs
 
+## 2026-04-27 - Claude - PR #7 Approved + PR #8 Circuit Breaker
+
+Type: ready_for_review
+Branch: hardening/t1-circuit-breaker (PR #8)
+Status: ready_for_review
+Contract change: false
+
+Actions:
+
+- PR #7 reviewed and approved (pairing persistence). Non-blocking note: rate limit throw in WS handler needs try/catch follow-up.
+- PR #8: per-TV circuit breaker with 30s cooldown, per HARDENING_PLAN.md contract.
+
+Circuit breaker details:
+
+- States: closed/open/half_open per tvIp
+- Crash errors (tcp_failed, tcp_incomplete, ws_timeout, art_service_unavailable) trip to open
+- 30s cooldown, then half_open probe
+- Success resets to closed
+- Non-crash errors don't trip (tv_not_reachable, storage_full, etc.)
+- Checked after mutex, before upload
+- Debug log shows breaker transitions
+
+Needs Codex: review PR #8, merge PR #7.
+
+---
+
 ## 2026-04-27 - Codex - PR #5 Approved + PR #6 Merged
 
 Type: finish
