@@ -2,10 +2,11 @@
  * Unit tests for pairing module.
  *
  * The pairing module manages 6-character codes that link a TV to a phone
- * session. Codes expire after 1 hour, can only be claimed once, and are
- * scoped per TV (creating a new code for the same TV invalidates the old one).
+ * session. Codes expire quickly, can only be claimed once, and are persisted
+ * in SQLite so restart does not lose active pairings.
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { getRawDb } from "../db.js";
 import {
   createPairingCode,
   claimCode,
@@ -15,17 +16,23 @@ import {
   cleanExpired,
 } from "../pairing.js";
 
-// We need to reset module state between tests since pairing uses an in-memory Map.
-// The simplest approach: re-import a fresh module for each test group.
-// However, since the module uses a module-level Map, we rely on the fact that
-// createPairingCode removes old codes for the same tvId.
-
 describe("pairing", () => {
   // Use unique tvIds per test to avoid cross-test state leakage
   let testCounter = 0;
   function uniqueTvId() {
     return `test-tv-${Date.now()}-${testCounter++}`;
   }
+
+  beforeEach(() => {
+    const db = getRawDb();
+    db.prepare("DELETE FROM pairing_codes").run();
+    db.prepare("DELETE FROM users").run();
+    vi.useRealTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   describe("createPairingCode", () => {
     it("should generate a 6-character code (3 letters + 3 digits)", () => {
@@ -103,13 +110,10 @@ describe("pairing", () => {
       const tvId = uniqueTvId();
       const code = createPairingCode(tvId, "192.168.1.100");
 
-      // Advance time past 1-hour expiry
       vi.useFakeTimers();
-      vi.advanceTimersByTime(61 * 60 * 1000);
+      vi.advanceTimersByTime(11 * 60 * 1000);
 
       expect(validateCode(code)).toBeNull();
-
-      vi.useRealTimers();
     });
   });
 
@@ -141,16 +145,28 @@ describe("pairing", () => {
       const tvId = uniqueTvId();
       vi.useFakeTimers({ now: Date.now() });
       const code = createPairingCode(tvId, "192.168.1.100");
-      vi.advanceTimersByTime(61 * 60 * 1000);
+      vi.advanceTimersByTime(11 * 60 * 1000);
 
       const session = claimCode(code, "phone-xyz");
       expect(session).toBeNull();
-
-      vi.useRealTimers();
     });
 
     it("should reject claim of nonexistent code", () => {
       expect(claimCode("AAA111", "phone-xyz")).toBeNull();
+    });
+
+    it("should bind an authenticated user to the claimed pairing", () => {
+      getRawDb()
+        .prepare("INSERT INTO users (id, email, created_at) VALUES (?, ?, ?)")
+        .run("user-1", "user-1@example.com", new Date().toISOString());
+
+      const tvId = uniqueTvId();
+      const code = createPairingCode(tvId, "192.168.1.100");
+      const session = claimCode(code, "phone-abc", "user-1");
+
+      expect(session).not.toBeNull();
+      expect(session!.userId).toBe("user-1");
+      expect(getSessionByTvId(tvId)!.userId).toBe("user-1");
     });
   });
 
@@ -201,13 +217,10 @@ describe("pairing", () => {
       const code = createPairingCode(tvId, "192.168.1.100");
       claimCode(code, "phone-old");
 
-      // Advance past 24 * EXPIRY_MS (24 hours of the 1-hour expiry)
       vi.advanceTimersByTime(25 * 60 * 60 * 1000);
 
       cleanExpired();
       expect(getSessionByTvId(tvId)).toBeUndefined();
-
-      vi.useRealTimers();
     });
 
     it("should keep recent paired sessions", () => {
@@ -221,14 +234,16 @@ describe("pairing", () => {
   });
 
   describe("edge cases", () => {
-    it("should handle rapid code generation for same TV (race condition)", () => {
+    it("should rate-limit rapid code generation for same TV", () => {
       const tvId = uniqueTvId();
-      // Simulate rapid reconnections
       const codes: string[] = [];
-      for (let i = 0; i < 50; i++) {
+      for (let i = 0; i < 5; i++) {
         codes.push(createPairingCode(tvId, "192.168.1.100"));
       }
-      // Only the last code should be valid
+      expect(() => createPairingCode(tvId, "192.168.1.100")).toThrow(
+        "Too many pairing codes requested",
+      );
+
       const lastCode = codes[codes.length - 1]!;
       expect(validateCode(lastCode)).not.toBeNull();
       for (let i = 0; i < codes.length - 1; i++) {
@@ -256,6 +271,23 @@ describe("pairing", () => {
       expect(session).not.toBeNull();
       expect(session!.tvIp).toBe("192.168.1.200");
       expect(validateCode(code1)).toBeNull(); // old code invalidated
+    });
+  });
+
+  describe("persistence", () => {
+    it("should store active codes in SQLite", () => {
+      const tvId = uniqueTvId();
+      const code = createPairingCode(tvId, "192.168.1.100");
+
+      const row = getRawDb()
+        .prepare("SELECT tv_id, tv_ip FROM pairing_codes WHERE code = ?")
+        .get(code) as { tv_id: string; tv_ip: string } | undefined;
+      expect(row).toEqual({ tv_id: tvId, tv_ip: "192.168.1.100" });
+
+      const session = validateCode(code);
+      expect(session).not.toBeNull();
+      expect(session!.tvId).toBe(tvId);
+      expect(session!.tvIp).toBe("192.168.1.100");
     });
   });
 });

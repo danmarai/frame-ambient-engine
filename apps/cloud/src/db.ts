@@ -128,10 +128,23 @@ export function initDatabase(): void {
       value TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS pairing_codes (
+      code TEXT PRIMARY KEY,
+      tv_id TEXT NOT NULL,
+      tv_ip TEXT NOT NULL,
+      user_id TEXT REFERENCES users(id),
+      phone_session_id TEXT,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      claimed_at TEXT
+    );
   `);
 
   // Create indexes for common queries
   raw.exec(`
+    DROP INDEX IF EXISTS idx_pairing_codes_active_tv;
+
     CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires
       ON auth_sessions(expires_at);
     CREATE INDEX IF NOT EXISTS idx_auth_sessions_user
@@ -148,6 +161,14 @@ export function initDatabase(): void {
       ON tv_devices(user_id);
     CREATE INDEX IF NOT EXISTS idx_user_prefs_user
       ON user_preferences(user_id, key);
+    CREATE INDEX IF NOT EXISTS idx_pairing_codes_tv
+      ON pairing_codes(tv_id);
+    CREATE INDEX IF NOT EXISTS idx_pairing_codes_phone
+      ON pairing_codes(phone_session_id);
+    CREATE INDEX IF NOT EXISTS idx_pairing_codes_expires
+      ON pairing_codes(expires_at);
+    CREATE INDEX IF NOT EXISTS idx_pairing_codes_user
+      ON pairing_codes(user_id);
   `);
 
   logger.info("Database initialized");

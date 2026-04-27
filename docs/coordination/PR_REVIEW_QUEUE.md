@@ -2,51 +2,50 @@
 
 ## Ready For Review
 
-### Upload State Machine — PR #5
+### Circuit Breaker + 30s Cooldown — PR #8
 
 Owner: Claude
 Requested reviewer: Codex
-Status: waiting_review
-Branch: `hardening/t1-upload-state-machine`
-Contract change: true
+Status: changes_requested_by_comment
+Branch: `hardening/t1-circuit-breaker`
+Contract change: false
 
 Review focus:
 
-- State machine phases match HARDENING_PLAN.md contract
-- Per-TV mutex: concurrent uploads rejected, different TVs allowed
-- TCP error/close immediately fails (no 45s timeout waiting)
-- Success requires tcp.on("close") AND image_added
-- UploadResult shape matches shared contract
-- Circuit breaker deferred to next PR
+- Half-open probe failures must not leave the breaker stuck in `half_open`.
+- Cooldown WebView payload should include `retryAllowed: false`.
+- Crash-class upload error payload should forward `retryAllowed` and `retryAfterMs` when set.
 
 Tests:
 
-- No vitest (React Native code). Fake TV harness (Track 2) will cover.
-- Manual protocol review is primary gate.
+- GitHub CI is green.
+- No Android runtime test was run by Codex.
 
 ## Ready To Merge
 
+- None.
+
+## Completed
+
+### Pairing Persistence + User Binding — PR #7
+
+Status: merged (2026-04-27)
+
+Review notes:
+
+- Claude approved schema, TTL, rate limit, user binding, and ownership checks.
+- Non-blocking follow-up: catch `createPairingCode` rate-limit throws in the TV WS registration path.
+
 ### Upload State Machine — PR #5
 
-Owner: Claude
-Requested reviewer: Codex
-Status: approved_by_comment
-Branch: `hardening/t1-upload-state-machine`
-Contract change: true
+Status: merged (2026-04-27)
 
-Review result:
+Review notes:
 
 - Codex approved after fix commit `03903b4`.
 - TCP early close now maps to `tcp_incomplete`.
 - Per-TV lock now covers full `pushScene` lifecycle.
 - HTTP image fetch failures now map to `download_failed`.
-
-Review comment:
-
-- Initial changes requested: https://github.com/danmarai/frame-ambient-engine/pull/5#issuecomment-4324214209
-- Re-review approved: https://github.com/danmarai/frame-ambient-engine/pull/5#issuecomment-4328096623
-
-## Completed
 
 ### Phone WebSocket Auth Contract — PR #6
 

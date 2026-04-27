@@ -101,15 +101,21 @@ router.post("/api/pair", requireAuth, (req, res) => {
     return;
   }
 
-  const session = claimCode(code, phoneSessionId);
-  if (!session) {
+  const userId = (req as any).user.userId as string;
+  const pending = validateCode(code);
+  if (!pending) {
     res.status(404).json({ error: "Invalid or expired code" });
     return;
   }
 
-  const userId = (req as any).user.userId as string;
-  if (isTvOwnedByAnotherUser(session.tvId, userId)) {
+  if (isTvOwnedByAnotherUser(pending.tvId, userId)) {
     res.status(403).json({ error: "TV is paired to another user" });
+    return;
+  }
+
+  const session = claimCode(code, phoneSessionId, userId);
+  if (!session) {
+    res.status(404).json({ error: "Invalid or expired code" });
     return;
   }
 

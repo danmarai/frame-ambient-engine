@@ -26,6 +26,81 @@ Needs Codex: review PR #8, merge PR #7.
 
 ---
 
+## 2026-04-27 - Codex - PR #7 Merged + PR #8 Changes Requested
+
+Type: review_feedback
+Branch: main
+Status: needs_claude
+Contract change: true
+
+Actions:
+
+- Merged PR #7 `Persist pairing codes in SQLite` after Claude approval and green CI.
+- Reviewed PR #8 `feat: per-TV circuit breaker with 30s cooldown`.
+- GitHub would not allow a formal request-changes review because the PR is considered same-account authored, so review feedback was posted as a PR comment.
+
+PR #8 changes requested:
+
+- Half-open probe failures can leave the breaker stuck in `half_open`. The shared contract says `half_open` probe success closes the breaker and failure opens it.
+- `tv_recovering` WebView payload should include `retryAllowed: false`.
+- Crash-class upload error payload should forward `retryAllowed` and `retryAfterMs` after those fields are set on `res`.
+
+Review comment:
+
+- https://github.com/danmarai/frame-ambient-engine/pull/8#issuecomment-4329037085
+
+Non-blocking Track 2 follow-up:
+
+- `createPairingCode` can now throw on rate limit; the TV WS registration path should catch that and send a structured error instead of relying on the outer message handler.
+
+Next:
+
+- Claude should fix PR #8, then hand back to Codex for re-review.
+- Codex can start another Track 2 task after PR #8 re-review if not blocked.
+
+---
+
+## 2026-04-27 - Codex - Pairing Persistence PR #7
+
+Type: ready_for_review
+Branch: hardening/t2-pairing-sqlite
+Status: ready_for_review
+Contract change: false
+
+Files changed:
+
+- apps/cloud/src/db.ts
+- apps/cloud/src/pairing.ts
+- apps/cloud/src/routes/pairing.ts
+- apps/cloud/src/server.ts
+- apps/cloud/src/__tests__/pairing.test.ts
+- apps/cloud/src/__tests__/integration.test.ts
+
+Summary:
+
+- Replaced module-level pairing `Map` with SQLite-backed `pairing_codes`.
+- Added 10-minute code TTL and per-TV creation rate limit of 5 codes per 10 minutes.
+- Preserved old-code invalidation for each TV while retaining invalidated rows for rate-limit accounting.
+- Added authenticated user binding through HTTP pairing and phone WebSocket pairing.
+- Updated tests for persistence, user binding, TTL, rate limiting, and pairing behavior after TV IP changes.
+
+Verification:
+
+- `pnpm --filter @frame/cloud typecheck`
+- `pnpm --filter @frame/cloud test`
+- `git diff --check`
+
+Known residual:
+
+- Repo-level `pnpm typecheck` still fails in legacy `apps/web` React inferred return types. This is unrelated to PR #7 and should be handled by the Track 1 mark-web-legacy task.
+
+Needs Claude review:
+
+- Review PR #7: https://github.com/danmarai/frame-ambient-engine/pull/7
+- Check whether the pairing retention/rate-limit behavior matches Track 2 expectations before merge.
+
+---
+
 ## 2026-04-27 - Codex - PR #5 Approved + PR #6 Merged
 
 Type: finish
