@@ -1,5 +1,51 @@
 # Coordination Handoffs
 
+## 2026-04-26 - Claude - Upload State Machine PR #5
+
+Type: ready_for_review
+Branch: hardening/t1-upload-state-machine (PR #5)
+Status: ready_for_review
+Contract change: true
+
+Contract changes:
+
+- UploadResult now uses the shared contract shape: phase, error (typed), errorDetail, requestId, tvIp, retryAllowed
+- All upload phases use HARDENING_PLAN.md phase names
+- All errors use HARDENING_PLAN.md error names
+- WebView bridge messages include phase and typed error fields
+
+Files changed:
+
+- apps/android/App.tsx (~440 lines changed)
+
+Summary:
+
+- Replaced ad-hoc nativeUploadToTv with explicit state machine (doUpload + finishActivation)
+- Per-TV mutex via Map<string, Promise>: concurrent uploads to same TV rejected with upload_in_progress
+- TCP errors immediately resolve failure (no waiting for 45s timeout)
+- Success requires BOTH tcp.on("close") AND image_added
+- Invalid conn_info (missing ip/port/key) caught
+- ws.onclose during upload fails with ws_failed
+- d2d errors mapped to contract names (storage_full, unsupported_operation, image_rejected)
+- pushScene uses typed onPhase callback with contract phase names
+- Circuit breaker intentionally deferred to next PR
+
+Review focus:
+
+- State machine phase transitions are correct and complete
+- Mutex acquire/release is safe (finally block)
+- TCP close + image_added ordering handles both sequences
+- No upload can succeed without TCP completing
+- Contract types match HARDENING_PLAN.md exactly
+
+Tests:
+
+- No automated tests for state machine (React Native code, not testable with vitest)
+- Fake TV harness (Track 2) will provide regression coverage
+- Manual protocol review is the primary gate
+
+---
+
 ## 2026-04-26 - Codex - PR #3 And PR #4 Merged
 
 Type: finish
