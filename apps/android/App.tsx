@@ -115,6 +115,60 @@ interface UploadResult {
 const tvUploadLocks = new Map<string, Promise<UploadResult>>();
 
 // ============================================================
+// Per-TV Circuit Breaker
+// ============================================================
+
+const COOLDOWN_MS = 30000;
+
+// Crash-class errors that trip the breaker (per HARDENING_PLAN.md)
+const CRASH_ERRORS: Set<UploadError> = new Set([
+  "tcp_failed",
+  "tcp_incomplete",
+  "ws_timeout",
+  "art_service_unavailable",
+]);
+
+interface BreakerState {
+  state: "closed" | "open" | "half_open";
+  trippedAt: number;
+  lastError?: UploadError;
+}
+
+const tvBreakers = new Map<string, BreakerState>();
+
+function checkBreaker(tvIp: string): BreakerState {
+  const b = tvBreakers.get(tvIp);
+  if (!b || b.state === "closed") return { state: "closed", trippedAt: 0 };
+
+  const elapsed = Date.now() - b.trippedAt;
+  if (elapsed >= COOLDOWN_MS) {
+    // Cooldown expired → half_open (allow one probe)
+    const halfOpen: BreakerState = {
+      state: "half_open",
+      trippedAt: b.trippedAt,
+      lastError: b.lastError,
+    };
+    tvBreakers.set(tvIp, halfOpen);
+    return halfOpen;
+  }
+
+  // Still in cooldown
+  return b;
+}
+
+function tripBreaker(tvIp: string, error: UploadError): void {
+  tvBreakers.set(tvIp, {
+    state: "open",
+    trippedAt: Date.now(),
+    lastError: error,
+  });
+}
+
+function resetBreaker(tvIp: string): void {
+  tvBreakers.delete(tvIp);
+}
+
+// ============================================================
 // Upload State Machine
 // ============================================================
 
@@ -971,6 +1025,29 @@ export default function App() {
       return;
     }
 
+    // Check circuit breaker
+    const breaker = checkBreaker(tvIp);
+    if (breaker.state === "open") {
+      const remaining = COOLDOWN_MS - (Date.now() - breaker.trippedAt);
+      const msg =
+        "TV is recovering — wait " +
+        Math.ceil(remaining / 1000) +
+        "s before retrying";
+      log("UPLOAD: BREAKER OPEN — " + msg);
+      releaseLock();
+      if (fromWebView)
+        sendToWebView("uploadError", {
+          error: "tv_recovering",
+          errorDetail: msg,
+          retryAllowed: false,
+          retryAfterMs: remaining,
+        });
+      else stat(msg, "error");
+      return;
+    }
+    const isProbe = breaker.state === "half_open";
+    if (isProbe) log("UPLOAD: BREAKER HALF_OPEN — this upload is a probe");
+
     setUploading(true);
     try {
       // Phase callback: logs + WebView progress
@@ -1081,7 +1158,9 @@ export default function App() {
       // --- Upload to TV (state machine handles phases from here) ---
       const res = await nativeUploadToTv(tvIp, img, onPhase);
 
+      // Circuit breaker: trip on crash-class errors, reset on success
       if (res.success) {
+        resetBreaker(tvIp);
         const msg =
           "Art displayed on TV! (" + (res.durationMs / 1000).toFixed(1) + "s)";
         stat(msg, "success");
@@ -1092,6 +1171,23 @@ export default function App() {
             requestId: res.requestId,
           });
       } else {
+        // Circuit breaker: trip on crash-class errors OR any half-open probe failure
+        const isCrashError = res.error && CRASH_ERRORS.has(res.error);
+        if (isCrashError || isProbe) {
+          tripBreaker(tvIp, res.error || "ws_failed");
+          log(
+            "BREAKER: tripped for " +
+              tvIp +
+              " (" +
+              res.error +
+              (isProbe ? ", probe failed" : "") +
+              "), cooldown " +
+              COOLDOWN_MS / 1000 +
+              "s",
+          );
+          res.retryAllowed = false;
+          res.retryAfterMs = COOLDOWN_MS;
+        }
         stat("Failed: " + (res.errorDetail || res.error), "error");
         if (fromWebView)
           sendToWebView("uploadError", {
@@ -1099,6 +1195,8 @@ export default function App() {
             errorDetail: res.errorDetail,
             phase: res.phase,
             requestId: res.requestId,
+            retryAllowed: res.retryAllowed,
+            retryAfterMs: res.retryAfterMs,
           });
       }
     } finally {
