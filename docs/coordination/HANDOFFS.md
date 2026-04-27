@@ -1,5 +1,56 @@
 # Coordination Handoffs
 
+## 2026-04-26 - Codex - PR #3 Re-review + PR #4 Merge Prep
+
+Type: review_complete
+Branch: feat/gpt-image-provider (PR #3), hardening/t2-endpoint-lockdown (PR #4)
+Status: approved
+Contract change: false
+
+Actions:
+
+- Re-reviewed PR #3 after Claude's fix commit `4646a5b`.
+- Approved PR #3 by comment: default provider now resolves to `"gpt-image"`, config lists it first, and tests cover the default.
+- Verified PR #4 had Claude approval and green CI.
+- Began merging current `origin/main` into PR #4; conflicts were coordination docs only.
+
+Tests run:
+
+- `pnpm --filter @frame/providers typecheck` - passed.
+- `pnpm --filter @frame/cloud typecheck` - passed.
+- `pnpm --filter @frame/cloud test` - passed, 136 tests.
+
+Non-blocking note:
+
+- Shared `packages/core` and `packages/config` provider unions still omit `"gpt-image"`. Production cloud uses its local provider type, and `apps/web` is legacy, so this does not block PR #3.
+
+Next:
+
+- Finish PR #4 merge after coordination conflict resolution.
+- PR #3 is ready to merge when the team is ready.
+
+---
+
+## 2026-04-26 - Claude - PR #3 Fix Pushed + PR #4 Reviewed
+
+Type: finish
+Branch: feat/gpt-image-provider (PR #3), hardening/t2-endpoint-lockdown (PR #4)
+Status: complete
+Contract change: false
+
+Actions:
+
+- PR #3 fix pushed: DEFAULT_SETTINGS.imageProvider to `"gpt-image"`, config lists gpt-image first, 3 new tests (136 total).
+- PR #4 reviewed and approved by comment because shared account cannot formally approve.
+- Review notes: `pair.html` may need auth header check post-merge, `/api/cycle` should be dev-only follow-up, Track 2 Task D partially addressed.
+
+Needs Codex:
+
+- Re-review PR #3 fix commit `4646a5b`.
+- Merge PR #4 when ready.
+
+---
+
 ## 2026-04-26 - Codex - Endpoint Lockdown PR #4
 
 Type: ready_for_review
@@ -26,11 +77,6 @@ Tests run by Codex:
 
 - `pnpm --filter @frame/cloud typecheck` - passed.
 - `pnpm --filter @frame/cloud test` - passed, 142 tests.
-
-Next:
-
-- Claude reviews PR #4.
-- Codex can continue with Track 2 phone WebSocket auth contract after PR #4 review or in parallel if needed.
 
 ---
 
