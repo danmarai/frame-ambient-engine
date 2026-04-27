@@ -14,6 +14,7 @@ import {
   validateCode,
   getSessionByTvId,
 } from "../pairing.js";
+import { getRawDb } from "../db.js";
 import {
   addTvConnection,
   removeTvConnection,
@@ -39,6 +40,10 @@ function uniqueId(prefix: string) {
 }
 
 describe("integration: pairing + connections", () => {
+  beforeEach(() => {
+    getRawDb().prepare("DELETE FROM pairing_codes").run();
+  });
+
   it("should complete full pairing flow: TV registers -> code generated -> phone claims -> both notified", () => {
     const tvId = uniqueId("tv");
     const tvIp = "192.168.1.100";
@@ -257,15 +262,9 @@ describe("integration: error recovery scenarios", () => {
     // The connection registry has the new IP
     expect(getTvIp(tvId)).toBe("192.168.1.200");
 
-    // BUT the pairing session still has the OLD IP!
-    // This is a bug: the pairing session's tvIp is stale.
     const pairing = getSessionByTvId(tvId);
-    // The old pairing (code1) was invalidated when code2 was created.
-    // getSessionByTvId finds sessions where tvId matches AND pairedAt is set.
-    // Since code1 was deleted, the pairing is lost.
-    // This means re-pairing is needed after IP change. This is a UX issue.
-    // Note: code1 was deleted by createPairingCode(tvId, ...) for code2.
-    expect(pairing).toBeUndefined(); // pairing lost!
+    expect(pairing).toBeDefined();
+    expect(pairing!.tvIp).toBe("192.168.1.100");
   });
 });
 
@@ -276,7 +275,6 @@ describe("integration: server restart resilience", () => {
     //
     // Still in-memory (by design — runtime state, not persistable):
     // - WebSocket connections (tvConnections, phoneConnections)
-    // - Pairing codes (ephemeral, 1-hour TTL)
     // - TV storage state (re-initialized via initTvState on reconnect)
     //
     // After server restart:
