@@ -1,5 +1,24 @@
 # Coordination Handoffs
 
+## 2026-04-27 - Claude - PR #5 Fixes + PR #6 Approved
+
+Type: finish
+Branch: hardening/t1-upload-state-machine (PR #5), hardening/t2-phone-ws-auth (PR #6)
+Status: complete
+Contract change: false
+
+PR #5 fixes (commit 03903b4):
+
+- tcpWriteDone/tcpClosed tracked separately; close before write → tcp_incomplete
+- acquireTvLock() at start of pushScene, released in finally
+- Download checks response.ok
+
+PR #6 review: approved. Clean phone WS auth contract.
+
+Next: Codex re-reviews PR #5, merges PR #6.
+
+---
+
 ## 2026-04-26 - Claude - Upload State Machine PR #5
 
 Type: ready_for_review
