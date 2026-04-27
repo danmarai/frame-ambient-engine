@@ -11,7 +11,7 @@ This is a thin status tracker. Detailed task scope, acceptance criteria, upload 
 | Remove TV token logging                        | Claude | `hardening/t1-ssrf-validation`       | merged  | PR #2 merged.                             |
 | Upload state machine + mutex + TCP propagation | Claude | `hardening/t1-upload-state-machine`  | merged  | PR #5 merged.                             |
 | Circuit breaker + 30s cooldown                 | Claude | `hardening/t1-circuit-breaker`       | merged  | PR #8 merged.                             |
-| Mark `apps/web` legacy                         | Claude | `hardening/t1-mark-web-legacy`       | pending | Remove from CI if applicable.             |
+| Mark `apps/web` legacy                         | Claude | `hardening/t1-mark-web-legacy`       | changes | PR #9 needs README/package metadata fixes. |
 
 ## Track 2 - Security And Persistence
 
@@ -20,7 +20,7 @@ This is a thin status tracker. Detailed task scope, acceptance criteria, upload 
 | Endpoint auth + TV ownership          | Codex                      | `hardening/t2-endpoint-lockdown`     | merged  | PR #4 merged.                         |
 | Phone WebSocket auth contract         | Codex                      | `hardening/t2-phone-ws-auth`         | merged  | PR #6 merged.                         |
 | Pairing persistence + user binding    | Codex                      | `hardening/t2-pairing-sqlite`        | merged  | PR #7 merged.                         |
-| Internal scene ID upload source       | Codex or assigned engineer | `hardening/t2-internal-scene-upload` | partial | PR #4 rejects external `imageUrl`; follow-up can harden scene ownership. |
+| Internal scene ID upload source       | Codex                      | `hardening/t2-internal-scene-upload` | review  | PR #10 ready for Claude review.       |
 | Fake Samsung TV harness + crash tests | Codex or assigned engineer | `hardening/t2-fake-tv-harness`       | pending | Simulate partial TCP failure.         |
 | Google ID token session cleanup       | Codex or assigned engineer | `hardening/t2-session-token-cleanup` | pending | Coordinate with auth changes.         |
 
