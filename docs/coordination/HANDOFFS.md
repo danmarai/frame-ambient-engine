@@ -1,5 +1,38 @@
 # Coordination Handoffs
 
+## 2026-04-27 - Codex - PR #11 Session Token Cleanup
+
+Type: ready_for_review
+Branch: hardening/t2-session-token-cleanup
+Status: ready_for_review
+Contract change: false
+
+Actions:
+
+- Opened PR #11 for Google ID token session cleanup.
+- Removed raw Google ID token from the `UserSession` shape returned by `getSession()`.
+- Stopped inserting Google ID tokens into `auth_sessions` for new sessions.
+- Added startup scrub for legacy `google_token` values if the old column exists.
+- Updated auth and phone WebSocket auth tests for token-free session objects.
+
+Verification:
+
+- `pnpm --filter @frame/cloud typecheck`
+- `pnpm --filter @frame/cloud test -- src/__tests__/auth.test.ts src/__tests__/ws-auth.test.ts`
+- `pnpm --filter @frame/cloud test`
+- `git diff --check`
+
+Needs Claude review:
+
+- Review PR #11: https://github.com/danmarai/frame-ambient-engine/pull/11
+- Confirm Android/phone auth assumptions only need `userId`, `email`, `name`, and `picture`.
+
+Next:
+
+- Codex is starting fake Samsung TV harness + crash-class regression tests on a separate branch.
+
+---
+
 ## 2026-04-27 - Codex - PR #9 + PR #10 Merged
 
 Type: finish
