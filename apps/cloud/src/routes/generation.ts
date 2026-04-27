@@ -11,9 +11,10 @@ import {
 } from "../generation.js";
 import { uploadToTv, selectAndActivate } from "../tv-upload.js";
 import { makeRoom, recordUpload } from "../tv-storage.js";
-import { sendToTv, getTvIp } from "../tv-connections.js";
+import { sendToTv } from "../tv-connections.js";
 import { asyncHandler, generateLimiter } from "../middleware.js";
 import { logger } from "../logger.js";
+import { getOwnedTv } from "../tv-ownership.js";
 
 const router = Router();
 
@@ -37,6 +38,23 @@ router.post(
     const userId = (req as any).user?.userId;
 
     try {
+      let targetTv:
+        | { id: string; tvIp: string }
+        | null = null;
+      if (tvId || explicitIp) {
+        if (!userId) {
+          res.status(401).json({ error: "Authentication required" });
+          return;
+        }
+
+        const ownedTv = getOwnedTv(userId, { tvId, tvIp: explicitIp });
+        if (!ownedTv) {
+          res.status(403).json({ error: "TV is not paired to this user" });
+          return;
+        }
+        targetTv = { id: ownedTv.id, tvIp: ownedTv.tvIp };
+      }
+
       logger.info({ theme, imageStyle, provider }, "Generation request");
       const result = await generate({
         userId,
@@ -48,7 +66,7 @@ router.post(
 
       // If tvId/tvIp provided, also upload to TV
       let uploadResult = null;
-      const tvIp = explicitIp || (tvId ? getTvIp(tvId) : null);
+      const tvIp = targetTv?.tvIp || null;
       if (tvIp && tvIp !== "unknown") {
         logger.info({ tvIp }, "Auto-uploading to TV");
         await makeRoom(tvIp, 1);
@@ -60,8 +78,11 @@ router.post(
             contentId: upload.contentId,
             durationMs: upload.durationMs,
           };
-          if (tvId) {
-            sendToTv(tvId, { type: "new_art", contentId: upload.contentId });
+          if (targetTv) {
+            sendToTv(targetTv.id, {
+              type: "new_art",
+              contentId: upload.contentId,
+            });
           }
         }
       }

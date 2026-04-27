@@ -1,5 +1,36 @@
 # Coordination Handoffs
 
+## 2026-04-26 - Codex - PR #3 Re-review + PR #4 Merge Prep
+
+Type: review_complete
+Branch: feat/gpt-image-provider (PR #3), hardening/t2-endpoint-lockdown (PR #4)
+Status: approved
+Contract change: false
+
+Actions:
+
+- Re-reviewed PR #3 after Claude's fix commit `4646a5b`.
+- Approved PR #3 by comment: default provider now resolves to `"gpt-image"`, config lists it first, and tests cover the default.
+- Verified PR #4 had Claude approval and green CI.
+- Began merging current `origin/main` into PR #4; conflicts were coordination docs only.
+
+Tests run:
+
+- `pnpm --filter @frame/providers typecheck` - passed.
+- `pnpm --filter @frame/cloud typecheck` - passed.
+- `pnpm --filter @frame/cloud test` - passed, 136 tests.
+
+Non-blocking note:
+
+- Shared `packages/core` and `packages/config` provider unions still omit `"gpt-image"`. Production cloud uses its local provider type, and `apps/web` is legacy, so this does not block PR #3.
+
+Next:
+
+- Finish PR #4 merge after coordination conflict resolution.
+- PR #3 is ready to merge when the team is ready.
+
+---
+
 ## 2026-04-26 - Claude - PR #3 Fix Pushed + PR #4 Reviewed
 
 Type: finish
@@ -9,19 +40,47 @@ Contract change: false
 
 Actions:
 
-- PR #3 fix pushed: DEFAULT_SETTINGS.imageProvider → "gpt-image", config lists gpt-image first, 3 new tests (136 total)
-- PR #4 reviewed and approved (via comment — shared account can't formally approve)
-- Review notes: pair.html may need auth header check post-merge, /api/cycle should be dev-only follow-up, Track 2 Task D partially addressed
+- PR #3 fix pushed: DEFAULT_SETTINGS.imageProvider to `"gpt-image"`, config lists gpt-image first, 3 new tests (136 total).
+- PR #4 reviewed and approved by comment because shared account cannot formally approve.
+- Review notes: `pair.html` may need auth header check post-merge, `/api/cycle` should be dev-only follow-up, Track 2 Task D partially addressed.
 
 Needs Codex:
 
-- Re-review PR #3 (fix commit `4646a5b`)
-- Merge PR #4 when ready
-- Also review PR #3 for GPT Image provider (new feature, separate from hardening)
+- Re-review PR #3 fix commit `4646a5b`.
+- Merge PR #4 when ready.
 
 ---
 
 ## 2026-04-26 - Codex - Endpoint Lockdown PR #4
+
+Type: ready_for_review
+Branch: hardening/t2-endpoint-lockdown (PR #4)
+Status: ready_for_review
+Contract change: false
+
+Actions taken:
+
+- Added `apps/cloud/src/tv-ownership.ts` helper for user-owned TV lookup and ownership-conflict checks.
+- Required auth for pairing by IP, pairing by code, and TV-control/upload routes.
+- Bound successful pairing to `tv_devices.user_id`, rejecting TVs already paired to another user.
+- Made TV-targeted `/api/generate` require auth and resolve the target only from paired TVs owned by the user.
+- Removed arbitrary external `imageUrl` fetch from `/api/upload`; uploads now require internal `sceneId` and load the generated image via `loadImage`.
+- Added route regressions for auth requirement, ownership rejection, imageUrl rejection, TV-control ownership, and pairing user binding.
+
+Review asks:
+
+- Confirm this is the right boundary for Track 2 Task A without stepping into Track 1 protocol work.
+- Check whether any current browser/static pages need auth-header updates before this merges.
+- Check whether `/api/cycle` should remain available outside production or be explicitly dev-only in a follow-up.
+
+Tests run by Codex:
+
+- `pnpm --filter @frame/cloud typecheck` - passed.
+- `pnpm --filter @frame/cloud test` - passed, 142 tests.
+
+---
+
+## 2026-04-26 - Codex - PR #3 GPT Image Provider Review
 
 Type: review_complete
 Branch: feat/gpt-image-provider (PR #3)

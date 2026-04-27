@@ -47,6 +47,24 @@ function mockRes(): any {
   return res;
 }
 
+function findHandler(
+  router: any,
+  method: string,
+  path: string,
+): Function | null {
+  for (const layer of router.stack) {
+    if (
+      layer.route &&
+      layer.route.path === path &&
+      layer.route.methods[method]
+    ) {
+      const handlers = layer.route.stack;
+      return handlers[handlers.length - 1].handle;
+    }
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // 1. isValidTvIp — RFC 1918 + link-local + loopback validation
 // ---------------------------------------------------------------------------
@@ -241,29 +259,6 @@ describe("feedback routes", () => {
     db.prepare("DELETE FROM feedback").run();
   });
 
-  /**
-   * Helper: find a route handler on the Express Router's internal stack.
-   * Express stores layers as { route: { path, methods, stack: [{ handle }] } }.
-   */
-  function findHandler(
-    router: any,
-    method: string,
-    path: string,
-  ): Function | null {
-    for (const layer of router.stack) {
-      if (
-        layer.route &&
-        layer.route.path === path &&
-        layer.route.methods[method]
-      ) {
-        // Return the last handler in the stack (skips middleware like optionalAuth)
-        const handlers = layer.route.stack;
-        return handlers[handlers.length - 1].handle;
-      }
-    }
-    return null;
-  }
-
   describe("POST /api/feedback", () => {
     it("should reject missing tvId", () => {
       const handler = findHandler(feedbackRouter, "post", "/api/feedback");
@@ -446,7 +441,106 @@ describe("feedback routes", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 3. Quote routes — categories, pick, stats
+// 3. TV endpoint lockdown
+// ---------------------------------------------------------------------------
+
+describe("TV endpoint lockdown", () => {
+  beforeEach(() => {
+    const db = getRawDb();
+    db.prepare("DELETE FROM tv_devices").run();
+  });
+
+  it("should require authentication before /api/generate can target a TV", async () => {
+    const generationRouter = (await import("../routes/generation.js")).default;
+    const handler = findHandler(generationRouter, "post", "/api/generate");
+    expect(handler).not.toBeNull();
+
+    const req = mockReq({ tvId: "tv-auth-required" });
+    const res = mockRes();
+
+    await handler!(req, res, vi.fn());
+
+    expect(res.statusCode).toBe(401);
+    expect(res.body.error).toBe("Authentication required");
+  });
+
+  it("should reject /api/generate TV targets not owned by the user", async () => {
+    const generationRouter = (await import("../routes/generation.js")).default;
+    const handler = findHandler(generationRouter, "post", "/api/generate");
+
+    const req = mockReq({ tvId: "tv-not-owned" });
+    req.user = { userId: "user-a" };
+    const res = mockRes();
+
+    await handler!(req, res, vi.fn());
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body.error).toBe("TV is not paired to this user");
+  });
+
+  it("should reject arbitrary imageUrl uploads in favor of sceneId", async () => {
+    const tvRouter = (await import("../routes/tv-control.js")).default;
+    const handler = findHandler(tvRouter, "post", "/api/upload");
+    expect(handler).not.toBeNull();
+
+    const req = mockReq({
+      tvId: "tv-1",
+      imageUrl: "https://example.com/image.jpg",
+    });
+    req.user = { userId: "user-a" };
+    const res = mockRes();
+
+    await handler!(req, res, vi.fn());
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toBe("imageUrl is not supported; use sceneId");
+  });
+
+  it("should reject TV control for an unowned IP", async () => {
+    const tvRouter = (await import("../routes/tv-control.js")).default;
+    const handler = findHandler(tvRouter, "post", "/api/tv/init");
+    expect(handler).not.toBeNull();
+
+    const req = mockReq({ tvIp: "192.168.1.50" });
+    req.user = { userId: "user-a" };
+    const res = mockRes();
+
+    await handler!(req, res, vi.fn());
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body.error).toBe("TV is not paired to this user");
+  });
+
+  it("should bind code pairing to the authenticated user", async () => {
+    const { createPairingCode } = await import("../pairing.js");
+    const pairingRouter = (await import("../routes/pairing.js")).default;
+    const handler = findHandler(pairingRouter, "post", "/api/pair");
+    expect(handler).not.toBeNull();
+
+    const tvId = `tv-${Date.now()}`;
+    const code = createPairingCode(tvId, "192.168.1.60");
+    getRawDb()
+      .prepare(
+        "INSERT INTO users (id, email, created_at) VALUES (?, ?, ?) ON CONFLICT(id) DO NOTHING",
+      )
+      .run("user-a", "user-a@example.com", new Date().toISOString());
+    const req = mockReq({ code, phoneSessionId: "phone-session-1" });
+    req.user = { userId: "user-a" };
+    const res = mockRes();
+
+    handler!(req, res, vi.fn());
+
+    expect(res.statusCode).toBe(200);
+    const row = getRawDb()
+      .prepare("SELECT user_id, tv_ip FROM tv_devices WHERE id = ?")
+      .get(tvId) as any;
+    expect(row.user_id).toBe("user-a");
+    expect(row.tv_ip).toBe("192.168.1.60");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4. Quote routes — categories, pick, stats
 // ---------------------------------------------------------------------------
 
 describe("quote routes", () => {

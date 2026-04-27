@@ -17,7 +17,7 @@ This is a thin status tracker. Detailed task scope, acceptance criteria, upload 
 
 | Task                                  | Owner                      | Branch                               | Status  | Notes                                 |
 | ------------------------------------- | -------------------------- | ------------------------------------ | ------- | ------------------------------------- |
-| Endpoint auth + TV ownership          | Codex or assigned engineer | `hardening/t2-endpoint-lockdown`     | pending | Release-blocking with Track 1.        |
+| Endpoint auth + TV ownership          | Codex                      | `hardening/t2-endpoint-lockdown`     | review  | PR #4 open for Claude review.         |
 | Phone WebSocket auth contract         | Codex or assigned engineer | `hardening/t2-phone-ws-auth`         | pending | Coordinate with Android bridge.       |
 | Pairing persistence + user binding    | Codex or assigned engineer | `hardening/t2-pairing-sqlite`        | pending | Include short TTL and rate limiting.  |
 | Internal scene ID upload source       | Codex or assigned engineer | `hardening/t2-internal-scene-upload` | pending | Remove arbitrary external `imageUrl`. |

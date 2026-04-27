@@ -1,16 +1,17 @@
 /** Pairing routes — TV pairing by IP and by code */
 import { Router } from "express";
-import { optionalAuth } from "../auth.js";
+import { requireAuth } from "../auth.js";
 import { getRawDb } from "../db.js";
 import { claimCode, validateCode } from "../pairing.js";
 import { sendToTv } from "../tv-connections.js";
 import { isValidTvIp } from "../middleware.js";
 import { logger } from "../logger.js";
+import { isTvOwnedByAnotherUser } from "../tv-ownership.js";
 
 const router = Router();
 
 /** Pair by TV IP — scans the TV, registers it, returns device info */
-router.post("/api/pair-by-ip", optionalAuth, async (req, res) => {
+router.post("/api/pair-by-ip", requireAuth, async (req, res) => {
   const { tvIp } = req.body;
   if (!tvIp) {
     res.status(400).json({ error: "Missing tvIp" });
@@ -36,6 +37,12 @@ router.post("/api/pair-by-ip", optionalAuth, async (req, res) => {
     }
 
     const tvId = `frame-${(device.wifiMac || "").replace(/:/g, "").slice(-6) || tvIp.replace(/\./g, "")}`;
+    const userId = (req as any).user.userId as string;
+
+    if (isTvOwnedByAnotherUser(tvId, userId)) {
+      res.status(403).json({ error: "TV is paired to another user" });
+      return;
+    }
 
     const metadata = {
       tvIp,
@@ -55,14 +62,16 @@ router.post("/api/pair-by-ip", optionalAuth, async (req, res) => {
     const db = getRawDb();
     const now = new Date().toISOString();
     db.prepare(
-      `INSERT INTO tv_devices (id, tv_ip, model_name, model_code, name, resolution, is_frame_tv, paired_at, last_seen_at)
-       VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+      `INSERT INTO tv_devices (id, user_id, tv_ip, model_name, model_code, name, resolution, is_frame_tv, paired_at, last_seen_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
+         user_id = excluded.user_id,
          tv_ip = excluded.tv_ip,
          paired_at = excluded.paired_at,
          last_seen_at = excluded.last_seen_at`,
     ).run(
       tvId,
+      userId,
       tvIp,
       device.modelName,
       device.model,
@@ -72,9 +81,8 @@ router.post("/api/pair-by-ip", optionalAuth, async (req, res) => {
       now,
     );
 
-    const userId = (req as any).user?.userId;
     logger.info(
-      { deviceName: device.name, tvId, tvIp, userId: userId || "anonymous" },
+      { deviceName: device.name, tvId, tvIp, userId },
       "Paired by IP",
     );
 
@@ -86,7 +94,7 @@ router.post("/api/pair-by-ip", optionalAuth, async (req, res) => {
   }
 });
 
-router.post("/api/pair", (req, res) => {
+router.post("/api/pair", requireAuth, (req, res) => {
   const { code, phoneSessionId } = req.body;
   if (!code || !phoneSessionId) {
     res.status(400).json({ error: "Missing code or phoneSessionId" });
@@ -99,8 +107,27 @@ router.post("/api/pair", (req, res) => {
     return;
   }
 
+  const userId = (req as any).user.userId as string;
+  if (isTvOwnedByAnotherUser(session.tvId, userId)) {
+    res.status(403).json({ error: "TV is paired to another user" });
+    return;
+  }
+
+  const now = new Date().toISOString();
+  getRawDb()
+    .prepare(
+      `INSERT INTO tv_devices (id, user_id, tv_ip, paired_at, last_seen_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         user_id = excluded.user_id,
+         tv_ip = excluded.tv_ip,
+         paired_at = excluded.paired_at,
+         last_seen_at = excluded.last_seen_at`,
+    )
+    .run(session.tvId, userId, session.tvIp, now, now);
+
   logger.info(
-    { tvId: session.tvId, tvIp: session.tvIp, phoneSessionId },
+    { tvId: session.tvId, tvIp: session.tvIp, phoneSessionId, userId },
     "Paired via code",
   );
 

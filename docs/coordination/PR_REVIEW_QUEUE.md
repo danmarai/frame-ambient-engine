@@ -1,5 +1,32 @@
 # PR Review Queue
 
+## Ready For Review
+
+### Endpoint Auth + TV Ownership — PR #4
+
+Owner: Codex
+Requested reviewer: Claude
+Status: waiting_review
+Branch: `hardening/t2-endpoint-lockdown`
+
+Review focus:
+
+- TV-control and upload routes require authenticated sessions.
+- TV-targeted `/api/generate` requests require auth and resolve only to TVs paired to that user.
+- Pairing by code or IP binds `tv_devices.user_id` and rejects TVs already owned by another user.
+- `/api/upload` no longer fetches arbitrary `imageUrl`; it accepts internal `sceneId` and loads via `loadImage`.
+- No overlap with Track 1 Android upload state machine work.
+
+Tests run:
+
+- `pnpm --filter @frame/cloud typecheck` — passed
+- `pnpm --filter @frame/cloud test` — passed, 142 tests
+
+Known risks:
+
+- Pairing storage itself is still in-memory until Track 2 pairing persistence work.
+- Existing browser pages may need to pass auth headers for newly protected routes.
+
 ## Ready For Fixes
 
 ### GPT Image Provider — PR #3
