@@ -12,6 +12,8 @@ interface TvConnection {
 interface PhoneConnection {
   ws: WebSocket;
   sessionId: string;
+  authSessionId?: string;
+  userId?: string;
   tvId?: string;
   connectedAt: number;
 }
@@ -49,8 +51,19 @@ export function getTvConnection(tvId: string): TvConnection | undefined {
   return tvConnections.get(tvId);
 }
 
-export function addPhoneConnection(sessionId: string, ws: WebSocket): void {
-  phoneConnections.set(sessionId, { ws, sessionId, connectedAt: Date.now() });
+export function addPhoneConnection(
+  sessionId: string,
+  ws: WebSocket,
+  authSessionId?: string,
+  userId?: string,
+): void {
+  phoneConnections.set(sessionId, {
+    ws,
+    sessionId,
+    authSessionId,
+    userId,
+    connectedAt: Date.now(),
+  });
 }
 
 export function removePhoneConnection(sessionId: string): void {

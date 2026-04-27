@@ -6,6 +6,7 @@
  */
 import express from "express";
 import { createServer } from "http";
+import type { IncomingMessage } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
@@ -15,6 +16,7 @@ import {
   createPairingCode,
   getSessionByTvId,
   cleanExpired,
+  validateCode,
 } from "./pairing.js";
 import {
   addTvConnection,
@@ -25,8 +27,14 @@ import {
   sendToPhone,
 } from "./tv-connections.js";
 import { claimCode } from "./pairing.js";
-import { cleanExpiredSessions, getSession } from "./auth.js";
-import { initDatabase } from "./db.js";
+import { cleanExpiredSessions } from "./auth.js";
+import { initDatabase, getRawDb } from "./db.js";
+import { isTvOwnedByAnotherUser } from "./tv-ownership.js";
+import {
+  authenticatePhoneWs,
+  shouldRequirePhoneWsAuth,
+  type PhoneWsAuth,
+} from "./ws-auth.js";
 
 // Route modules
 import authRoutes from "./routes/auth.js";
@@ -158,19 +166,18 @@ server.on("upgrade", (request, socket, head) => {
       wss.emit("connection", ws, request, pathname);
     });
   } else if (pathname === "/ws/phone") {
-    // Phone auth: require valid session token when in production
-    const token = url.searchParams.get("token");
-    if (process.env.NODE_ENV === "production") {
-      if (!token || !getSession(token)) {
-        logger.warn(
-          { ip: request.socket.remoteAddress },
-          "WS phone auth rejected: invalid session",
-        );
-        socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
-        socket.destroy();
-        return;
-      }
+    const auth = authenticatePhoneWs(request);
+    if (shouldRequirePhoneWsAuth() && !auth) {
+      logger.warn(
+        { ip: request.socket.remoteAddress },
+        "WS phone auth rejected: invalid session",
+      );
+      socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+      socket.destroy();
+      return;
     }
+    (request as IncomingMessage & { phoneAuth?: PhoneWsAuth }).phoneAuth =
+      auth || undefined;
     wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit("connection", ws, request, pathname);
     });
@@ -179,11 +186,11 @@ server.on("upgrade", (request, socket, head) => {
   }
 });
 
-wss.on("connection", (ws: WebSocket, _request: unknown, pathname: string) => {
+wss.on("connection", (ws: WebSocket, request: unknown, pathname: string) => {
   if (pathname === "/ws/tv") {
     handleTvConnection(ws);
   } else if (pathname === "/ws/phone") {
-    handlePhoneConnection(ws);
+    handlePhoneConnection(ws, request as IncomingMessage);
   }
 });
 
@@ -236,29 +243,94 @@ function handleTvConnection(ws: WebSocket) {
   });
 }
 
-function handlePhoneConnection(ws: WebSocket) {
-  const sessionId = crypto.randomUUID();
-  addPhoneConnection(sessionId, ws);
+function bindPairedTvToUser(tvId: string, tvIp: string, userId: string): void {
+  const now = new Date().toISOString();
+  getRawDb()
+    .prepare(
+      `INSERT INTO tv_devices (id, user_id, tv_ip, paired_at, last_seen_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         user_id = excluded.user_id,
+         tv_ip = excluded.tv_ip,
+         paired_at = excluded.paired_at,
+         last_seen_at = excluded.last_seen_at`,
+    )
+    .run(tvId, userId, tvIp, now, now);
+}
 
-  ws.send(JSON.stringify({ type: "session", sessionId }));
+function handlePhoneConnection(ws: WebSocket, request: IncomingMessage) {
+  const auth = (request as IncomingMessage & { phoneAuth?: PhoneWsAuth })
+    .phoneAuth;
+  const sessionId = crypto.randomUUID();
+  addPhoneConnection(sessionId, ws, auth?.sessionId, auth?.user.userId);
+
+  ws.send(
+    JSON.stringify({
+      type: "session",
+      sessionId,
+      authenticated: !!auth,
+      userId: auth?.user.userId,
+    }),
+  );
 
   ws.on("message", (data) => {
     try {
       const msg = JSON.parse(data.toString());
 
       if (msg.type === "pair") {
+        if (shouldRequirePhoneWsAuth() && !auth) {
+          ws.send(
+            JSON.stringify({
+              type: "pair_error",
+              error: "Authentication required",
+            }),
+          );
+          return;
+        }
+
+        const pending = validateCode(msg.code);
+        if (!pending) {
+          ws.send(
+            JSON.stringify({
+              type: "pair_error",
+              error:
+                "Invalid or expired code. Open the TV app to get a new code.",
+            }),
+          );
+          return;
+        }
+
+        if (
+          auth &&
+          isTvOwnedByAnotherUser(pending.tvId, auth.user.userId)
+        ) {
+          ws.send(
+            JSON.stringify({
+              type: "pair_error",
+              error: "TV is paired to another user",
+            }),
+          );
+          return;
+        }
+
         const session = claimCode(msg.code, sessionId);
         if (session) {
+          if (auth) {
+            bindPairedTvToUser(session.tvId, session.tvIp, auth.user.userId);
+          }
+
           ws.send(
             JSON.stringify({
               type: "paired",
               tvId: session.tvId,
               tvIp: session.tvIp,
+              userId: auth?.user.userId,
             }),
           );
           sendToTv(session.tvId, {
             type: "paired",
             phoneSessionId: sessionId,
+            userId: auth?.user.userId,
           });
         } else {
           ws.send(
