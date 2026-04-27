@@ -59,6 +59,12 @@ function doUpload(
   const requestId = crypto.randomUUID();
 
   return new Promise((resolve) => {
+    let resolved = false;
+    let tcpWriteDone = false;
+    let tcpClosed = false;
+    let imageAdded = false;
+    let contentId = "";
+
     const ws = new WebSocket(
       `wss://${tvIp}:8002/api/v2/channels/com.samsung.art-app?name=${Buffer.from("FrameCloud").toString("base64")}&token=${token || ""}`,
       { rejectUnauthorized: false },
@@ -70,9 +76,25 @@ function doUpload(
       } catch {}
     };
 
-    const timeout = setTimeout(() => {
+    const done = (result: UploadResult) => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timeout);
       cleanup();
-      resolve({
+      resolve(result);
+    };
+
+    const maybeFinishUpload = () => {
+      if (!imageAdded || !tcpClosed) return;
+      done({
+        success: true,
+        contentId,
+        durationMs: Date.now() - start,
+      });
+    };
+
+    const timeout = setTimeout(() => {
+      done({
         success: false,
         error: "Upload timeout",
         durationMs: Date.now() - start,
@@ -159,6 +181,7 @@ function doUpload(
 
             // Write entire image buffer at once and flush
             socket.write(imageData, () => {
+              tcpWriteDone = true;
               logger.info(
                 { bytes: imageData.length },
                 "TCP: all bytes written, flushing",
@@ -168,7 +191,21 @@ function doUpload(
             });
           });
           socket.on("close", () => {
+            if (!tcpWriteDone) {
+              logger.error(
+                "WARNING: TCP socket closed before all bytes were written. Art mode service may need TV restart.",
+              );
+              done({
+                success: false,
+                error:
+                  "TCP upload incomplete: socket closed before all bytes were written. Art mode service may need TV restart.",
+                durationMs: Date.now() - start,
+              });
+              return;
+            }
+            tcpClosed = true;
             logger.info("TCP: socket closed (data flushed)");
+            maybeFinishUpload();
           });
           socket.on("error", (e) => {
             logger.error({ error: e.message }, "TCP error");
@@ -177,9 +214,7 @@ function doUpload(
             logger.error(
               "WARNING: Incomplete upload may have crashed the art mode service. TV restart may be needed.",
             );
-            clearTimeout(timeout);
-            cleanup();
-            resolve({
+            done({
               success: false,
               error: `TCP upload failed: ${e.message}. Art mode service may need TV restart.`,
               durationMs: Date.now() - start,
@@ -188,26 +223,17 @@ function doUpload(
         }
 
         if (inner.event === "image_added") {
-          // Wait a moment for TCP to fully flush before declaring success
           logger.info(
             { contentId: inner.content_id },
-            "image_added, waiting for TCP flush",
+            "image_added, waiting for TCP close",
           );
-          setTimeout(() => {
-            clearTimeout(timeout);
-            cleanup();
-            resolve({
-              success: true,
-              contentId: inner.content_id,
-              durationMs: Date.now() - start,
-            });
-          }, 1500);
+          contentId = inner.content_id;
+          imageAdded = true;
+          maybeFinishUpload();
         }
 
         if (inner.event === "error") {
-          clearTimeout(timeout);
-          cleanup();
-          resolve({
+          done({
             success: false,
             error: `Art mode error: ${inner.error_code}`,
             durationMs: Date.now() - start,
@@ -217,8 +243,7 @@ function doUpload(
     });
 
     ws.on("error", (e) => {
-      clearTimeout(timeout);
-      resolve({
+      done({
         success: false,
         error: e.message,
         durationMs: Date.now() - start,
