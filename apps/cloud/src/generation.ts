@@ -33,7 +33,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   },
   holiday: { enabled: false },
   quotes: { enabled: true },
-  imageProvider: "openai",
+  imageProvider: "gpt-image",
   tv: { ip: "" },
   scheduler: { enabled: true, intervalMinutes: 15 },
 };
@@ -290,6 +290,7 @@ export function getGenerationConfig() {
       { id: "random", label: "Random (cycles)" },
     ],
     providers: [
+      { id: "gpt-image", label: "GPT Image (best)" },
       { id: "openai", label: "OpenAI (DALL-E 3)" },
       { id: "gemini", label: "Google Gemini" },
       { id: "mock", label: "Mock (test)" },
