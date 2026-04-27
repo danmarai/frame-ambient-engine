@@ -6,16 +6,19 @@ A local-first ambient display system that generates AI-powered wallpapers and pu
 
 ```
 apps/
-  web/              Next.js 15 control panel (App Router, standalone output)
+  cloud/            Express.js cloud server (PRODUCTION) — EC2, PM2, nginx
+  android/          React Native / Expo companion app (npm, not pnpm)
+  tizen/            Samsung Tizen TV app (thin client)
+  web/              LEGACY — Next.js prototype (not deployed, excluded from CI)
 
 packages/
   core/             Shared types, interfaces, and defaults
   config/           Settings validation, env loading
   db/               Drizzle ORM + SQLite persistence
-  providers/        Weather, market, image, and quote providers
+  providers/        Weather, market, image (GPT Image + DALL-E), quote providers
   tv/               Samsung Frame TV publisher
   health/           System health monitoring
-  rendering/        Image composition pipeline (stub)
+  rendering/        Image composition pipeline
 ```
 
 ## Quick Start
