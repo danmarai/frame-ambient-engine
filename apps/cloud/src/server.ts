@@ -313,7 +313,7 @@ function handlePhoneConnection(ws: WebSocket, request: IncomingMessage) {
           return;
         }
 
-        const session = claimCode(msg.code, sessionId);
+        const session = claimCode(msg.code, sessionId, auth?.user.userId);
         if (session) {
           if (auth) {
             bindPairedTvToUser(session.tvId, session.tvIp, auth.user.userId);
