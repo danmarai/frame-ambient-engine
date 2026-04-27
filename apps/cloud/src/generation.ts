@@ -9,7 +9,7 @@ import { pickQuote } from "./quotes.js";
 import { logger } from "./logger.js";
 // Types — use direct path to avoid ESM/CJS resolution issues
 type AppSettings = any;
-type ImageProviderName = "openai" | "gemini" | "mock";
+type ImageProviderName = "gpt-image" | "openai" | "gemini" | "mock";
 type ThemeName = string;
 type ImageStyleName = string;
 
@@ -33,7 +33,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   },
   holiday: { enabled: false },
   quotes: { enabled: true },
-  imageProvider: "openai",
+  imageProvider: "gpt-image",
   tv: { ip: "" },
   scheduler: { enabled: true, intervalMinutes: 15 },
 };
@@ -85,9 +85,19 @@ export function updateUserSettings(
 }
 
 async function getImageProvider(name?: ImageProviderName) {
-  const { OpenAIImageProvider, GeminiImageProvider, MockImageProvider } =
-    await loadProviders();
+  const {
+    GPTImageProvider,
+    OpenAIImageProvider,
+    GeminiImageProvider,
+    MockImageProvider,
+  } = await loadProviders();
   switch (name) {
+    case "gpt-image":
+      if (!process.env.OPENAI_API_KEY) {
+        logger.warn("OPENAI_API_KEY not set, falling back to mock");
+        return new MockImageProvider();
+      }
+      return new GPTImageProvider(process.env.OPENAI_API_KEY);
     case "openai":
       if (!process.env.OPENAI_API_KEY) {
         logger.warn("OPENAI_API_KEY not set, falling back to mock");
@@ -103,9 +113,9 @@ async function getImageProvider(name?: ImageProviderName) {
     case "mock":
       return new MockImageProvider();
     default:
-      // Default: OpenAI (Gemini image gen currently broken), fallback to mock
+      // Default: GPT Image (best quality), fallback to DALL-E 3, then mock
       if (process.env.OPENAI_API_KEY)
-        return new OpenAIImageProvider(process.env.OPENAI_API_KEY);
+        return new GPTImageProvider(process.env.OPENAI_API_KEY);
       if (process.env.GEMINI_API_KEY)
         return new GeminiImageProvider(process.env.GEMINI_API_KEY);
       return new MockImageProvider();
@@ -280,6 +290,7 @@ export function getGenerationConfig() {
       { id: "random", label: "Random (cycles)" },
     ],
     providers: [
+      { id: "gpt-image", label: "GPT Image (best)" },
       { id: "openai", label: "OpenAI (DALL-E 3)" },
       { id: "gemini", label: "Google Gemini" },
       { id: "mock", label: "Mock (test)" },

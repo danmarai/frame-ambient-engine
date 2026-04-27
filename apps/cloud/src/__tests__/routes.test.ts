@@ -10,7 +10,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { isValidTvIp, requireValidTvIp } from "../middleware.js";
 import { getRawDb } from "../db.js";
-import { getGenerationConfig } from "../generation.js";
+import { getGenerationConfig, getUserSettings } from "../generation.js";
 import { getQuoteCategories, pickQuote, getQuoteStats } from "../quotes.js";
 
 // ---------------------------------------------------------------------------
@@ -791,13 +791,24 @@ describe("generation config", () => {
     }
   });
 
-  it("should include openai, gemini, and mock providers", () => {
+  it("should include gpt-image, openai, gemini, and mock providers", () => {
     const { providers } = getGenerationConfig();
     const ids = providers.map((p: any) => p.id);
 
+    expect(ids).toContain("gpt-image");
     expect(ids).toContain("openai");
     expect(ids).toContain("gemini");
     expect(ids).toContain("mock");
+  });
+
+  it("should list gpt-image first (default/recommended)", () => {
+    const { providers } = getGenerationConfig();
+    expect(providers[0].id).toBe("gpt-image");
+  });
+
+  it("should default to gpt-image provider in user settings", () => {
+    const settings = getUserSettings("nonexistent-user");
+    expect(settings.imageProvider).toBe("gpt-image");
   });
 
   it("should list supported overlay types", () => {
