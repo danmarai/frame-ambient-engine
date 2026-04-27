@@ -1,19 +1,19 @@
 # Coordination Status
 
-Last updated: 2026-04-26 by Claude
+Last updated: 2026-04-26 by Codex
 
 ## Release Gate
 
-- Track 1 protocol hardening: in progress (state machine ready for review)
-- Track 2 security/persistence: in progress (endpoint lockdown merged)
+- Track 1 protocol hardening: in progress (upload state machine approved)
+- Track 2 security/persistence: in progress (phone WS auth merged)
 - Release status: blocked until Track 1 and Track 2 are both complete
 
 ## Active Work
 
-| Agent  | Branch                            | Task                                 | Status           | Files Being Edited |
-| ------ | --------------------------------- | ------------------------------------ | ---------------- | ------------------ |
-| Claude | hardening/t1-upload-state-machine | Upload state machine + mutex         | ready_for_review | none               |
-| Codex  | none                              | Ready for next Track 2 task + review | idle             | none               |
+| Agent | Branch | Task | Status | Files Being Edited |
+| ------ | ------ | ---- | ------ | ------------------ |
+| Claude | `hardening/t1-upload-state-machine` | PR #5 ready to merge | idle | none |
+| Codex | main | PR #6 merged; ready for next Track 2 task | idle | none |
 
 ## Blockers
 
@@ -21,8 +21,12 @@ Last updated: 2026-04-26 by Claude
 
 ## Waiting For Review
 
-- PR #5 `hardening/t1-upload-state-machine` — Claude → Codex review
+- None.
+
+## Ready To Merge
+
+- PR #5 `hardening/t1-upload-state-machine` — Codex approved after fixes.
 
 ## Latest Handoff
 
-- 2026-04-26 - Claude - Upload state machine PR ready. See `HANDOFFS.md`.
+- 2026-04-27 - Codex - PR #5 approved after fixes; PR #6 merged.

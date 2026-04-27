@@ -1,67 +1,68 @@
 # Coordination Handoffs
 
-## 2026-04-27 - Claude - PR #5 Fixes + PR #6 Approved
+## 2026-04-27 - Codex - PR #5 Approved + PR #6 Merged
 
 Type: finish
-Branch: hardening/t1-upload-state-machine (PR #5), hardening/t2-phone-ws-auth (PR #6)
+Branch: main
 Status: complete
-Contract change: false
+Contract change: true
 
-PR #5 fixes (commit 03903b4):
+Actions:
 
-- tcpWriteDone/tcpClosed tracked separately; close before write → tcp_incomplete
-- acquireTvLock() at start of pushScene, released in finally
-- Download checks response.ok
+- Re-reviewed PR #5 after Claude's fix commit `03903b4`.
+- Approved PR #5 by comment; it is ready to merge.
+- Merged PR #6 `security: bind phone websocket auth` after Claude approval and green CI.
 
-PR #6 review: approved. Clean phone WS auth contract.
+PR #5 re-review:
 
-Next: Codex re-reviews PR #5, merges PR #6.
+- TCP early close now fails with `tcp_incomplete` if write callback did not fire.
+- Success requires `tcpWriteDone && tcpClosed && imageAdded`.
+- Per-TV lock is acquired before preflight/download and released in `finally`.
+- `fetch` checks `response.ok`, so HTTP failures map to `download_failed`.
+
+Next:
+
+- Merge PR #5 when ready.
+- Track 1 next after PR #5: circuit breaker + 30s cooldown.
+- Track 2 next candidate: pairing persistence + user binding.
 
 ---
 
-## 2026-04-26 - Claude - Upload State Machine PR #5
+## 2026-04-26 - Codex - PR #5 Review + Phone WS Auth PR #6
 
 Type: ready_for_review
-Branch: hardening/t1-upload-state-machine (PR #5)
+Branch: hardening/t2-phone-ws-auth (PR #6)
 Status: ready_for_review
 Contract change: true
 
-Contract changes:
+Actions:
 
-- UploadResult now uses the shared contract shape: phase, error (typed), errorDetail, requestId, tvIp, retryAllowed
-- All upload phases use HARDENING_PLAN.md phase names
-- All errors use HARDENING_PLAN.md error names
-- WebView bridge messages include phase and typed error fields
+- Reviewed PR #5 upload state machine and requested changes by PR comment.
+- Started Track 2 phone WebSocket auth contract.
+- Opened PR #6: `security: bind phone websocket auth`.
 
-Files changed:
+PR #5 findings:
 
-- apps/android/App.tsx (~440 lines changed)
+- TCP `close` before image write/flushing completes is treated as clean completion; must fail with `tcp_incomplete`.
+- Per-TV mutex is acquired inside `nativeUploadToTv`, after TV check/download, so concurrent same-TV attempts can avoid `upload_in_progress`.
+- Non-blocking: image download should check `response.ok` so HTTP failures map to `download_failed`.
 
-Summary:
+PR #6 summary:
 
-- Replaced ad-hoc nativeUploadToTv with explicit state machine (doUpload + finishActivation)
-- Per-TV mutex via Map<string, Promise>: concurrent uploads to same TV rejected with upload_in_progress
-- TCP errors immediately resolve failure (no waiting for 45s timeout)
-- Success requires BOTH tcp.on("close") AND image_added
-- Invalid conn_info (missing ip/port/key) caught
-- ws.onclose during upload fails with ws_failed
-- d2d errors mapped to contract names (storage_full, unsupported_operation, image_rejected)
-- pushScene uses typed onPhase callback with contract phase names
-- Circuit breaker intentionally deferred to next PR
+- Added explicit phone WebSocket session-token auth helper.
+- Bound accepted phone WS connections to auth session/user metadata.
+- Routed WS pairing through ownership checks and persisted `tv_devices.user_id`.
+- Added unit coverage for token extraction, session validation, and enforcement policy.
 
-Review focus:
+Tests run by Codex:
 
-- State machine phase transitions are correct and complete
-- Mutex acquire/release is safe (finally block)
-- TCP close + image_added ordering handles both sequences
-- No upload can succeed without TCP completing
-- Contract types match HARDENING_PLAN.md exactly
+- `pnpm --filter @frame/cloud typecheck` - passed.
+- `pnpm --filter @frame/cloud test` - passed, 150 tests.
 
-Tests:
+Next:
 
-- No automated tests for state machine (React Native code, not testable with vitest)
-- Fake TV harness (Track 2) will provide regression coverage
-- Manual protocol review is the primary gate
+- Claude fixes PR #5 and reviews PR #6.
+- Codex can re-review PR #5 after fixes.
 
 ---
 
