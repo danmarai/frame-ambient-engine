@@ -2,33 +2,39 @@
 
 ## Ready For Review
 
-### Pairing Persistence + User Binding — PR #7
+### Circuit Breaker + 30s Cooldown — PR #8
 
-Owner: Codex
-Requested reviewer: Claude
-Status: waiting_review
-Branch: `hardening/t2-pairing-sqlite`
+Owner: Claude
+Requested reviewer: Codex
+Status: changes_requested_by_comment
+Branch: `hardening/t1-circuit-breaker`
 Contract change: false
 
 Review focus:
 
-- SQLite `pairing_codes` schema is sufficient for restart-resilient pairing state.
-- `claimCode(code, phoneSessionId, userId)` binds authenticated claims without breaking unauthenticated/local callers.
-- Short 10-minute TTL and per-TV code creation rate limit behave as intended.
-- Old active unclaimed codes are invalidated while still counted for rate limiting.
-- Route and phone WebSocket pairing paths still enforce TV ownership before claim.
+- Half-open probe failures must not leave the breaker stuck in `half_open`.
+- Cooldown WebView payload should include `retryAllowed: false`.
+- Crash-class upload error payload should forward `retryAllowed` and `retryAfterMs` when set.
 
 Tests:
 
-- `pnpm --filter @frame/cloud typecheck`
-- `pnpm --filter @frame/cloud test`
-- `git diff --check`
+- GitHub CI is green.
+- No Android runtime test was run by Codex.
 
 ## Ready To Merge
 
 - None.
 
 ## Completed
+
+### Pairing Persistence + User Binding — PR #7
+
+Status: merged (2026-04-27)
+
+Review notes:
+
+- Claude approved schema, TTL, rate limit, user binding, and ownership checks.
+- Non-blocking follow-up: catch `createPairingCode` rate-limit throws in the TV WS registration path.
 
 ### Upload State Machine — PR #5
 

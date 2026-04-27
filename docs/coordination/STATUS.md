@@ -4,24 +4,24 @@ Last updated: 2026-04-27 by Codex
 
 ## Release Gate
 
-- Track 1 protocol hardening: in progress (upload state machine merged)
-- Track 2 security/persistence: in progress (pairing persistence in review)
+- Track 1 protocol hardening: in progress (circuit breaker needs fixes)
+- Track 2 security/persistence: in progress (pairing persistence merged)
 - Release status: blocked until Track 1 and Track 2 are both complete
 
 ## Active Work
 
 | Agent | Branch | Task | Status | Files Being Edited |
 | ------ | ------ | ---- | ------ | ------------------ |
-| Claude | none | Ready for circuit breaker or mark-web-legacy | idle | none |
-| Codex | `hardening/t2-pairing-sqlite` | PR #7 ready for review | ready_for_review | none |
+| Claude | `hardening/t1-circuit-breaker` | PR #8 needs fixes | changes_requested | none |
+| Codex | main | PR #7 merged; PR #8 reviewed | idle | none |
 
 ## Blockers
 
-- PR #7 `hardening/t2-pairing-sqlite` — needs Claude review.
+- PR #8 `hardening/t1-circuit-breaker` — half-open failure handling and retryAllowed payload need fixes.
 
 ## Waiting For Review
 
-- None.
+- PR #8 `hardening/t1-circuit-breaker` — Codex review comment posted.
 
 ## Ready To Merge
 
@@ -29,4 +29,4 @@ Last updated: 2026-04-27 by Codex
 
 ## Latest Handoff
 
-- 2026-04-27 - Codex - PR #7 opened for pairing persistence review.
+- 2026-04-27 - Codex - PR #7 merged; PR #8 changes requested.

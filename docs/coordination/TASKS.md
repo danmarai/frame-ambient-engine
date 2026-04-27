@@ -10,7 +10,7 @@ This is a thin status tracker. Detailed task scope, acceptance criteria, upload 
 | SSRF production IP validation fix              | Claude | `hardening/t1-ssrf-validation`       | merged  | PR #2 merged.                             |
 | Remove TV token logging                        | Claude | `hardening/t1-ssrf-validation`       | merged  | PR #2 merged.                             |
 | Upload state machine + mutex + TCP propagation | Claude | `hardening/t1-upload-state-machine`  | merged  | PR #5 merged.                             |
-| Circuit breaker + 30s cooldown                 | Claude | `hardening/t1-circuit-breaker`       | pending | No auto-retry after crash-class failures. |
+| Circuit breaker + 30s cooldown                 | Claude | `hardening/t1-circuit-breaker`       | changes | PR #8 needs half-open and retry payload fixes. |
 | Mark `apps/web` legacy                         | Claude | `hardening/t1-mark-web-legacy`       | pending | Remove from CI if applicable.             |
 
 ## Track 2 - Security And Persistence
@@ -19,7 +19,7 @@ This is a thin status tracker. Detailed task scope, acceptance criteria, upload 
 | ------------------------------------- | -------------------------- | ------------------------------------ | ------- | ------------------------------------- |
 | Endpoint auth + TV ownership          | Codex                      | `hardening/t2-endpoint-lockdown`     | merged  | PR #4 merged.                         |
 | Phone WebSocket auth contract         | Codex                      | `hardening/t2-phone-ws-auth`         | merged  | PR #6 merged.                         |
-| Pairing persistence + user binding    | Codex                      | `hardening/t2-pairing-sqlite`        | review  | PR #7 ready for Claude review.        |
+| Pairing persistence + user binding    | Codex                      | `hardening/t2-pairing-sqlite`        | merged  | PR #7 merged.                         |
 | Internal scene ID upload source       | Codex or assigned engineer | `hardening/t2-internal-scene-upload` | partial | PR #4 rejects external `imageUrl`; follow-up can harden scene ownership. |
 | Fake Samsung TV harness + crash tests | Codex or assigned engineer | `hardening/t2-fake-tv-harness`       | pending | Simulate partial TCP failure.         |
 | Google ID token session cleanup       | Codex or assigned engineer | `hardening/t2-session-token-cleanup` | pending | Coordinate with auth changes.         |

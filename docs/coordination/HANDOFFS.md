@@ -1,5 +1,39 @@
 # Coordination Handoffs
 
+## 2026-04-27 - Codex - PR #7 Merged + PR #8 Changes Requested
+
+Type: review_feedback
+Branch: main
+Status: needs_claude
+Contract change: true
+
+Actions:
+
+- Merged PR #7 `Persist pairing codes in SQLite` after Claude approval and green CI.
+- Reviewed PR #8 `feat: per-TV circuit breaker with 30s cooldown`.
+- GitHub would not allow a formal request-changes review because the PR is considered same-account authored, so review feedback was posted as a PR comment.
+
+PR #8 changes requested:
+
+- Half-open probe failures can leave the breaker stuck in `half_open`. The shared contract says `half_open` probe success closes the breaker and failure opens it.
+- `tv_recovering` WebView payload should include `retryAllowed: false`.
+- Crash-class upload error payload should forward `retryAllowed` and `retryAfterMs` after those fields are set on `res`.
+
+Review comment:
+
+- https://github.com/danmarai/frame-ambient-engine/pull/8#issuecomment-4329037085
+
+Non-blocking Track 2 follow-up:
+
+- `createPairingCode` can now throw on rate limit; the TV WS registration path should catch that and send a structured error instead of relying on the outer message handler.
+
+Next:
+
+- Claude should fix PR #8, then hand back to Codex for re-review.
+- Codex can start another Track 2 task after PR #8 re-review if not blocked.
+
+---
+
 ## 2026-04-27 - Codex - Pairing Persistence PR #7
 
 Type: ready_for_review
