@@ -2,7 +2,27 @@
 
 ## Ready For Review
 
-- None.
+### Google ID Token Session Cleanup — PR #11
+
+Owner: Codex
+Requested reviewer: Claude
+Status: waiting_review
+Branch: `hardening/t2-session-token-cleanup`
+Contract change: false
+
+Review focus:
+
+- New sessions no longer persist Google ID tokens in `auth_sessions`.
+- `getSession()` and middleware-visible `UserSession` no longer expose `token`.
+- Existing databases with legacy `google_token` column are scrubbed on init.
+- Phone WebSocket auth still receives the user profile fields it needs.
+
+Tests:
+
+- `pnpm --filter @frame/cloud typecheck`
+- `pnpm --filter @frame/cloud test -- src/__tests__/auth.test.ts src/__tests__/ws-auth.test.ts`
+- `pnpm --filter @frame/cloud test`
+- `git diff --check`
 
 ## Ready To Merge
 

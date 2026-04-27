@@ -12,6 +12,7 @@ import {
   requireAuth,
   listSessions,
 } from "../auth.js";
+import { getRawDb, initDatabase } from "../db.js";
 
 // Mock user session
 function mockUser() {
@@ -20,7 +21,6 @@ function mockUser() {
     email: "test@example.com",
     name: "Test User",
     picture: "https://example.com/photo.jpg",
-    token: "fake-google-id-token",
   };
 }
 
@@ -181,16 +181,44 @@ describe("auth", () => {
 
   describe("session security edge cases", () => {
     it("should not expose Google token through getSession", () => {
-      // getSession DOES return the full UserSession including the token.
-      // This is a potential security concern — the token should not be
-      // sent back to clients. Currently server.ts does not expose it in
-      // /api/auth/me (it manually picks id, email, name, picture).
-      // But any code calling getSession() internally gets the token.
       const user = mockUser();
       const sessionId = createSession(user);
       const session = getSession(sessionId);
-      // Documenting current behavior: token IS accessible
-      expect(session!.token).toBe("fake-google-id-token");
+      expect(session).not.toBeNull();
+      expect(session).not.toHaveProperty("token");
+    });
+
+    it("should not persist Google token in auth_sessions", () => {
+      const sessionId = createSession(mockUser());
+      const row = getRawDb()
+        .prepare("SELECT * FROM auth_sessions WHERE id = ?")
+        .get(sessionId) as Record<string, unknown>;
+
+      expect(row).toBeDefined();
+      expect(row.google_token ?? null).toBeNull();
+    });
+
+    it("should scrub legacy persisted Google tokens during database init", () => {
+      const db = getRawDb();
+      const columns = db
+        .prepare("PRAGMA table_info(auth_sessions)")
+        .all() as Array<{ name: string }>;
+      if (!columns.some((column) => column.name === "google_token")) {
+        db.exec("ALTER TABLE auth_sessions ADD COLUMN google_token TEXT");
+      }
+
+      const sessionId = createSession(mockUser());
+      db.prepare("UPDATE auth_sessions SET google_token = ? WHERE id = ?").run(
+        "legacy-google-id-token",
+        sessionId,
+      );
+
+      initDatabase();
+
+      const row = db
+        .prepare("SELECT google_token FROM auth_sessions WHERE id = ?")
+        .get(sessionId) as { google_token: string | null };
+      expect(row.google_token).toBeNull();
     });
 
     it("should expire sessions after TTL", () => {
