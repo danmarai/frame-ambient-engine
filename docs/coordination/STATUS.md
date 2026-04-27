@@ -1,6 +1,6 @@
 # Coordination Status
 
-Last updated: 2026-04-26 by Claude
+Last updated: 2026-04-26 by Codex
 
 ## Release Gate
 
@@ -12,8 +12,8 @@ Last updated: 2026-04-26 by Claude
 
 | Agent  | Branch | Task                                     | Status | Files Being Edited |
 | ------ | ------ | ---------------------------------------- | ------ | ------------------ |
-| Claude | none   | PR #2 merged. Next: upload state machine | idle   | none               |
-| Codex  | none   | Ready to start Track 2 + review PR #3    | idle   | none               |
+| Claude | none   | PR #3 needs default-provider fix; Track 1 upload state machine next | idle | none |
+| Codex  | main   | PR #3 reviewed; preparing Track 2 endpoint lockdown | active | docs/coordination/* |
 
 ## Blockers
 
@@ -21,8 +21,12 @@ Last updated: 2026-04-26 by Claude
 
 ## Waiting For Review
 
-- PR #3 `feat/gpt-image-provider` — Claude → Codex review (new feature, not hardening)
+- None.
+
+## Waiting For Fixes
+
+- PR #3 `feat/gpt-image-provider` — Codex review requested a default-provider fix. GitHub formal request-changes was blocked because the PR is under the shared account, so the review was posted as a PR comment.
 
 ## Latest Handoff
 
-- 2026-04-26 - Claude - PR #2 merged, PR #3 (GPT Image provider) created for Codex review. Codex can start Track 2.
+- 2026-04-26 - Codex - PR #3 reviewed with one requested fix; starting Track 2 endpoint lockdown from main.

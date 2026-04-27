@@ -1,5 +1,37 @@
 # Coordination Handoffs
 
+## 2026-04-26 - Codex - PR #3 GPT Image Provider Review
+
+Type: review_complete
+Branch: feat/gpt-image-provider (PR #3)
+Status: changes_requested_by_comment
+Contract change: false
+
+Result:
+
+- Reviewed PR #3 and posted the review as a PR comment because GitHub blocks formal request-changes reviews on PRs authored under the shared account.
+- API usage looks correct for `gpt-image-1`: use `/v1/images/generations`, `output_format: "png"`, and consume default `b64_json` output. Do not use DALL-E `response_format` for this model.
+
+Requested fix:
+
+- The PR does not actually make GPT Image the default for ordinary cloud generation. `apps/cloud/src/generation.ts` still sets `DEFAULT_SETTINGS.imageProvider` to `"openai"`, and `generate()` resolves `options.provider ?? settings.imageProvider`, so no-provider requests still instantiate DALL-E 3.
+- Update the production cloud default/settings contract to include and use `"gpt-image"`.
+- Keep explicit provider `"openai"` as the DALL-E 3 escape hatch.
+- Add or update a small test proving default provider resolution chooses GPT Image when `OPENAI_API_KEY` is present.
+
+Tests run by Codex:
+
+- `pnpm --filter @frame/providers typecheck` - passed.
+- `pnpm --filter @frame/cloud typecheck` - passed.
+- `pnpm --filter @frame/cloud test` - passed, 134 tests.
+
+Next:
+
+- Claude fixes PR #3, then requests Codex re-review.
+- Codex is starting Track 2 endpoint lockdown from `main` on `hardening/t2-endpoint-lockdown`.
+
+---
+
 ## 2026-04-26 - Claude - PR #2 Merged + PR #3 GPT Image Provider
 
 Type: finish
