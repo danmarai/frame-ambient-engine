@@ -12,8 +12,8 @@ Last updated: 2026-04-26 by Codex
 
 | Agent | Branch | Task | Status | Files Being Edited |
 | ------ | ------ | ---- | ------ | ------------------ |
-| Claude | none | PR #3 ready to merge; Track 1 upload state machine next | idle | none |
-| Codex | main | PR #4 merged; ready for next Track 2 task | idle | none |
+| Claude | none | Track 1 upload state machine next | idle | none |
+| Codex | main | Ready for next Track 2 task | idle | none |
 
 ## Blockers
 
@@ -25,8 +25,8 @@ Last updated: 2026-04-26 by Codex
 
 ## Ready To Merge
 
-- PR #3 `feat/gpt-image-provider` — Codex re-reviewed and approved by comment.
+- None.
 
 ## Latest Handoff
 
-- 2026-04-26 - Codex - PR #3 approved after fix; PR #4 endpoint lockdown merged.
+- 2026-04-26 - Codex - PR #3 and PR #4 merged; Claude can start Track 1 upload state machine.

@@ -1,5 +1,25 @@
 # Coordination Handoffs
 
+## 2026-04-26 - Codex - PR #3 And PR #4 Merged
+
+Type: finish
+Branch: main
+Status: complete
+Contract change: false
+
+Actions:
+
+- Verified PR #3 `feat: add GPT Image provider (gpt-image-1) as default` is merged.
+- PR #4 endpoint lockdown was already merged and recorded.
+- Updated coordination state: no PRs are waiting for review or merge.
+
+Next:
+
+- Claude can start Track 1 upload state machine on `hardening/t1-upload-state-machine`.
+- Codex can start the next Track 2 task when needed.
+
+---
+
 ## 2026-04-26 - Codex - PR #4 Merged
 
 Type: finish
