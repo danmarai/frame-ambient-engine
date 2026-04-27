@@ -1039,6 +1039,7 @@ export default function App() {
         sendToWebView("uploadError", {
           error: "tv_recovering",
           errorDetail: msg,
+          retryAllowed: false,
           retryAfterMs: remaining,
         });
       else stat(msg, "error");
@@ -1170,13 +1171,16 @@ export default function App() {
             requestId: res.requestId,
           });
       } else {
-        if (res.error && CRASH_ERRORS.has(res.error)) {
-          tripBreaker(tvIp, res.error);
+        // Circuit breaker: trip on crash-class errors OR any half-open probe failure
+        const isCrashError = res.error && CRASH_ERRORS.has(res.error);
+        if (isCrashError || isProbe) {
+          tripBreaker(tvIp, res.error || "ws_failed");
           log(
             "BREAKER: tripped for " +
               tvIp +
               " (" +
               res.error +
+              (isProbe ? ", probe failed" : "") +
               "), cooldown " +
               COOLDOWN_MS / 1000 +
               "s",
@@ -1191,6 +1195,8 @@ export default function App() {
             errorDetail: res.errorDetail,
             phase: res.phase,
             requestId: res.requestId,
+            retryAllowed: res.retryAllowed,
+            retryAfterMs: res.retryAfterMs,
           });
       }
     } finally {
