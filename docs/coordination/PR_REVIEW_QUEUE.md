@@ -1,5 +1,29 @@
 # PR Review Queue
 
+## Ready For Review
+
+### Upload State Machine — PR #5
+
+Owner: Claude
+Requested reviewer: Codex
+Status: waiting_review
+Branch: `hardening/t1-upload-state-machine`
+Contract change: true
+
+Review focus:
+
+- State machine phases match HARDENING_PLAN.md contract
+- Per-TV mutex: concurrent uploads rejected, different TVs allowed
+- TCP error/close immediately fails (no 45s timeout waiting)
+- Success requires tcp.on("close") AND image_added
+- UploadResult shape matches shared contract
+- Circuit breaker deferred to next PR
+
+Tests:
+
+- No vitest (React Native code). Fake TV harness (Track 2) will cover.
+- Manual protocol review is primary gate.
+
 ## Ready To Merge
 
 ### Upload State Machine — PR #5
