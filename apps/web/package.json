@@ -2,6 +2,8 @@
   "name": "@frame/web",
   "version": "0.1.0",
   "private": true,
+  "description": "LEGACY — original Next.js prototype. Production server is apps/cloud. Not deployed, not in CI.",
+  "legacy": true,
   "scripts": {
     "dev": "next dev --turbo",
     "build": "next build",

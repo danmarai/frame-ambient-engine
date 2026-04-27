@@ -26,45 +26,55 @@ packages/
 ```bash
 # Prerequisites: Node.js 22+, pnpm 9+
 pnpm install
-cp .env.example apps/web/.env.local
-# Edit .env.local with your SESSION_SECRET and APP_PASSWORD_HASH
+cp .env.example apps/cloud/.env
+# Edit .env with OPENAI_API_KEY (required for image generation)
 
-pnpm dev
-# Open http://localhost:3000
+# Start the cloud server
+cd apps/cloud && pnpm dev
+# Server at http://localhost:3847
+# Studio: http://localhost:3847/studio
+# Gallery: http://localhost:3847/gallery
 ```
 
-### Generate a password hash
+### Android app
 
 ```bash
-node -e "const bcrypt = require('bcryptjs'); bcrypt.hash('your-password', 10, (_, h) => console.log(h))"
+cd apps/android
+npm install
+npm run prebuild
+npm run build:apk
+# APK at android/app/build/outputs/apk/release/app-release.apk
 ```
 
 ## Commands
 
-| Command          | Description                        |
-| ---------------- | ---------------------------------- |
-| `pnpm dev`       | Start dev server with Turbopack    |
-| `pnpm build`     | Build all packages and the web app |
-| `pnpm typecheck` | Type-check all packages            |
-| `pnpm lint`      | Lint all packages                  |
-| `pnpm clean`     | Remove build artifacts             |
+| Command                                | Description                           |
+| -------------------------------------- | ------------------------------------- |
+| `pnpm --filter @frame/cloud dev`       | Start cloud server (dev, auto-reload) |
+| `pnpm --filter @frame/cloud test`      | Run cloud server tests                |
+| `pnpm --filter @frame/cloud typecheck` | Type-check cloud server               |
+| `cd apps/android && npm run build`     | Build Android APK                     |
 
 ## Tech Stack
 
 - **Monorepo**: pnpm workspaces + Turborepo
-- **Web**: Next.js 15, Tailwind CSS, TypeScript
-- **Auth**: iron-session (encrypted stateless cookies)
+- **Cloud server**: Express.js, TypeScript, pino logging
+- **Android app**: React Native / Expo, react-native-tcp-socket
+- **Tizen TV app**: Minimal HTML/JS, Samsung WebSocket API
+- **Auth**: Google OAuth + session tokens
 - **Database**: SQLite via Drizzle ORM + better-sqlite3
-- **TV**: Samsung Frame TV local WebSocket API
-- **Providers**: OpenAI (DALL-E), Google Gemini (Imagen), Open-Meteo weather
+- **TV protocol**: Samsung Frame Art Mode WebSocket + d2d TCP upload
+- **Image generation**: OpenAI GPT Image (default), DALL-E 3, Google Gemini
+- **Weather**: Open-Meteo (free, no key)
+- **Deployment**: EC2, PM2, nginx, Let's Encrypt; Docker available
 
 All providers have mock implementations for local development without API keys.
 
 ## Project Status
 
-**Milestone 0** (Bootstrap) - Complete. App boots, auth works, settings persist, all providers mocked.
+Production hardening in progress. See `docs/HARDENING_PLAN.md` for the full plan and `docs/coordination/` for Track 1/Track 2 progress.
 
-See `docs/` for the full PRD, technical spec, and architecture decision records.
+See `docs/` for the PRD, technical spec, and architecture decision records.
 
 ## License
 
