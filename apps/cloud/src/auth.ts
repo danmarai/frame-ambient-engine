@@ -21,7 +21,6 @@ export interface UserSession {
   email: string;
   name: string;
   picture: string;
-  token: string; // Google ID token (never sent to clients)
 }
 
 /** Verify a Google ID token and extract user info */
@@ -47,7 +46,6 @@ export async function verifyGoogleToken(
       email: payload.email,
       name: payload.name || payload.email.split("@")[0],
       picture: payload.picture || "",
-      token: idToken,
     };
   } catch (err) {
     logger.error(
@@ -67,15 +65,14 @@ export function createSession(user: UserSession): string {
 
   const db = getRawDb();
   db.prepare(
-    `INSERT INTO auth_sessions (id, user_id, email, name, picture, google_token, created_at, expires_at, last_accessed_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO auth_sessions (id, user_id, email, name, picture, created_at, expires_at, last_accessed_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     sessionId,
     user.userId,
     user.email,
     user.name,
     user.picture,
-    user.token,
     now,
     expiresAt,
     now,
@@ -100,7 +97,7 @@ export function getSession(sessionId: string): UserSession | null {
   const db = getRawDb();
   const row = db
     .prepare(
-      `SELECT user_id, email, name, picture, google_token, expires_at
+      `SELECT user_id, email, name, picture, expires_at
        FROM auth_sessions WHERE id = ?`,
     )
     .get(sessionId) as
@@ -109,7 +106,6 @@ export function getSession(sessionId: string): UserSession | null {
         email: string;
         name: string;
         picture: string;
-        google_token: string;
         expires_at: string;
       }
     | undefined;
@@ -134,7 +130,6 @@ export function getSession(sessionId: string): UserSession | null {
     email: row.email,
     name: row.name || "",
     picture: row.picture || "",
-    token: row.google_token || "",
   };
 }
 
