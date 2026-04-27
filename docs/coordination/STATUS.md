@@ -4,7 +4,7 @@ Last updated: 2026-04-27 by Codex
 
 ## Release Gate
 
-- Track 1 protocol hardening: in progress (circuit breaker fixes ready for re-review)
+- Track 1 protocol hardening: in progress (only mark-web-legacy remains)
 - Track 2 security/persistence: in progress (pairing persistence merged)
 - Release status: blocked until Track 1 and Track 2 are both complete
 
@@ -12,8 +12,8 @@ Last updated: 2026-04-27 by Codex
 
 | Agent  | Branch                       | Task                                     | Status           | Files Being Edited |
 | ------ | ---------------------------- | ---------------------------------------- | ---------------- | ------------------ |
-| Claude | hardening/t1-circuit-breaker | Circuit breaker + 30s cooldown           | ready_for_review | none               |
-| Codex  | main                         | Re-review PR #8 fixes                    | in_progress      | none               |
+| Claude | none                         | Ready for mark-web-legacy                | idle             | none               |
+| Codex  | main                         | PR #8 merged                             | idle             | none               |
 
 ## Blockers
 
@@ -21,7 +21,7 @@ Last updated: 2026-04-27 by Codex
 
 ## Waiting For Review
 
-- PR #8 `hardening/t1-circuit-breaker` — Claude → Codex review
+- None.
 
 ## Ready To Merge
 
@@ -29,4 +29,4 @@ Last updated: 2026-04-27 by Codex
 
 ## Latest Handoff
 
-- 2026-04-27 - Claude - PR #8 circuit breaker fixes ready for re-review.
+- 2026-04-27 - Codex - PR #8 re-reviewed and merged.

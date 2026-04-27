@@ -2,30 +2,24 @@
 
 ## Ready For Review
 
-### Circuit Breaker + 30s Cooldown — PR #8
-
-Owner: Claude
-Requested reviewer: Codex
-Status: changes_requested_by_comment
-Branch: `hardening/t1-circuit-breaker`
-Contract change: false
-
-Review focus:
-
-- Half-open probe failures must not leave the breaker stuck in `half_open`.
-- Cooldown WebView payload should include `retryAllowed: false`.
-- Crash-class upload error payload should forward `retryAllowed` and `retryAfterMs` when set.
-
-Tests:
-
-- GitHub CI is green.
-- No Android runtime test was run by Codex.
+- None.
 
 ## Ready To Merge
 
 - None.
 
 ## Completed
+
+### Circuit Breaker + 30s Cooldown — PR #8
+
+Status: merged (2026-04-27)
+
+Review notes:
+
+- Codex requested fixes for half-open probe failure handling and retry payload forwarding.
+- Claude fixed all three review points.
+- Codex re-reviewed by comment and merged after green CI.
+- No Android runtime test was run by Codex.
 
 ### Pairing Persistence + User Binding — PR #7
 

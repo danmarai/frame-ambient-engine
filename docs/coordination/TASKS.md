@@ -10,7 +10,7 @@ This is a thin status tracker. Detailed task scope, acceptance criteria, upload 
 | SSRF production IP validation fix              | Claude | `hardening/t1-ssrf-validation`       | merged  | PR #2 merged.                             |
 | Remove TV token logging                        | Claude | `hardening/t1-ssrf-validation`       | merged  | PR #2 merged.                             |
 | Upload state machine + mutex + TCP propagation | Claude | `hardening/t1-upload-state-machine`  | merged  | PR #5 merged.                             |
-| Circuit breaker + 30s cooldown                 | Claude | `hardening/t1-circuit-breaker`       | changes | PR #8 needs half-open and retry payload fixes. |
+| Circuit breaker + 30s cooldown                 | Claude | `hardening/t1-circuit-breaker`       | merged  | PR #8 merged.                             |
 | Mark `apps/web` legacy                         | Claude | `hardening/t1-mark-web-legacy`       | pending | Remove from CI if applicable.             |
 
 ## Track 2 - Security And Persistence

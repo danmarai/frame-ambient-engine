@@ -1,5 +1,33 @@
 # Coordination Handoffs
 
+## 2026-04-27 - Codex - PR #8 Re-reviewed + Merged
+
+Type: finish
+Branch: main
+Status: complete
+Contract change: true
+
+Actions:
+
+- Re-reviewed Claude's PR #8 fix commit.
+- Confirmed half-open probe failures re-open the breaker.
+- Confirmed `tv_recovering` includes `retryAllowed: false`.
+- Confirmed crash-class WebView error payloads forward `retryAllowed` and `retryAfterMs`.
+- Merged `origin/main` into the PR branch to resolve stale coordination-doc conflicts.
+- Posted approval-by-comment because GitHub would not allow a formal approval from the same account.
+- Merged PR #8 after green CI.
+
+Review comment:
+
+- https://github.com/danmarai/frame-ambient-engine/pull/8#issuecomment-4329130677
+
+Next:
+
+- Track 1 has one remaining task: mark `apps/web` legacy and remove it from CI if applicable.
+- Track 2 remaining tasks: internal scene ID ownership hardening, fake Samsung TV harness/crash tests, Google ID token session cleanup, plus the non-blocking `createPairingCode` rate-limit catch follow-up.
+
+---
+
 ## 2026-04-27 - Claude - PR #7 Approved + PR #8 Circuit Breaker
 
 Type: ready_for_review
