@@ -142,6 +142,20 @@ function fail(
   };
 }
 
+/** Acquire per-TV mutex. Returns null if lock held, or a release function. */
+function acquireTvLock(tvIp: string): (() => void) | null {
+  if (tvUploadLocks.has(tvIp)) return null;
+  let release: () => void;
+  const p = new Promise<void>((resolve) => {
+    release = () => {
+      tvUploadLocks.delete(tvIp);
+      resolve();
+    };
+  });
+  tvUploadLocks.set(tvIp, p as any);
+  return release!;
+}
+
 async function nativeUploadToTv(
   tvIp: string,
   imageData: Buffer,
@@ -149,37 +163,7 @@ async function nativeUploadToTv(
 ): Promise<UploadResult> {
   const start = Date.now();
   const rid = makeRequestId();
-
-  // Check per-TV mutex
-  if (tvUploadLocks.has(tvIp)) {
-    onPhase("failed", "Another upload to this TV is in progress");
-    return {
-      success: false,
-      phase: "failed",
-      error: "upload_in_progress",
-      errorDetail: "Another upload to this TV is already running",
-      durationMs: 0,
-      requestId: rid,
-      tvIp,
-      retryAllowed: false,
-    };
-  }
-
-  // Acquire mutex — store the promise so concurrent calls can detect it
-  let releaseMutex: () => void;
-  const lockPromise = new Promise<UploadResult>((resolve) => {
-    releaseMutex = () => {
-      tvUploadLocks.delete(tvIp);
-      resolve(undefined as any);
-    };
-  });
-  tvUploadLocks.set(tvIp, lockPromise);
-
-  try {
-    return await doUpload(tvIp, imageData, rid, start, onPhase);
-  } finally {
-    releaseMutex!();
-  }
+  return doUpload(tvIp, imageData, rid, start, onPhase);
 }
 
 async function doUpload(
@@ -191,7 +175,8 @@ async function doUpload(
 ): Promise<UploadResult> {
   return new Promise((resolve) => {
     let resolved = false;
-    let tcpComplete = false;
+    let tcpWriteDone = false; // write callback fired + end() called
+    let tcpClosed = false; // socket close event fired
     let imageAdded = false;
     let contentId = "";
     let currentPhase: UploadPhase = "connecting_ws";
@@ -331,6 +316,7 @@ async function doUpload(
                 tcp.write(lb);
                 tcp.write(hb);
                 tcp.write(Buffer.from(imageData), () => {
+                  tcpWriteDone = true;
                   setPhase(
                     "tcp_flushing",
                     "Write complete, flushing socket...",
@@ -341,7 +327,21 @@ async function doUpload(
             );
 
             tcp.on("close", () => {
-              tcpComplete = true;
+              tcpClosed = true;
+              // If socket closed before write callback fired, it's an incomplete upload
+              if (!tcpWriteDone) {
+                done(
+                  fail(
+                    "uploading_tcp",
+                    "tcp_incomplete",
+                    "TCP socket closed before all bytes were written",
+                    start,
+                    rid,
+                    tvIp,
+                  ),
+                );
+                return;
+              }
               setPhase(
                 "waiting_image_added",
                 "TCP closed cleanly, waiting for TV confirmation...",
@@ -382,11 +382,11 @@ async function doUpload(
               "waiting_image_added",
               "TV confirmed image received: " + contentId,
             );
-            // Only proceed to activation if TCP is also done
-            if (tcpComplete) {
+            // Only proceed to activation if TCP write is done and socket closed
+            if (tcpWriteDone && tcpClosed) {
               finishActivation(ws, contentId, start, rid, tvIp, setPhase, done);
             }
-            // If TCP not done yet, we wait — the tcp.on("close") handler will trigger activation
+            // If TCP not done yet, the tcp.on("close") handler will trigger activation
           }
 
           // d2d error from TV
@@ -956,139 +956,156 @@ export default function App() {
       else stat(msg, "error");
       return;
     }
-    setUploading(true);
 
-    // Phase callback: logs + WebView progress
-    const onPhase = (phase: UploadPhase, detail: string) => {
-      log("UPLOAD [" + phase + "] " + detail);
-      if (fromWebView)
-        sendToWebView("uploadProgress", { phase, stage: detail });
-    };
-
-    // --- Pre-upload: check TV state ---
-    onPhase("checking_tv", "Checking TV at " + tvIp + "...");
-    const tvState = await checkTvState(tvIp, (s) => onPhase("checking_tv", s));
-
-    if (!tvState.reachable) {
-      setUploading(false);
-      const msg = "TV not found on network";
-      onPhase("failed", msg);
+    // Per-TV mutex — covers entire operation (preflight, download, upload)
+    const releaseLock = acquireTvLock(tvIp);
+    if (!releaseLock) {
+      const msg = "Another upload to this TV is in progress";
+      log("UPLOAD: " + msg);
       if (fromWebView)
         sendToWebView("uploadError", {
-          error: "tv_not_reachable",
+          error: "upload_in_progress",
           errorDetail: msg,
         });
-      else
-        Alert.alert(
-          "TV Not Found",
-          "Cannot reach TV at " +
-            tvIp +
-            ".\n\nCheck:\n1. TV is powered on\n2. Phone and TV on same WiFi",
-          [{ text: "OK" }],
-        );
+      else stat(msg, "error");
       return;
     }
 
-    if (!tvState.wsConnected) {
-      onPhase(
-        "activating_art_mode",
-        "Art service not responding, trying to activate...",
+    setUploading(true);
+    try {
+      // Phase callback: logs + WebView progress
+      const onPhase = (phase: UploadPhase, detail: string) => {
+        log("UPLOAD [" + phase + "] " + detail);
+        if (fromWebView)
+          sendToWebView("uploadProgress", { phase, stage: detail });
+      };
+
+      // --- Pre-upload: check TV state ---
+      onPhase("checking_tv", "Checking TV at " + tvIp + "...");
+      const tvState = await checkTvState(tvIp, (s) =>
+        onPhase("checking_tv", s),
       );
-      const activated = await activateArtMode(tvIp, (s) =>
-        onPhase("activating_art_mode", s),
-      );
-      if (!activated) {
-        setUploading(false);
-        const msg = "Art Mode not available. May need pairing approval on TV.";
+
+      if (!tvState.reachable) {
+        const msg = "TV not found on network";
         onPhase("failed", msg);
         if (fromWebView)
           sendToWebView("uploadError", {
-            error: "art_service_unavailable",
+            error: "tv_not_reachable",
             errorDetail: msg,
           });
         else
           Alert.alert(
-            "Art Mode Not Available",
-            "Try:\n1. Check TV for pairing popup\n2. Switch to Art Mode (press power once)\n3. Wait 10s and retry",
-            [
-              { text: "Retry", onPress: () => pushScene(scene, fromWebView) },
-              { text: "Cancel", style: "cancel" },
-            ],
+            "TV Not Found",
+            "Cannot reach TV at " +
+              tvIp +
+              ".\n\nCheck:\n1. TV is powered on\n2. Phone and TV on same WiFi",
+            [{ text: "OK" }],
           );
         return;
       }
-      onPhase("activating_art_mode", "Waiting for Art Mode...");
-      await new Promise((r) => setTimeout(r, 3000));
-    } else if (tvState.artMode === "off") {
-      onPhase("activating_art_mode", "Art Mode is OFF, activating...");
-      await activateArtMode(tvIp, (s) => onPhase("activating_art_mode", s));
-      await new Promise((r) => setTimeout(r, 3000));
-    }
 
-    // --- Download image ---
-    onPhase("downloading_image", "Downloading from cloud...");
-    let img: Buffer;
-    try {
-      const imgUrl = scene.imageUrl.startsWith("http")
-        ? scene.imageUrl
-        : CLOUD + scene.imageUrl;
-      const r = await fetch(imgUrl);
-      const buf = await r.arrayBuffer();
-      img = Buffer.from(buf);
-      onPhase(
-        "downloading_image",
-        "Downloaded " + (img.length / 1024).toFixed(0) + "KB",
-      );
-    } catch (e: any) {
+      if (!tvState.wsConnected) {
+        onPhase(
+          "activating_art_mode",
+          "Art service not responding, trying to activate...",
+        );
+        const activated = await activateArtMode(tvIp, (s) =>
+          onPhase("activating_art_mode", s),
+        );
+        if (!activated) {
+          const msg =
+            "Art Mode not available. May need pairing approval on TV.";
+          onPhase("failed", msg);
+          if (fromWebView)
+            sendToWebView("uploadError", {
+              error: "art_service_unavailable",
+              errorDetail: msg,
+            });
+          else
+            Alert.alert(
+              "Art Mode Not Available",
+              "Try:\n1. Check TV for pairing popup\n2. Switch to Art Mode (press power once)\n3. Wait 10s and retry",
+              [
+                { text: "Retry", onPress: () => pushScene(scene, fromWebView) },
+                { text: "Cancel", style: "cancel" },
+              ],
+            );
+          return;
+        }
+        onPhase("activating_art_mode", "Waiting for Art Mode...");
+        await new Promise((r) => setTimeout(r, 3000));
+      } else if (tvState.artMode === "off") {
+        onPhase("activating_art_mode", "Art Mode is OFF, activating...");
+        await activateArtMode(tvIp, (s) => onPhase("activating_art_mode", s));
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+
+      // --- Download image ---
+      onPhase("downloading_image", "Downloading from cloud...");
+      let img: Buffer;
+      try {
+        const imgUrl = scene.imageUrl.startsWith("http")
+          ? scene.imageUrl
+          : CLOUD + scene.imageUrl;
+        const r = await fetch(imgUrl);
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        const buf = await r.arrayBuffer();
+        img = Buffer.from(buf);
+        onPhase(
+          "downloading_image",
+          "Downloaded " + (img.length / 1024).toFixed(0) + "KB",
+        );
+      } catch (e: any) {
+        onPhase("failed", "Download error: " + e.message);
+        if (fromWebView)
+          sendToWebView("uploadError", {
+            error: "download_failed",
+            errorDetail: e.message,
+          });
+        else stat("Download failed: " + e.message, "error");
+        return;
+      }
+
+      if (img.length < 1000 || img[0] !== 0xff || img[1] !== 0xd8) {
+        onPhase("failed", "Invalid image (" + img.length + " bytes)");
+        if (fromWebView)
+          sendToWebView("uploadError", {
+            error: "invalid_image",
+            errorDetail: img.length + " bytes, not JPEG",
+          });
+        else stat("Invalid image", "error");
+        return;
+      }
+
+      // --- Upload to TV (state machine handles phases from here) ---
+      const res = await nativeUploadToTv(tvIp, img, onPhase);
+
+      if (res.success) {
+        const msg =
+          "Art displayed on TV! (" + (res.durationMs / 1000).toFixed(1) + "s)";
+        stat(msg, "success");
+        if (fromWebView)
+          sendToWebView("uploadComplete", {
+            contentId: res.contentId,
+            durationMs: res.durationMs,
+            requestId: res.requestId,
+          });
+      } else {
+        stat("Failed: " + (res.errorDetail || res.error), "error");
+        if (fromWebView)
+          sendToWebView("uploadError", {
+            error: res.error,
+            errorDetail: res.errorDetail,
+            phase: res.phase,
+            requestId: res.requestId,
+          });
+      }
+    } finally {
       setUploading(false);
-      onPhase("failed", "Download error: " + e.message);
-      if (fromWebView)
-        sendToWebView("uploadError", {
-          error: "download_failed",
-          errorDetail: e.message,
-        });
-      else stat("Download failed: " + e.message, "error");
-      return;
+      releaseLock();
+      uploadTelemetry(logsRef.current, tvIp, "upload");
     }
-
-    if (img.length < 1000 || img[0] !== 0xff || img[1] !== 0xd8) {
-      setUploading(false);
-      onPhase("failed", "Invalid image (" + img.length + " bytes)");
-      if (fromWebView)
-        sendToWebView("uploadError", {
-          error: "invalid_image",
-          errorDetail: img.length + " bytes, not JPEG",
-        });
-      else stat("Invalid image", "error");
-      return;
-    }
-
-    // --- Upload to TV (state machine handles phases from here) ---
-    const res = await nativeUploadToTv(tvIp, img, onPhase);
-
-    if (res.success) {
-      const msg =
-        "Art displayed on TV! (" + (res.durationMs / 1000).toFixed(1) + "s)";
-      stat(msg, "success");
-      if (fromWebView)
-        sendToWebView("uploadComplete", {
-          contentId: res.contentId,
-          durationMs: res.durationMs,
-          requestId: res.requestId,
-        });
-    } else {
-      stat("Failed: " + (res.errorDetail || res.error), "error");
-      if (fromWebView)
-        sendToWebView("uploadError", {
-          error: res.error,
-          errorDetail: res.errorDetail,
-          phase: res.phase,
-          requestId: res.requestId,
-        });
-    }
-
-    setUploading(false);
-    uploadTelemetry(logsRef.current, tvIp, "upload");
   }
 
   function onWebViewMessage(event: WebViewMessageEvent) {
