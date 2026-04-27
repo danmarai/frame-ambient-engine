@@ -1,5 +1,6 @@
 /** TV control routes — upload, display, init, cycle */
 import { Router } from "express";
+import { requireAuth } from "../auth.js";
 import { uploadToTv, selectAndActivate } from "../tv-upload.js";
 import {
   initTvState,
@@ -7,31 +8,51 @@ import {
   recordUpload,
   handleStorageFull,
 } from "../tv-storage.js";
-import { sendToTv, getTvIp } from "../tv-connections.js";
+import { sendToTv } from "../tv-connections.js";
 import { isValidTvIp } from "../middleware.js";
 import { logger } from "../logger.js";
+import { getOwnedTv } from "../tv-ownership.js";
+import { loadImage } from "../generation.js";
 
 const router = Router();
 
-router.post("/api/tv/control", async (req, res) => {
-  const { tvIp, action, contentId } = req.body;
-  if (!tvIp || !action) {
-    res.status(400).json({ error: "Missing tvIp or action" });
-    return;
+function resolveOwnedTv(req: any, res: any): { id: string; tvIp: string } | null {
+  const userId = req.user.userId as string;
+  const { tvId, tvIp } = req.body;
+  if (!tvId && !tvIp) {
+    res.status(400).json({ error: "Missing tvId or tvIp" });
+    return null;
   }
-  if (!isValidTvIp(tvIp)) {
+  if (tvIp && !isValidTvIp(tvIp)) {
     res
       .status(400)
       .json({ error: "Invalid TV IP — must be a private network address" });
+    return null;
+  }
+
+  const tv = getOwnedTv(userId, { tvId, tvIp });
+  if (!tv) {
+    res.status(403).json({ error: "TV is not paired to this user" });
+    return null;
+  }
+  return { id: tv.id, tvIp: tv.tvIp };
+}
+
+router.post("/api/tv/control", requireAuth, async (req, res) => {
+  const { action, contentId } = req.body;
+  if (!action) {
+    res.status(400).json({ error: "Missing action" });
     return;
   }
+  const tv = resolveOwnedTv(req, res);
+  if (!tv) return;
 
   try {
     if (action === "select_image" && contentId) {
-      await selectAndActivate(tvIp, contentId);
+      await selectAndActivate(tv.tvIp, contentId);
       res.json({ success: true, action, contentId });
     } else if (action === "art_mode_on") {
-      await selectAndActivate(tvIp, contentId || "");
+      await selectAndActivate(tv.tvIp, contentId || "");
       res.json({ success: true, action: "art_mode_on" });
     } else {
       res.status(400).json({ error: "Unknown action: " + action });
@@ -44,40 +65,30 @@ router.post("/api/tv/control", async (req, res) => {
 });
 
 /** Upload art to a paired TV — cloud server acts as upload bridge */
-router.post("/api/upload", async (req, res) => {
-  const { tvId, imageUrl, tvIp: explicitIp } = req.body;
+router.post("/api/upload", requireAuth, async (req, res) => {
+  const { tvId, sceneId, imageUrl, tvIp: explicitIp } = req.body;
   if (!tvId) {
     res.status(400).json({ error: "Missing tvId" });
     return;
   }
-
-  const tvIp = explicitIp || getTvIp(tvId);
-  if (!tvIp || tvIp === "unknown") {
-    res.status(404).json({ error: "TV IP not known. Pass tvIp in request." });
+  if (imageUrl) {
+    res.status(400).json({ error: "imageUrl is not supported; use sceneId" });
+    return;
+  }
+  if (!sceneId) {
+    res.status(400).json({ error: "Missing sceneId" });
     return;
   }
 
+  const tv = resolveOwnedTv(req, res);
+  if (!tv) return;
+  const tvIp = tv.tvIp;
+
   try {
-    let imageData: Buffer;
-    if (imageUrl) {
-      logger.info({ imageUrl }, "Fetching image");
-      const response = await fetch(imageUrl);
-      if (!response.ok)
-        throw new Error(`Image fetch failed: ${response.status}`);
-      const arrayBuf = await response.arrayBuffer();
-      imageData = Buffer.from(arrayBuf);
-      logger.info({ bytes: imageData.length }, "Image fetched");
-    } else {
-      const fs = await import("fs");
-      const testPath = "/tmp/tv-test/don-claude.jpg";
-      if (fs.existsSync(testPath)) {
-        imageData = fs.readFileSync(testPath);
-      } else {
-        res
-          .status(400)
-          .json({ error: "No image provided and no test image found" });
-        return;
-      }
+    const imageData = await loadImage(sceneId);
+    if (!imageData) {
+      res.status(404).json({ error: "Scene image not found" });
+      return;
     }
 
     await makeRoom(tvIp, 1);
@@ -96,7 +107,7 @@ router.post("/api/upload", async (req, res) => {
       logger.info({ contentId: result.contentId }, "Upload success");
       recordUpload(tvIp, result.contentId);
 
-      sendToTv(tvId, {
+      sendToTv(tv.id, {
         type: "new_art",
         contentId: result.contentId,
         message: "Fresh art from Don Claude!",
@@ -122,20 +133,11 @@ router.post("/api/upload", async (req, res) => {
 });
 
 /** Initialize TV state — scans storage, detects capacity */
-router.post("/api/tv/init", async (req, res) => {
-  const { tvIp } = req.body;
-  if (!tvIp) {
-    res.status(400).json({ error: "Missing tvIp" });
-    return;
-  }
-  if (!isValidTvIp(tvIp)) {
-    res
-      .status(400)
-      .json({ error: "Invalid TV IP — must be a private network address" });
-    return;
-  }
+router.post("/api/tv/init", requireAuth, async (req, res) => {
+  const tv = resolveOwnedTv(req, res);
+  if (!tv) return;
   try {
-    const state = await initTvState(tvIp);
+    const state = await initTvState(tv.tvIp);
     res.json({
       flashSizeGB: state.flashSizeGB,
       maxImages: state.maxImages,
@@ -150,21 +152,17 @@ router.post("/api/tv/init", async (req, res) => {
 });
 
 /** Select an image and activate art mode display */
-router.post("/api/set-display", async (req, res) => {
-  const { tvIp, contentId } = req.body;
-  if (!tvIp || !contentId) {
-    res.status(400).json({ error: "Missing tvIp or contentId" });
+router.post("/api/set-display", requireAuth, async (req, res) => {
+  const { contentId } = req.body;
+  if (!contentId) {
+    res.status(400).json({ error: "Missing contentId" });
     return;
   }
-  if (!isValidTvIp(tvIp)) {
-    res
-      .status(400)
-      .json({ error: "Invalid TV IP — must be a private network address" });
-    return;
-  }
+  const tv = resolveOwnedTv(req, res);
+  if (!tv) return;
   try {
-    logger.info({ contentId, tvIp }, "Setting display");
-    const result = await selectAndActivate(tvIp, contentId);
+    logger.info({ contentId, tvIp: tv.tvIp }, "Setting display");
+    const result = await selectAndActivate(tv.tvIp, contentId);
     res.json({ success: result, contentId });
   } catch (err: unknown) {
     res
@@ -174,7 +172,7 @@ router.post("/api/set-display", async (req, res) => {
 });
 
 /** Upload a specific image file to TV — DEV ONLY, disabled in production */
-router.post("/api/upload-file", async (req, res) => {
+router.post("/api/upload-file", requireAuth, async (req, res) => {
   if (process.env.NODE_ENV === "production") {
     res.status(403).json({ error: "This endpoint is disabled in production" });
     return;
@@ -184,16 +182,18 @@ router.post("/api/upload-file", async (req, res) => {
     res.status(400).json({ error: "Missing tvIp or filePath" });
     return;
   }
+  const tv = resolveOwnedTv(req, res);
+  if (!tv) return;
   try {
     const fs = await import("fs");
     const imageData = fs.readFileSync(filePath);
     logger.info(
-      { filePath, bytes: imageData.length, tvIp },
+      { filePath, bytes: imageData.length, tvIp: tv.tvIp },
       "Uploading file to TV",
     );
-    const result = await uploadToTv(tvIp, imageData);
+    const result = await uploadToTv(tv.tvIp, imageData);
     if (result.success) {
-      await selectAndActivate(tvIp, result.contentId!);
+      await selectAndActivate(tv.tvIp, result.contentId!);
     }
     res.json(result);
   } catch (err: unknown) {
@@ -205,12 +205,15 @@ router.post("/api/upload-file", async (req, res) => {
 /** Cycle through images on a timer */
 let cycleTimer: ReturnType<typeof setInterval> | null = null;
 
-router.post("/api/cycle", async (req, res) => {
+router.post("/api/cycle", requireAuth, async (req, res) => {
   const { tvIp, images, intervalMs } = req.body;
   if (!tvIp || !images || !images.length) {
     res.status(400).json({ error: "Missing tvIp or images array" });
     return;
   }
+  const tv = resolveOwnedTv(req, res);
+  if (!tv) return;
+  const ownedTvIp = tv.tvIp;
 
   if (cycleTimer) clearInterval(cycleTimer);
 
@@ -228,9 +231,9 @@ router.post("/api/cycle", async (req, res) => {
         { index: idx + 1, total: images.length, filePath },
         "Cycle image",
       );
-      const result = await uploadToTv(tvIp, imageData);
+      const result = await uploadToTv(ownedTvIp, imageData);
       if (result.success && result.contentId) {
-        await selectAndActivate(tvIp, result.contentId);
+        await selectAndActivate(ownedTvIp, result.contentId);
         logger.info(
           { contentId: result.contentId, durationMs: result.durationMs },
           "Cycle image displayed",
@@ -248,7 +251,7 @@ router.post("/api/cycle", async (req, res) => {
   res.json({ success: true, imageCount: images.length, intervalMs: interval });
 });
 
-router.post("/api/cycle/stop", (_req, res) => {
+router.post("/api/cycle/stop", requireAuth, (_req, res) => {
   if (cycleTimer) {
     clearInterval(cycleTimer);
     cycleTimer = null;
