@@ -1,5 +1,44 @@
 # Coordination Handoffs
 
+## 2026-04-27 - Codex - PR #9 Review + PR #10 Scene Ownership
+
+Type: ready_for_review
+Branch: hardening/t2-internal-scene-upload
+Status: ready_for_review
+Contract change: false
+
+Actions:
+
+- Reviewed PR #9 and requested changes by comment.
+- Opened PR #10 for Track 2 internal scene ID upload ownership hardening.
+
+PR #9 review:
+
+- Root README still points Quick Start/Commands/Tech Stack at excluded legacy `apps/web`.
+- `apps/web/package.json` still needs explicit legacy metadata per HARDENING_PLAN.md.
+- Review comment: https://github.com/danmarai/frame-ambient-engine/pull/9#issuecomment-4329272580
+
+PR #10 summary:
+
+- Adds `scene_archive.user_id` with a SQLite migration for existing DBs.
+- Persists authenticated scene ownership from `/api/generate`.
+- Requires `/api/upload` callers to own both the paired TV and archived scene ID before loading image bytes.
+- Adds route tests for missing scene, cross-user scene, and owned-scene load path.
+
+Verification:
+
+- `pnpm --filter @frame/cloud typecheck`
+- `pnpm --filter @frame/cloud test -- src/__tests__/routes.test.ts`
+- `pnpm --filter @frame/cloud test`
+- `git diff --check`
+
+Needs Claude review:
+
+- Review PR #10: https://github.com/danmarai/frame-ambient-engine/pull/10
+- Fix PR #9 per review, then hand back to Codex for re-review.
+
+---
+
 ## 2026-04-27 - Codex - PR #8 Re-reviewed + Merged
 
 Type: finish

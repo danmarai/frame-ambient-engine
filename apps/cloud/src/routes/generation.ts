@@ -90,10 +90,11 @@ router.post(
       // Persist to gallery database
       const db = getRawDb();
       db.prepare(
-        `INSERT INTO scene_archive (id, prompt, context_json, duration_ms, provider, image_url, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO scene_archive (id, user_id, prompt, context_json, duration_ms, provider, image_url, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         result.sceneId,
+        userId ?? null,
         result.prompt,
         JSON.stringify(result.context),
         result.durationMs,

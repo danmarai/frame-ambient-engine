@@ -171,5 +171,18 @@ export function initDatabase(): void {
       ON pairing_codes(user_id);
   `);
 
+  const sceneArchiveColumns = raw
+    .prepare("PRAGMA table_info(scene_archive)")
+    .all() as Array<{ name: string }>;
+  if (!sceneArchiveColumns.some((column) => column.name === "user_id")) {
+    raw.exec(
+      "ALTER TABLE scene_archive ADD COLUMN user_id TEXT REFERENCES users(id)",
+    );
+  }
+  raw.exec(`
+    CREATE INDEX IF NOT EXISTS idx_scene_archive_user
+      ON scene_archive(user_id);
+  `);
+
   logger.info("Database initialized");
 }

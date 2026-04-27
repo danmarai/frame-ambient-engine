@@ -448,7 +448,16 @@ describe("TV endpoint lockdown", () => {
   beforeEach(() => {
     const db = getRawDb();
     db.prepare("DELETE FROM tv_devices").run();
+    db.prepare("DELETE FROM scene_archive").run();
   });
+
+  function insertUser(id: string) {
+    getRawDb()
+      .prepare(
+        "INSERT INTO users (id, email, created_at) VALUES (?, ?, ?) ON CONFLICT(id) DO NOTHING",
+      )
+      .run(id, `${id}@example.com`, new Date().toISOString());
+  }
 
   it("should require authentication before /api/generate can target a TV", async () => {
     const generationRouter = (await import("../routes/generation.js")).default;
@@ -494,6 +503,101 @@ describe("TV endpoint lockdown", () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.body.error).toBe("imageUrl is not supported; use sceneId");
+  });
+
+  it("should reject upload of a scene that does not exist in the archive", async () => {
+    const tvRouter = (await import("../routes/tv-control.js")).default;
+    const handler = findHandler(tvRouter, "post", "/api/upload");
+    expect(handler).not.toBeNull();
+
+    insertUser("user-a");
+    getRawDb()
+      .prepare(
+        `INSERT INTO tv_devices (id, user_id, tv_ip, paired_at)
+         VALUES (?, ?, ?, ?)`,
+      )
+      .run("tv-1", "user-a", "192.168.1.60", new Date().toISOString());
+
+    const req = mockReq({
+      tvId: "tv-1",
+      sceneId: "11111111-1111-4111-8111-111111111111",
+    });
+    req.user = { userId: "user-a" };
+    const res = mockRes();
+
+    await handler!(req, res, vi.fn());
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body.error).toBe("Scene not found");
+  });
+
+  it("should reject upload of a scene owned by another user", async () => {
+    const tvRouter = (await import("../routes/tv-control.js")).default;
+    const handler = findHandler(tvRouter, "post", "/api/upload");
+    expect(handler).not.toBeNull();
+
+    const db = getRawDb();
+    insertUser("user-a");
+    insertUser("user-b");
+    db.prepare(
+      `INSERT INTO tv_devices (id, user_id, tv_ip, paired_at)
+       VALUES (?, ?, ?, ?)`,
+    ).run("tv-1", "user-a", "192.168.1.60", new Date().toISOString());
+    db.prepare(
+      `INSERT INTO scene_archive (id, user_id, image_url, created_at)
+       VALUES (?, ?, ?, ?)`,
+    ).run(
+      "22222222-2222-4222-8222-222222222222",
+      "user-b",
+      "/api/images/22222222-2222-4222-8222-222222222222",
+      new Date().toISOString(),
+    );
+
+    const req = mockReq({
+      tvId: "tv-1",
+      sceneId: "22222222-2222-4222-8222-222222222222",
+    });
+    req.user = { userId: "user-a" };
+    const res = mockRes();
+
+    await handler!(req, res, vi.fn());
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body.error).toBe("Scene is not owned by this user");
+  });
+
+  it("should only load an archived scene after ownership is verified", async () => {
+    const tvRouter = (await import("../routes/tv-control.js")).default;
+    const handler = findHandler(tvRouter, "post", "/api/upload");
+    expect(handler).not.toBeNull();
+
+    const db = getRawDb();
+    insertUser("user-a");
+    db.prepare(
+      `INSERT INTO tv_devices (id, user_id, tv_ip, paired_at)
+       VALUES (?, ?, ?, ?)`,
+    ).run("tv-1", "user-a", "192.168.1.60", new Date().toISOString());
+    db.prepare(
+      `INSERT INTO scene_archive (id, user_id, image_url, created_at)
+       VALUES (?, ?, ?, ?)`,
+    ).run(
+      "33333333-3333-4333-8333-333333333333",
+      "user-a",
+      "/api/images/33333333-3333-4333-8333-333333333333",
+      new Date().toISOString(),
+    );
+
+    const req = mockReq({
+      tvId: "tv-1",
+      sceneId: "33333333-3333-4333-8333-333333333333",
+    });
+    req.user = { userId: "user-a" };
+    const res = mockRes();
+
+    await handler!(req, res, vi.fn());
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body.error).toBe("Scene image not found");
   });
 
   it("should reject TV control for an unowned IP", async () => {

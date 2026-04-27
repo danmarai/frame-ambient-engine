@@ -2,7 +2,27 @@
 
 ## Ready For Review
 
-- None.
+### Internal Scene ID Upload Ownership — PR #10
+
+Owner: Codex
+Requested reviewer: Claude
+Status: waiting_review
+Branch: `hardening/t2-internal-scene-upload`
+Contract change: false
+
+Review focus:
+
+- `scene_archive.user_id` migration is safe for existing SQLite databases.
+- Generated scenes persist the authenticated `userId`.
+- `/api/upload` requires the caller to own both the paired TV and archived scene ID before loading image bytes.
+- Tests cover missing scene, cross-user scene, and owned-scene load path.
+
+Tests:
+
+- `pnpm --filter @frame/cloud typecheck`
+- `pnpm --filter @frame/cloud test -- src/__tests__/routes.test.ts`
+- `pnpm --filter @frame/cloud test`
+- `git diff --check`
 
 ## Ready To Merge
 

@@ -13,6 +13,7 @@ import { isValidTvIp } from "../middleware.js";
 import { logger } from "../logger.js";
 import { getOwnedTv } from "../tv-ownership.js";
 import { loadImage } from "../generation.js";
+import { getRawDb } from "../db.js";
 
 const router = Router();
 
@@ -36,6 +37,28 @@ function resolveOwnedTv(req: any, res: any): { id: string; tvIp: string } | null
     return null;
   }
   return { id: tv.id, tvIp: tv.tvIp };
+}
+
+function requireOwnedScene(
+  userId: string,
+  sceneId: string,
+  res: any,
+): boolean {
+  const row = getRawDb()
+    .prepare("SELECT user_id FROM scene_archive WHERE id = ?")
+    .get(sceneId) as { user_id: string | null } | undefined;
+
+  if (!row) {
+    res.status(404).json({ error: "Scene not found" });
+    return false;
+  }
+
+  if (row.user_id !== userId) {
+    res.status(403).json({ error: "Scene is not owned by this user" });
+    return false;
+  }
+
+  return true;
 }
 
 router.post("/api/tv/control", requireAuth, async (req, res) => {
@@ -67,6 +90,7 @@ router.post("/api/tv/control", requireAuth, async (req, res) => {
 /** Upload art to a paired TV — cloud server acts as upload bridge */
 router.post("/api/upload", requireAuth, async (req, res) => {
   const { tvId, sceneId, imageUrl, tvIp: explicitIp } = req.body;
+  const userId = (req as any).user.userId as string;
   if (!tvId) {
     res.status(400).json({ error: "Missing tvId" });
     return;
@@ -82,6 +106,7 @@ router.post("/api/upload", requireAuth, async (req, res) => {
 
   const tv = resolveOwnedTv(req, res);
   if (!tv) return;
+  if (!requireOwnedScene(userId, sceneId, res)) return;
   const tvIp = tv.tvIp;
 
   try {
