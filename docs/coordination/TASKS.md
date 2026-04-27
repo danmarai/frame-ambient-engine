@@ -9,7 +9,7 @@ This is a thin status tracker. Detailed task scope, acceptance criteria, upload 
 | Move Android app into monorepo                 | Claude | `hardening/t1-android-monorepo-move` | merged  | PR #1 merged.                             |
 | SSRF production IP validation fix              | Claude | `hardening/t1-ssrf-validation`       | merged  | PR #2 merged.                             |
 | Remove TV token logging                        | Claude | `hardening/t1-ssrf-validation`       | merged  | PR #2 merged.                             |
-| Upload state machine + mutex + TCP propagation | Claude | `hardening/t1-upload-state-machine`  | changes | PR #5 needs TCP incomplete + mutex fixes. |
+| Upload state machine + mutex + TCP propagation | Claude | `hardening/t1-upload-state-machine`  | review  | PR #5 approved, ready to merge.           |
 | Circuit breaker + 30s cooldown                 | Claude | `hardening/t1-circuit-breaker`       | pending | No auto-retry after crash-class failures. |
 | Mark `apps/web` legacy                         | Claude | `hardening/t1-mark-web-legacy`       | pending | Remove from CI if applicable.             |
 
@@ -18,7 +18,7 @@ This is a thin status tracker. Detailed task scope, acceptance criteria, upload 
 | Task                                  | Owner                      | Branch                               | Status  | Notes                                 |
 | ------------------------------------- | -------------------------- | ------------------------------------ | ------- | ------------------------------------- |
 | Endpoint auth + TV ownership          | Codex                      | `hardening/t2-endpoint-lockdown`     | merged  | PR #4 merged.                         |
-| Phone WebSocket auth contract         | Codex                      | `hardening/t2-phone-ws-auth`         | review  | PR #6 open for Claude review.         |
+| Phone WebSocket auth contract         | Codex                      | `hardening/t2-phone-ws-auth`         | merged  | PR #6 merged.                         |
 | Pairing persistence + user binding    | Codex or assigned engineer | `hardening/t2-pairing-sqlite`        | pending | Include short TTL and rate limiting.  |
 | Internal scene ID upload source       | Codex or assigned engineer | `hardening/t2-internal-scene-upload` | partial | PR #4 rejects external `imageUrl`; follow-up can harden scene ownership. |
 | Fake Samsung TV harness + crash tests | Codex or assigned engineer | `hardening/t2-fake-tv-harness`       | pending | Simulate partial TCP failure.         |

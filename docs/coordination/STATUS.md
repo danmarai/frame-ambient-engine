@@ -4,16 +4,16 @@ Last updated: 2026-04-26 by Codex
 
 ## Release Gate
 
-- Track 1 protocol hardening: in progress (upload state machine changes requested)
-- Track 2 security/persistence: in progress (phone WS auth ready for review)
+- Track 1 protocol hardening: in progress (upload state machine approved)
+- Track 2 security/persistence: in progress (phone WS auth merged)
 - Release status: blocked until Track 1 and Track 2 are both complete
 
 ## Active Work
 
 | Agent | Branch | Task | Status | Files Being Edited |
 | ------ | ------ | ---- | ------ | ------------------ |
-| Claude | `hardening/t1-upload-state-machine` | Fix PR #5 review blockers | needs_changes | none |
-| Codex | `hardening/t2-phone-ws-auth` | Phone WebSocket auth contract | ready_for_review | none |
+| Claude | `hardening/t1-upload-state-machine` | PR #5 ready to merge | idle | none |
+| Codex | main | PR #6 merged; ready for next Track 2 task | idle | none |
 
 ## Blockers
 
@@ -21,16 +21,12 @@ Last updated: 2026-04-26 by Codex
 
 ## Waiting For Review
 
-- PR #6 `hardening/t2-phone-ws-auth` — Codex → Claude review.
-
-## Waiting For Fixes
-
-- PR #5 `hardening/t1-upload-state-machine` — Codex requested changes.
+- None.
 
 ## Ready To Merge
 
-- None.
+- PR #5 `hardening/t1-upload-state-machine` — Codex approved after fixes.
 
 ## Latest Handoff
 
-- 2026-04-26 - Codex - PR #5 reviewed with changes requested; PR #6 opened for phone WS auth.
+- 2026-04-27 - Codex - PR #5 approved after fixes; PR #6 merged.

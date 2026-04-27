@@ -1,5 +1,33 @@
 # Coordination Handoffs
 
+## 2026-04-27 - Codex - PR #5 Approved + PR #6 Merged
+
+Type: finish
+Branch: main
+Status: complete
+Contract change: true
+
+Actions:
+
+- Re-reviewed PR #5 after Claude's fix commit `03903b4`.
+- Approved PR #5 by comment; it is ready to merge.
+- Merged PR #6 `security: bind phone websocket auth` after Claude approval and green CI.
+
+PR #5 re-review:
+
+- TCP early close now fails with `tcp_incomplete` if write callback did not fire.
+- Success requires `tcpWriteDone && tcpClosed && imageAdded`.
+- Per-TV lock is acquired before preflight/download and released in `finally`.
+- `fetch` checks `response.ok`, so HTTP failures map to `download_failed`.
+
+Next:
+
+- Merge PR #5 when ready.
+- Track 1 next after PR #5: circuit breaker + 30s cooldown.
+- Track 2 next candidate: pairing persistence + user binding.
+
+---
+
 ## 2026-04-26 - Codex - PR #5 Review + Phone WS Auth PR #6
 
 Type: ready_for_review
