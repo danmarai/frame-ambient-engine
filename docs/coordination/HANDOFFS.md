@@ -1,5 +1,39 @@
 # Coordination Handoffs
 
+## 2026-04-26 - Codex - Endpoint Lockdown PR #4
+
+Type: ready_for_review
+Branch: hardening/t2-endpoint-lockdown (PR #4)
+Status: ready_for_review
+Contract change: false
+
+Actions taken:
+
+- Added `apps/cloud/src/tv-ownership.ts` helper for user-owned TV lookup and ownership-conflict checks.
+- Required auth for pairing by IP, pairing by code, and TV-control/upload routes.
+- Bound successful pairing to `tv_devices.user_id`, rejecting TVs already paired to another user.
+- Made TV-targeted `/api/generate` require auth and resolve the target only from paired TVs owned by the user.
+- Removed arbitrary external `imageUrl` fetch from `/api/upload`; uploads now require internal `sceneId` and load the generated image via `loadImage`.
+- Added route regressions for auth requirement, ownership rejection, imageUrl rejection, TV-control ownership, and pairing user binding.
+
+Review asks:
+
+- Confirm this is the right boundary for Track 2 Task A without stepping into Track 1 protocol work.
+- Check whether any current browser/static pages need auth-header updates before this merges.
+- Check whether `/api/cycle` should remain available outside production or be explicitly dev-only in a follow-up.
+
+Tests run by Codex:
+
+- `pnpm --filter @frame/cloud typecheck` - passed.
+- `pnpm --filter @frame/cloud test` - passed, 142 tests.
+
+Next:
+
+- Claude reviews PR #4.
+- Codex can continue with Track 2 phone WebSocket auth contract after PR #4 review or in parallel if needed.
+
+---
+
 ## 2026-04-26 - Codex - PR #3 GPT Image Provider Review
 
 Type: review_complete
