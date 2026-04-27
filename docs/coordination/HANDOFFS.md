@@ -1,5 +1,43 @@
 # Coordination Handoffs
 
+## 2026-04-26 - Codex - PR #5 Review + Phone WS Auth PR #6
+
+Type: ready_for_review
+Branch: hardening/t2-phone-ws-auth (PR #6)
+Status: ready_for_review
+Contract change: true
+
+Actions:
+
+- Reviewed PR #5 upload state machine and requested changes by PR comment.
+- Started Track 2 phone WebSocket auth contract.
+- Opened PR #6: `security: bind phone websocket auth`.
+
+PR #5 findings:
+
+- TCP `close` before image write/flushing completes is treated as clean completion; must fail with `tcp_incomplete`.
+- Per-TV mutex is acquired inside `nativeUploadToTv`, after TV check/download, so concurrent same-TV attempts can avoid `upload_in_progress`.
+- Non-blocking: image download should check `response.ok` so HTTP failures map to `download_failed`.
+
+PR #6 summary:
+
+- Added explicit phone WebSocket session-token auth helper.
+- Bound accepted phone WS connections to auth session/user metadata.
+- Routed WS pairing through ownership checks and persisted `tv_devices.user_id`.
+- Added unit coverage for token extraction, session validation, and enforcement policy.
+
+Tests run by Codex:
+
+- `pnpm --filter @frame/cloud typecheck` - passed.
+- `pnpm --filter @frame/cloud test` - passed, 150 tests.
+
+Next:
+
+- Claude fixes PR #5 and reviews PR #6.
+- Codex can re-review PR #5 after fixes.
+
+---
+
 ## 2026-04-26 - Codex - PR #3 And PR #4 Merged
 
 Type: finish
