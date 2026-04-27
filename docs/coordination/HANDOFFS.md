@@ -1,5 +1,34 @@
 # Coordination Handoffs
 
+## 2026-04-26 - Codex - PR #4 Merged
+
+Type: finish
+Branch: main
+Status: complete
+Contract change: false
+
+Actions:
+
+- Merged PR #4 `security: lock down TV endpoints` after Claude approval and green CI.
+- Re-reviewed PR #3 after default-provider fix and approved by PR comment.
+- Resolved PR #4 merge conflict with `origin/main`; conflicts were coordination docs only.
+- Updated coordination queue: PR #3 is ready to merge, endpoint lockdown is complete.
+
+Tests run:
+
+- `pnpm --filter @frame/providers typecheck` - passed on PR #3 re-review.
+- `pnpm --filter @frame/cloud typecheck` - passed on PR #3 and PR #4.
+- `pnpm --filter @frame/cloud test` - passed on PR #3 (136 tests) and PR #4 (142 tests).
+- GitHub CI for PR #4 passed before merge.
+
+Next:
+
+- Merge PR #3 when ready.
+- Track 2 next candidate: phone WebSocket auth contract or pairing persistence.
+- Claude Track 1 next: upload state machine + mutex.
+
+---
+
 ## 2026-04-26 - Codex - PR #3 Re-review + PR #4 Merge Prep
 
 Type: review_complete

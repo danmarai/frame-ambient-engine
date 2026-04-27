@@ -17,10 +17,10 @@ This is a thin status tracker. Detailed task scope, acceptance criteria, upload 
 
 | Task                                  | Owner                      | Branch                               | Status  | Notes                                 |
 | ------------------------------------- | -------------------------- | ------------------------------------ | ------- | ------------------------------------- |
-| Endpoint auth + TV ownership          | Codex                      | `hardening/t2-endpoint-lockdown`     | review  | PR #4 open for Claude review.         |
+| Endpoint auth + TV ownership          | Codex                      | `hardening/t2-endpoint-lockdown`     | merged  | PR #4 merged.                         |
 | Phone WebSocket auth contract         | Codex or assigned engineer | `hardening/t2-phone-ws-auth`         | pending | Coordinate with Android bridge.       |
 | Pairing persistence + user binding    | Codex or assigned engineer | `hardening/t2-pairing-sqlite`        | pending | Include short TTL and rate limiting.  |
-| Internal scene ID upload source       | Codex or assigned engineer | `hardening/t2-internal-scene-upload` | pending | Remove arbitrary external `imageUrl`. |
+| Internal scene ID upload source       | Codex or assigned engineer | `hardening/t2-internal-scene-upload` | partial | PR #4 rejects external `imageUrl`; follow-up can harden scene ownership. |
 | Fake Samsung TV harness + crash tests | Codex or assigned engineer | `hardening/t2-fake-tv-harness`       | pending | Simulate partial TCP failure.         |
 | Google ID token session cleanup       | Codex or assigned engineer | `hardening/t2-session-token-cleanup` | pending | Coordinate with auth changes.         |
 
