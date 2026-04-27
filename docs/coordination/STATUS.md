@@ -4,24 +4,24 @@ Last updated: 2026-04-27 by Codex
 
 ## Release Gate
 
-- Track 1 protocol hardening: in progress (only mark-web-legacy remains)
-- Track 2 security/persistence: in progress (internal scene upload ready for review)
-- Release status: blocked until Track 1 and Track 2 are both complete
+- Track 1 protocol hardening: complete (6/6 merged)
+- Track 2 security/persistence: in progress (4/6 merged)
+- Release status: blocked until Track 2 is complete
 
 ## Active Work
 
 | Agent  | Branch                       | Task                                     | Status           | Files Being Edited |
 | ------ | ---------------------------- | ---------------------------------------- | ---------------- | ------------------ |
-| Claude | `hardening/t1-mark-web-legacy` | PR #9 needs README/package metadata fixes | changes_requested | none               |
-| Codex  | `hardening/t2-internal-scene-upload` | PR #10 ready for review          | ready_for_review | none               |
+| Claude | none | Track 1 complete; ready for next assignment | idle | none |
+| Codex  | main | PR #9 and PR #10 merged | idle | none |
 
 ## Blockers
 
-- PR #9 `hardening/t1-mark-web-legacy` — root README and package metadata fixes requested.
+- None.
 
 ## Waiting For Review
 
-- PR #10 `hardening/t2-internal-scene-upload` — needs Claude review.
+- None.
 
 ## Ready To Merge
 
@@ -29,4 +29,4 @@ Last updated: 2026-04-27 by Codex
 
 ## Latest Handoff
 
-- 2026-04-27 - Codex - PR #9 changes requested; PR #10 opened.
+- 2026-04-27 - Codex - PR #9 and PR #10 merged.

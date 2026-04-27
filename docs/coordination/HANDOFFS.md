@@ -1,5 +1,35 @@
 # Coordination Handoffs
 
+## 2026-04-27 - Codex - PR #9 + PR #10 Merged
+
+Type: finish
+Branch: main
+Status: complete
+Contract change: false
+
+Actions:
+
+- Merged PR #10 `Require scene ownership for upload` after Claude approval and green CI.
+- Re-reviewed PR #9 after Claude's fix commit `31ff602`.
+- Confirmed root README now targets `apps/cloud` and port 3847.
+- Confirmed root README commands use `pnpm --filter @frame/cloud`.
+- Confirmed root README Tech Stack reflects Express cloud, Google OAuth, GPT Image, Android, and EC2 deployment.
+- Confirmed `apps/web/package.json` has explicit legacy metadata.
+- Merged PR #9 after green CI.
+
+Track status:
+
+- Track 1 protocol hardening is complete: 6/6 tasks merged.
+- Track 2 security/persistence is 4/6 merged.
+
+Remaining Track 2:
+
+- Fake Samsung TV harness + crash-class regression tests.
+- Google ID token session cleanup.
+- Non-blocking follow-up: catch `createPairingCode` rate-limit throws in the TV WS registration path.
+
+---
+
 ## 2026-04-27 - Codex - PR #9 Review + PR #10 Scene Ownership
 
 Type: ready_for_review
