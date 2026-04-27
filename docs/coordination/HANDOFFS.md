@@ -1,5 +1,46 @@
 # Coordination Handoffs
 
+## 2026-04-27 - Codex - Pairing Persistence PR #7
+
+Type: ready_for_review
+Branch: hardening/t2-pairing-sqlite
+Status: ready_for_review
+Contract change: false
+
+Files changed:
+
+- apps/cloud/src/db.ts
+- apps/cloud/src/pairing.ts
+- apps/cloud/src/routes/pairing.ts
+- apps/cloud/src/server.ts
+- apps/cloud/src/__tests__/pairing.test.ts
+- apps/cloud/src/__tests__/integration.test.ts
+
+Summary:
+
+- Replaced module-level pairing `Map` with SQLite-backed `pairing_codes`.
+- Added 10-minute code TTL and per-TV creation rate limit of 5 codes per 10 minutes.
+- Preserved old-code invalidation for each TV while retaining invalidated rows for rate-limit accounting.
+- Added authenticated user binding through HTTP pairing and phone WebSocket pairing.
+- Updated tests for persistence, user binding, TTL, rate limiting, and pairing behavior after TV IP changes.
+
+Verification:
+
+- `pnpm --filter @frame/cloud typecheck`
+- `pnpm --filter @frame/cloud test`
+- `git diff --check`
+
+Known residual:
+
+- Repo-level `pnpm typecheck` still fails in legacy `apps/web` React inferred return types. This is unrelated to PR #7 and should be handled by the Track 1 mark-web-legacy task.
+
+Needs Claude review:
+
+- Review PR #7: https://github.com/danmarai/frame-ambient-engine/pull/7
+- Check whether the pairing retention/rate-limit behavior matches Track 2 expectations before merge.
+
+---
+
 ## 2026-04-27 - Codex - PR #5 Approved + PR #6 Merged
 
 Type: finish
