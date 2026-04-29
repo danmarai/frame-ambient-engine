@@ -7,9 +7,12 @@
  * Tracks recently served images per category to avoid repeats.
  */
 import { Router } from "express";
-import { readdirSync, statSync, existsSync } from "fs";
+import { readdirSync, statSync, existsSync, readFileSync } from "fs";
 import path from "path";
 import { logger } from "../logger.js";
+import { uploadToTv, selectAndActivate } from "../tv-upload.js";
+import { makeRoom, recordUpload } from "../tv-storage.js";
+import { optionalAuth } from "../auth.js";
 
 const router = Router();
 
@@ -186,6 +189,169 @@ router.get("/api/library/image/:category/:filename", (req, res) => {
   res.setHeader("Content-Type", mime);
   res.setHeader("Cache-Control", "public, max-age=86400");
   res.sendFile(filePath);
+});
+
+/** POST /api/library/push — push a single library image to TV */
+router.post("/api/library/push", optionalAuth, async (req, res) => {
+  const { category, filename, tvIp } = req.body;
+  if (!category || !filename || !tvIp) {
+    res.status(400).json({ error: "Missing category, filename, or tvIp" });
+    return;
+  }
+  if (category.includes("..") || filename.includes("..")) {
+    res.status(400).json({ error: "Invalid path" });
+    return;
+  }
+
+  const filePath = path.join(ART_LIBRARY_PATH, category, filename);
+  if (!existsSync(filePath)) {
+    res.status(404).json({ error: "Image not found" });
+    return;
+  }
+
+  try {
+    const imageData = readFileSync(filePath);
+    logger.info(
+      { category, filename, tvIp, bytes: imageData.length },
+      "Library push to TV",
+    );
+
+    await makeRoom(tvIp, 1);
+    const upload = await uploadToTv(tvIp, imageData);
+    if (upload.success && upload.contentId) {
+      recordUpload(tvIp, upload.contentId);
+      await selectAndActivate(tvIp, upload.contentId);
+      res.json({
+        success: true,
+        contentId: upload.contentId,
+        durationMs: upload.durationMs,
+        label: filename.replace(/\.\w+$/, ""),
+      });
+    } else {
+      res.json({ success: false, error: upload.error || "Upload failed" });
+    }
+  } catch (e: any) {
+    logger.error({ error: e.message }, "Library push failed");
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+/** POST /api/library/push-batch — push multiple library images to TV sequentially */
+router.post("/api/library/push-batch", optionalAuth, async (req, res) => {
+  const { images, tvIp } = req.body;
+  if (!Array.isArray(images) || images.length === 0 || !tvIp) {
+    res.status(400).json({ error: "Missing images array or tvIp" });
+    return;
+  }
+
+  // Cap at 20 images per batch to be kind to the TV
+  const batch = images.slice(0, 20);
+  logger.info({ tvIp, count: batch.length }, "Library batch push starting");
+
+  // Make room for the batch
+  try {
+    await makeRoom(tvIp, batch.length);
+  } catch (e: any) {
+    res
+      .status(500)
+      .json({ error: "Failed to prepare TV storage: " + e.message });
+    return;
+  }
+
+  const results: Array<{
+    filename: string;
+    success: boolean;
+    contentId?: string;
+    error?: string;
+  }> = [];
+
+  for (const img of batch) {
+    if (!img.category || !img.filename) {
+      results.push({
+        filename: img.filename || "?",
+        success: false,
+        error: "Missing category or filename",
+      });
+      continue;
+    }
+    if (img.category.includes("..") || img.filename.includes("..")) {
+      results.push({
+        filename: img.filename,
+        success: false,
+        error: "Invalid path",
+      });
+      continue;
+    }
+
+    const filePath = path.join(ART_LIBRARY_PATH, img.category, img.filename);
+    if (!existsSync(filePath)) {
+      results.push({
+        filename: img.filename,
+        success: false,
+        error: "Not found",
+      });
+      continue;
+    }
+
+    try {
+      const imageData = readFileSync(filePath);
+      const upload = await uploadToTv(tvIp, imageData);
+      if (upload.success && upload.contentId) {
+        recordUpload(tvIp, upload.contentId);
+        results.push({
+          filename: img.filename,
+          success: true,
+          contentId: upload.contentId,
+        });
+        logger.info(
+          { filename: img.filename, contentId: upload.contentId },
+          "Batch item uploaded",
+        );
+      } else {
+        results.push({
+          filename: img.filename,
+          success: false,
+          error: upload.error,
+        });
+        logger.warn(
+          { filename: img.filename, error: upload.error },
+          "Batch item failed",
+        );
+        // Don't abort the batch on individual failure — skip and continue
+      }
+    } catch (e: any) {
+      results.push({
+        filename: img.filename,
+        success: false,
+        error: e.message,
+      });
+    }
+
+    // 2s delay between uploads to let the TV art service breathe
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+
+  // Activate the last successful upload
+  const lastSuccess = results.filter((r) => r.success).pop();
+  if (lastSuccess?.contentId) {
+    try {
+      await selectAndActivate(tvIp, lastSuccess.contentId);
+    } catch {}
+  }
+
+  const succeeded = results.filter((r) => r.success).length;
+  logger.info(
+    { tvIp, total: batch.length, succeeded },
+    "Library batch push complete",
+  );
+
+  res.json({
+    total: batch.length,
+    succeeded,
+    failed: batch.length - succeeded,
+    results,
+    activeContentId: lastSuccess?.contentId,
+  });
 });
 
 export default router;
