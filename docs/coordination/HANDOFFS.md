@@ -1,5 +1,36 @@
 # Coordination Handoffs
 
+## 2026-04-29 - Codex - Hardening Plan Complete
+
+Type: finish
+Branch: main
+Status: complete
+Contract change: true
+
+Actions:
+
+- Merged PR #11 `Remove Google ID token from sessions` after Claude approval and green CI.
+- Updated PR #12 against `main` after PR #11 introduced coordination conflicts.
+- Re-ran cloud typecheck and full cloud tests after resolving conflicts.
+- Merged PR #12 `Add fake TV crash regression tests` after refreshed green CI.
+
+Final status:
+
+- Track 1 protocol hardening: complete, 6/6 merged.
+- Track 2 security/persistence: complete, 6/6 merged.
+- Hardening plan release gate is complete.
+
+Merged Track 2 PRs:
+
+- PR #4 endpoint auth + TV ownership.
+- PR #6 phone WebSocket auth contract.
+- PR #7 pairing persistence + user binding.
+- PR #10 internal scene ID upload ownership.
+- PR #11 Google ID token session cleanup.
+- PR #12 fake Samsung TV harness + crash tests.
+
+---
+
 ## 2026-04-27 - Codex - PR #11 + PR #12 Ready
 
 Type: ready_for_review

@@ -2,33 +2,24 @@
 
 ## Ready For Review
 
-### Fake Samsung TV Harness + Crash Tests — PR #12
-
-Owner: Codex
-Requested reviewer: Claude
-Status: approved_ready_to_merge
-Branch: `hardening/t2-fake-tv-harness`
-Contract change: true
-
-Review focus:
-
-- Fake TV harness realistically covers Samsung d2d ordering around `ready_to_use`, TCP close, and `image_added`.
-- Cloud direct upload now requires both `image_added` and clean TCP close before success.
-- Early TCP close before write callback returns a crash-class incomplete upload error.
-- Existing d2d parsing coverage remains intact.
-
-Tests:
-
-- `pnpm --filter @frame/cloud typecheck`
-- `pnpm --filter @frame/cloud test -- src/__tests__/tv-upload.test.ts`
-- `pnpm --filter @frame/cloud test`
-- `git diff --check`
+- None.
 
 ## Ready To Merge
 
-- PR #12 `hardening/t2-fake-tv-harness` — Claude approved, merge conflicts resolved on branch.
+- None.
 
 ## Completed
+
+### Fake Samsung TV Harness + Crash Tests — PR #12
+
+Status: merged (2026-04-29)
+
+Review notes:
+
+- Claude approved protocol modeling.
+- Dual-gate success now requires `image_added` and TCP close.
+- Early TCP close is crash-class incomplete upload.
+- GitHub CI passed after merge conflict resolution.
 
 ### Google ID Token Session Cleanup — PR #11
 

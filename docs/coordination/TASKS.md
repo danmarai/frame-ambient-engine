@@ -21,9 +21,9 @@ This is a thin status tracker. Detailed task scope, acceptance criteria, upload 
 | Phone WebSocket auth contract         | Codex                      | `hardening/t2-phone-ws-auth`         | merged  | PR #6 merged.                         |
 | Pairing persistence + user binding    | Codex                      | `hardening/t2-pairing-sqlite`        | merged  | PR #7 merged.                         |
 | Internal scene ID upload source       | Codex                      | `hardening/t2-internal-scene-upload` | merged  | PR #10 merged.                        |
-| Fake Samsung TV harness + crash tests | Codex                      | `hardening/t2-fake-tv-harness`       | review  | PR #12 ready for Claude review.       |
+| Fake Samsung TV harness + crash tests | Codex                      | `hardening/t2-fake-tv-harness`       | merged  | PR #12 merged.                        |
 | Google ID token session cleanup       | Codex                      | `hardening/t2-session-token-cleanup` | merged  | PR #11 merged.                        |
 
 ## Release-Blocking Rule
 
-Track 1 and Track 2 may be developed in parallel, but production release is blocked until both protocol hardening and security/persistence work are complete.
+Track 1 and Track 2 are complete. Production release is no longer blocked by this hardening plan.
