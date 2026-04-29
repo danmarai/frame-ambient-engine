@@ -45,6 +45,7 @@ import tvControlRoutes from "./routes/tv-control.js";
 import { createTelemetryRouter } from "./routes/telemetry.js";
 import feedbackRoutes from "./routes/feedback.js";
 import quotesRoutes from "./routes/quotes.js";
+import libraryRoutes from "./routes/library.js";
 
 // Load .env
 import { logger } from "./logger.js";
@@ -136,6 +137,7 @@ app.use(tvControlRoutes);
 app.use(createTelemetryRouter(path.join(__dirname, "public")));
 app.use(feedbackRoutes);
 app.use(quotesRoutes);
+app.use(libraryRoutes);
 
 // --- WebSocket handling ---
 
@@ -300,10 +302,7 @@ function handlePhoneConnection(ws: WebSocket, request: IncomingMessage) {
           return;
         }
 
-        if (
-          auth &&
-          isTvOwnedByAnotherUser(pending.tvId, auth.user.userId)
-        ) {
+        if (auth && isTvOwnedByAnotherUser(pending.tvId, auth.user.userId)) {
           ws.send(
             JSON.stringify({
               type: "pair_error",

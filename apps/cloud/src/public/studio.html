@@ -311,6 +311,93 @@
         color: #666;
         margin-bottom: 24px;
       }
+      .mode-toggle {
+        display: flex;
+        gap: 0;
+        margin-bottom: 10px;
+      }
+      .mode-toggle button {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #333;
+        background: #0f0f1a;
+        color: #666;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .mode-toggle button:first-child {
+        border-radius: 8px 0 0 8px;
+      }
+      .mode-toggle button:last-child {
+        border-radius: 0 8px 8px 0;
+      }
+      .mode-toggle button.active {
+        background: #1a2a3a;
+        color: #0ff;
+        border-color: #0ff;
+      }
+      .library-panel {
+        display: none;
+      }
+      .library-panel.show {
+        display: block;
+      }
+      .library-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .library-thumb {
+        border-radius: 8px;
+        overflow: hidden;
+        cursor: pointer;
+        border: 2px solid transparent;
+        aspect-ratio: 16/9;
+      }
+      .library-thumb.selected {
+        border-color: #0ff;
+      }
+      .library-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .library-thumb-label {
+        font-size: 10px;
+        color: #888;
+        padding: 2px 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .library-random-btn {
+        width: 100%;
+        padding: 14px;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        background: #2a5a2a;
+        color: #fff;
+        margin-top: 8px;
+      }
+      .library-random-btn:disabled {
+        opacity: 0.5;
+      }
+      .library-more-btn {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #333;
+        border-radius: 8px;
+        background: transparent;
+        color: #666;
+        font-size: 13px;
+        cursor: pointer;
+        margin-top: 8px;
+      }
     </style>
   </head>
   <body>
@@ -332,48 +419,95 @@
         </div>
       </div>
       <div class="controls">
-        <div class="control-row">
-          <select id="themeSelect"></select>
-          <select id="styleSelect"></select>
+        <div class="mode-toggle">
+          <button
+            id="modeGenerate"
+            class="active"
+            onclick="setMode('generate')"
+          >
+            Generate AI Art
+          </button>
+          <button id="modeLibrary" onclick="setMode('library')">
+            Art Library
+          </button>
         </div>
-        <div class="overlay-section">
-          <div class="overlay-row">
-            <label><input type="checkbox" id="ovWeather" /> Weather</label>
-            <label><input type="checkbox" id="ovMarket" /> Market</label>
-            <label><input type="checkbox" id="ovQuote" /> Quote</label>
+        <div id="generatePanel">
+          <div class="control-row">
+            <select id="themeSelect"></select>
+            <select id="styleSelect"></select>
           </div>
-          <div class="overlay-sub" id="weatherOpts">
-            <span class="label">City:</span>
-            <input
-              type="text"
-              id="weatherCity"
-              placeholder="Auto-detect"
-              style="width: 120px"
-            />
-            <select id="tempUnit">
-              <option value="celsius">°C</option>
-              <option value="fahrenheit">°F</option>
-            </select>
+          <div class="overlay-section">
+            <div class="overlay-row">
+              <label><input type="checkbox" id="ovWeather" /> Weather</label>
+              <label><input type="checkbox" id="ovMarket" /> Market</label>
+              <label><input type="checkbox" id="ovQuote" /> Quote</label>
+            </div>
+            <div class="overlay-sub" id="weatherOpts">
+              <span class="label">City:</span>
+              <input
+                type="text"
+                id="weatherCity"
+                placeholder="Auto-detect"
+                style="width: 120px"
+              />
+              <select id="tempUnit">
+                <option value="celsius">°C</option>
+                <option value="fahrenheit">°F</option>
+              </select>
+            </div>
+            <div class="overlay-sub" id="marketOpts">
+              <span class="label">Symbol:</span>
+              <select id="marketSymbol">
+                <option value="SPY">SPY (S&P 500)</option>
+                <option value="BTC" selected>BTC (Bitcoin)</option>
+                <option value="QQQ">QQQ (Nasdaq)</option>
+                <option value="AAPL">AAPL</option>
+                <option value="TSLA">TSLA</option>
+              </select>
+            </div>
+            <div class="overlay-sub" id="quoteOpts">
+              <span class="label">Category:</span>
+              <select id="quoteCategory">
+                <option value="random">Random</option>
+              </select>
+            </div>
           </div>
-          <div class="overlay-sub" id="marketOpts">
-            <span class="label">Symbol:</span>
-            <select id="marketSymbol">
-              <option value="SPY">SPY (S&P 500)</option>
-              <option value="BTC" selected>BTC (Bitcoin)</option>
-              <option value="QQQ">QQQ (Nasdaq)</option>
-              <option value="AAPL">AAPL</option>
-              <option value="TSLA">TSLA</option>
-            </select>
-          </div>
-          <div class="overlay-sub" id="quoteOpts">
-            <span class="label">Category:</span>
-            <select id="quoteCategory">
-              <option value="random">Random</option>
-            </select>
-          </div>
+          <button class="generate-btn" id="genBtn">Generate Art</button>
+        </div>
+        <div id="libraryPanel" class="library-panel">
+          <select
+            id="libCategorySelect"
+            style="
+              width: 100%;
+              background: #0f0f1a;
+              color: #fff;
+              border: 1px solid #333;
+              padding: 10px;
+              border-radius: 8px;
+              font-size: 14px;
+              margin-bottom: 8px;
+            "
+          >
+            <option value="">Loading categories...</option>
+          </select>
+          <button
+            class="library-random-btn"
+            id="libRandomBtn"
+            onclick="pickRandomLibraryArt()"
+          >
+            Pick Random Art
+          </button>
+          <div id="libGrid" class="library-grid"></div>
+          <button
+            class="library-more-btn"
+            id="libMoreBtn"
+            style="display: none"
+            onclick="loadMoreLibrary()"
+          >
+            Load more
+          </button>
         </div>
         <div id="tvStatus"></div>
-        <button class="generate-btn" id="genBtn">Generate Art</button>
       </div>
       <div class="progress" id="progressSection" style="display: none">
         <div class="progress-bar">
@@ -904,6 +1038,172 @@
         el.textContent = msg;
         el.className = "status-msg " + (isError ? "error" : "success");
       }
+
+      // ============================================================
+      // Library Mode
+      // ============================================================
+
+      var currentMode = "generate";
+      var libCategories = [];
+      var libPage = 0;
+      var libCatsLoaded = false;
+
+      function setMode(mode) {
+        currentMode = mode;
+        document.getElementById("modeGenerate").className =
+          mode === "generate" ? "active" : "";
+        document.getElementById("modeLibrary").className =
+          mode === "library" ? "active" : "";
+        document.getElementById("generatePanel").style.display =
+          mode === "generate" ? "block" : "none";
+        document.getElementById("libraryPanel").className =
+          "library-panel" + (mode === "library" ? " show" : "");
+        if (mode === "library" && !libCatsLoaded) loadLibraryCategories();
+      }
+
+      function loadLibraryCategories() {
+        fetch("/api/library/categories")
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (cats) {
+            libCategories = cats;
+            libCatsLoaded = true;
+            var sel = document.getElementById("libCategorySelect");
+            sel.innerHTML =
+              '<option value="">All categories (' +
+              cats.reduce(function (s, c) {
+                return s + c.count;
+              }, 0) +
+              " images)</option>";
+            cats.forEach(function (c) {
+              var o = document.createElement("option");
+              o.value = c.id;
+              o.textContent = c.label + " (" + c.count + ")";
+              sel.appendChild(o);
+            });
+            dbg("Library: loaded " + cats.length + " categories");
+          })
+          .catch(function (e) {
+            dbg("Library load error: " + e.message);
+          });
+      }
+
+      function pickRandomLibraryArt() {
+        var cat = document.getElementById("libCategorySelect").value;
+        var url =
+          "/api/library/random" +
+          (cat ? "?category=" + encodeURIComponent(cat) : "");
+        var btn = document.getElementById("libRandomBtn");
+        btn.disabled = true;
+        btn.textContent = "Picking...";
+        fetch(url)
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (data) {
+            if (data.error) {
+              setStatus(data.error, true);
+              return;
+            }
+            dbg("Library pick: " + data.category + " / " + data.filename);
+            // Show in preview section (reuse the generate preview)
+            currentScene = {
+              sceneId: "lib-" + Date.now(),
+              imageUrl: data.url,
+              prompt: data.label,
+            };
+            document.getElementById("previewSection").style.display = "block";
+            document.getElementById("previewImg").src = data.url;
+            document.getElementById("promptText").textContent = data.label;
+            document.getElementById("contextText").textContent = data.category;
+            document.getElementById("statsText").textContent =
+              "From art library";
+            document.getElementById("savedBadge").style.display = "none";
+            updateTvStatus();
+            setStatus("Selected: " + data.label, false);
+          })
+          .catch(function (e) {
+            setStatus("Error: " + e.message, true);
+          })
+          .finally(function () {
+            btn.disabled = false;
+            btn.textContent = "Pick Random Art";
+          });
+      }
+
+      function loadMoreLibrary() {
+        var cat = document.getElementById("libCategorySelect").value;
+        if (!cat) return;
+        libPage++;
+        browseLibrary(cat, libPage);
+      }
+
+      function browseLibrary(category, page) {
+        fetch(
+          "/api/library/browse/" +
+            encodeURIComponent(category) +
+            "?page=" +
+            (page || 0) +
+            "&limit=8",
+        )
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (data) {
+            if (data.error) return;
+            var grid = document.getElementById("libGrid");
+            if (page === 0) grid.innerHTML = "";
+            data.images.forEach(function (img) {
+              var div = document.createElement("div");
+              div.className = "library-thumb";
+              div.innerHTML =
+                '<img src="' +
+                img.url +
+                '" loading="lazy" alt="' +
+                img.label +
+                '"><div class="library-thumb-label">' +
+                img.label +
+                "</div>";
+              div.onclick = function () {
+                document
+                  .querySelectorAll(".library-thumb")
+                  .forEach(function (t) {
+                    t.className = "library-thumb";
+                  });
+                div.className = "library-thumb selected";
+                currentScene = {
+                  sceneId: "lib-" + Date.now(),
+                  imageUrl: img.url,
+                  prompt: img.label,
+                };
+                document.getElementById("previewSection").style.display =
+                  "block";
+                document.getElementById("previewImg").src = img.url;
+                document.getElementById("promptText").textContent = img.label;
+                document.getElementById("contextText").textContent = category;
+                document.getElementById("statsText").textContent =
+                  "From art library";
+                document.getElementById("savedBadge").style.display = "none";
+                updateTvStatus();
+                setStatus("Selected: " + img.label, false);
+              };
+              grid.appendChild(div);
+            });
+            var moreBtn = document.getElementById("libMoreBtn");
+            moreBtn.style.display =
+              (data.page + 1) * data.limit < data.total ? "block" : "none";
+          });
+      }
+
+      document
+        .getElementById("libCategorySelect")
+        .addEventListener("change", function () {
+          libPage = 0;
+          var cat = this.value;
+          if (cat) browseLibrary(cat, 0);
+          else document.getElementById("libGrid").innerHTML = "";
+        });
 
       if (IS_APP) {
         // App mode: skip login, go straight to studio
