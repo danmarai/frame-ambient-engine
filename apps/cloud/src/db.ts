@@ -84,7 +84,6 @@ export function initDatabase(): void {
       email TEXT NOT NULL,
       name TEXT,
       picture TEXT,
-      google_token TEXT,
       created_at TEXT NOT NULL,
       expires_at TEXT NOT NULL,
       last_accessed_at TEXT
@@ -183,6 +182,13 @@ export function initDatabase(): void {
     CREATE INDEX IF NOT EXISTS idx_scene_archive_user
       ON scene_archive(user_id);
   `);
+
+  const authSessionColumns = raw
+    .prepare("PRAGMA table_info(auth_sessions)")
+    .all() as Array<{ name: string }>;
+  if (authSessionColumns.some((column) => column.name === "google_token")) {
+    raw.exec("UPDATE auth_sessions SET google_token = NULL");
+  }
 
   logger.info("Database initialized");
 }
