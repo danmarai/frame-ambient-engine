@@ -73,9 +73,11 @@ const { wsArr, socketArr, createWs, createSocket } = vi.hoisted(() => {
         if (cb) cb();
       }),
       write: vi.fn((_data: any, cb?: () => void) => {
-        if (cb) cb();
+        if (cb) setTimeout(cb, 0);
       }),
-      end: vi.fn(),
+      end: vi.fn(() => {
+        setTimeout(() => instance._emit("close"), 0);
+      }),
       on: vi.fn((event: string, handler: any) => {
         if (!handlers.has(event)) handlers.set(event, []);
         handlers.get(event).push(handler);
@@ -196,6 +198,27 @@ function sendD2dError(ws: MockWsInstance, errorCode = "UNKNOWN_ERROR") {
       }),
     }),
   );
+}
+
+class FakeSamsungTvHarness {
+  constructor(private readonly ws: MockWsInstance) {}
+
+  connect(token?: string) {
+    sendConnect(this.ws, token);
+  }
+
+  readyToUse(port = 8001, key = "test-sec-key", ip = "192.168.1.100") {
+    sendReadyToUse(this.ws, port, key, ip);
+    return getSocket(socketArr.length - 1);
+  }
+
+  imageAdded(contentId = "MY_F0001") {
+    sendImageAdded(this.ws, contentId);
+  }
+
+  error(errorCode = "UNKNOWN_ERROR") {
+    sendD2dError(this.ws, errorCode);
+  }
 }
 
 describe("tv-upload", () => {
@@ -495,6 +518,54 @@ describe("tv-upload", () => {
 
       vi.useRealTimers();
     });
+
+    it("fake TV harness should fail crash-class incomplete TCP close", async () => {
+      vi.useFakeTimers();
+
+      const p = uploadToTv(testIp, testImage, "tok");
+      await vi.advanceTimersByTimeAsync(0);
+      const tv = new FakeSamsungTvHarness(getWs(0));
+
+      tv.connect();
+      await vi.advanceTimersByTimeAsync(2000);
+      const socket = tv.readyToUse();
+
+      socket._emit("close");
+
+      const result = await p;
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("TCP upload incomplete");
+      expect(result.error).toContain("Art mode service may need TV restart");
+
+      vi.useRealTimers();
+    });
+
+    it("fake TV harness should not succeed until image_added and TCP close both happen", async () => {
+      vi.useFakeTimers();
+
+      const p = uploadToTv(testIp, testImage, "tok");
+      let settled = false;
+      p.then(() => {
+        settled = true;
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      const tv = new FakeSamsungTvHarness(getWs(0));
+
+      tv.connect();
+      await vi.advanceTimersByTimeAsync(2000);
+      tv.readyToUse();
+      tv.imageAdded("MY_F_FAKE");
+
+      await Promise.resolve();
+      expect(settled).toBe(false);
+
+      await vi.advanceTimersByTimeAsync(1);
+      const result = await p;
+      expect(result.success).toBe(true);
+      expect(result.contentId).toBe("MY_F_FAKE");
+
+      vi.useRealTimers();
+    });
   });
 
   // ----------------------------------------------------------------
@@ -567,6 +638,7 @@ describe("tv-upload", () => {
       expect(Buffer.compare(writtenImage, imageData)).toBe(0);
 
       // socket.end() should be called after the write callback fires
+      await vi.advanceTimersByTimeAsync(0);
       expect(socket.end).toHaveBeenCalled();
 
       // Step 5: TV sends image_added confirmation
@@ -633,6 +705,7 @@ describe("tv-upload", () => {
 
       sendConnect(ws);
       await vi.advanceTimersByTimeAsync(2000);
+      sendReadyToUse(ws);
 
       // Send image_added with data as an object instead of a string
       ws._emit(

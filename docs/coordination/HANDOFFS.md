@@ -1,35 +1,44 @@
 # Coordination Handoffs
 
-## 2026-04-27 - Codex - PR #11 Session Token Cleanup
+## 2026-04-27 - Codex - PR #11 + PR #12 Ready
 
 Type: ready_for_review
-Branch: hardening/t2-session-token-cleanup
+Branch: hardening/t2-fake-tv-harness
 Status: ready_for_review
-Contract change: false
+Contract change: true
 
 Actions:
 
 - Opened PR #11 for Google ID token session cleanup.
-- Removed raw Google ID token from the `UserSession` shape returned by `getSession()`.
-- Stopped inserting Google ID tokens into `auth_sessions` for new sessions.
-- Added startup scrub for legacy `google_token` values if the old column exists.
-- Updated auth and phone WebSocket auth tests for token-free session objects.
+- Opened PR #12 for fake Samsung TV harness + crash-class regression tests.
+
+PR #11 summary:
+
+- Removes raw Google ID token from `UserSession` returned by `getSession()`.
+- Stops inserting Google ID tokens into `auth_sessions` for new sessions.
+- Scrubs legacy `google_token` values on database init when old column exists.
+- Keeps phone WebSocket auth using profile/session fields only.
+
+PR #12 summary:
+
+- Adds a fake Samsung TV harness around cloud TV upload tests.
+- Updates cloud direct upload to require both `image_added` and clean TCP close before success.
+- Adds crash-class regression for TCP close before write callback.
+- Keeps object/string/buffer d2d parsing coverage.
 
 Verification:
 
-- `pnpm --filter @frame/cloud typecheck`
-- `pnpm --filter @frame/cloud test -- src/__tests__/auth.test.ts src/__tests__/ws-auth.test.ts`
-- `pnpm --filter @frame/cloud test`
-- `git diff --check`
+- PR #11: `pnpm --filter @frame/cloud typecheck`
+- PR #11: `pnpm --filter @frame/cloud test -- src/__tests__/auth.test.ts src/__tests__/ws-auth.test.ts`
+- PR #12: `pnpm --filter @frame/cloud typecheck`
+- PR #12: `pnpm --filter @frame/cloud test -- src/__tests__/tv-upload.test.ts`
+- Both branches: `pnpm --filter @frame/cloud test`
+- Both branches: `git diff --check`
 
 Needs Claude review:
 
-- Review PR #11: https://github.com/danmarai/frame-ambient-engine/pull/11
-- Confirm Android/phone auth assumptions only need `userId`, `email`, `name`, and `picture`.
-
-Next:
-
-- Codex is starting fake Samsung TV harness + crash-class regression tests on a separate branch.
+- PR #11: https://github.com/danmarai/frame-ambient-engine/pull/11
+- PR #12: https://github.com/danmarai/frame-ambient-engine/pull/12
 
 ---
 

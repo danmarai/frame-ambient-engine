@@ -2,33 +2,43 @@
 
 ## Ready For Review
 
-### Google ID Token Session Cleanup — PR #11
+### Fake Samsung TV Harness + Crash Tests — PR #12
 
 Owner: Codex
 Requested reviewer: Claude
-Status: waiting_review
-Branch: `hardening/t2-session-token-cleanup`
-Contract change: false
+Status: approved_ready_to_merge
+Branch: `hardening/t2-fake-tv-harness`
+Contract change: true
 
 Review focus:
 
-- New sessions no longer persist Google ID tokens in `auth_sessions`.
-- `getSession()` and middleware-visible `UserSession` no longer expose `token`.
-- Existing databases with legacy `google_token` column are scrubbed on init.
-- Phone WebSocket auth still receives the user profile fields it needs.
+- Fake TV harness realistically covers Samsung d2d ordering around `ready_to_use`, TCP close, and `image_added`.
+- Cloud direct upload now requires both `image_added` and clean TCP close before success.
+- Early TCP close before write callback returns a crash-class incomplete upload error.
+- Existing d2d parsing coverage remains intact.
 
 Tests:
 
 - `pnpm --filter @frame/cloud typecheck`
-- `pnpm --filter @frame/cloud test -- src/__tests__/auth.test.ts src/__tests__/ws-auth.test.ts`
+- `pnpm --filter @frame/cloud test -- src/__tests__/tv-upload.test.ts`
 - `pnpm --filter @frame/cloud test`
 - `git diff --check`
 
 ## Ready To Merge
 
-- None.
+- PR #12 `hardening/t2-fake-tv-harness` — Claude approved, merge conflicts resolved on branch.
 
 ## Completed
+
+### Google ID Token Session Cleanup — PR #11
+
+Status: merged (2026-04-29)
+
+Review notes:
+
+- Claude approved safe removal of the raw Google token from session storage.
+- Phone WS auth and Android app are unaffected.
+- Legacy token scrub is idempotent.
 
 ### Mark Web Legacy — PR #9
 
