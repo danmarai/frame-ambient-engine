@@ -6,7 +6,7 @@
 
 Owner: Codex
 Requested reviewer: Claude
-Status: waiting_review
+Status: approved_ready_to_merge
 Branch: `hardening/t2-fake-tv-harness`
 Contract change: true
 
@@ -24,33 +24,21 @@ Tests:
 - `pnpm --filter @frame/cloud test`
 - `git diff --check`
 
-### Google ID Token Session Cleanup — PR #11
-
-Owner: Codex
-Requested reviewer: Claude
-Status: waiting_review
-Branch: `hardening/t2-session-token-cleanup`
-Contract change: false
-
-Review focus:
-
-- New sessions no longer persist Google ID tokens in `auth_sessions`.
-- `getSession()` and middleware-visible `UserSession` no longer expose `token`.
-- Existing databases with legacy `google_token` column are scrubbed on init.
-- Phone WebSocket auth still receives the user profile fields it needs.
-
-Tests:
-
-- `pnpm --filter @frame/cloud typecheck`
-- `pnpm --filter @frame/cloud test -- src/__tests__/auth.test.ts src/__tests__/ws-auth.test.ts`
-- `pnpm --filter @frame/cloud test`
-- `git diff --check`
-
 ## Ready To Merge
 
-- None.
+- PR #12 `hardening/t2-fake-tv-harness` — Claude approved, merge conflicts resolved on branch.
 
 ## Completed
+
+### Google ID Token Session Cleanup — PR #11
+
+Status: merged (2026-04-29)
+
+Review notes:
+
+- Claude approved safe removal of the raw Google token from session storage.
+- Phone WS auth and Android app are unaffected.
+- Legacy token scrub is idempotent.
 
 ### Mark Web Legacy — PR #9
 

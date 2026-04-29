@@ -26,7 +26,6 @@ function mockUser() {
     email: "test@example.com",
     name: "Test User",
     picture: "https://example.com/photo.jpg",
-    token: "fake-google-id-token",
   };
 }
 

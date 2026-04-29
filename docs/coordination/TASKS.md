@@ -22,7 +22,7 @@ This is a thin status tracker. Detailed task scope, acceptance criteria, upload 
 | Pairing persistence + user binding    | Codex                      | `hardening/t2-pairing-sqlite`        | merged  | PR #7 merged.                         |
 | Internal scene ID upload source       | Codex                      | `hardening/t2-internal-scene-upload` | merged  | PR #10 merged.                        |
 | Fake Samsung TV harness + crash tests | Codex                      | `hardening/t2-fake-tv-harness`       | review  | PR #12 ready for Claude review.       |
-| Google ID token session cleanup       | Codex                      | `hardening/t2-session-token-cleanup` | review  | PR #11 ready for Claude review.       |
+| Google ID token session cleanup       | Codex                      | `hardening/t2-session-token-cleanup` | merged  | PR #11 merged.                        |
 
 ## Release-Blocking Rule
 
