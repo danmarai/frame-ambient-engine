@@ -206,7 +206,23 @@ function handleTvConnection(ws: WebSocket) {
       if (msg.type === "register") {
         tvId = msg.tvId;
         const tvIp = msg.tvIp || "unknown";
-        const code = createPairingCode(tvId!, tvIp);
+        let code: string;
+        try {
+          code = createPairingCode(tvId!, tvIp);
+        } catch (e: any) {
+          logger.warn(
+            { tvId, tvIp, error: e.message },
+            "Pairing code rate limited",
+          );
+          ws.send(
+            JSON.stringify({
+              type: "pairing_error",
+              error:
+                "Too many pairing attempts. Wait a few minutes and restart the TV app.",
+            }),
+          );
+          return;
+        }
         addTvConnection(tvId!, tvIp, code, ws);
 
         logger.info({ tvId, tvIp, code }, "TV registered");
@@ -215,7 +231,7 @@ function handleTvConnection(ws: WebSocket) {
           JSON.stringify({
             type: "pairing_code",
             code,
-            expiresIn: 3600,
+            expiresIn: 600,
           }),
         );
       }
