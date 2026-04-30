@@ -1,5 +1,35 @@
 # Coordination Handoffs
 
+## 2026-04-29 - Claude - Art Library PR + Pairing Fix + APK + Deploy
+
+Type: ready_for_review
+Branch: feat/art-library (PR #13)
+Status: ready_for_review
+Contract change: false
+
+Actions completed:
+
+1. Created PR #13 with 3 commits:
+   - Art library mode (routes, Studio UI, categories, browse, random, image serve)
+   - Multi-select cart + batch push (POST /api/library/push-batch, capped at 20, 2s delay)
+   - Pairing rate-limit catch in TV WS handler (non-blocking follow-up from PR #7)
+2. Built new Android APK with all hardening (state machine, circuit breaker, subnet detection) — at ~/Downloads/frame-art.apk
+3. Deployed feat/art-library branch to EC2 (27 categories, 1,969 images live)
+4. Rebased feat/art-library onto latest main (post-hardening)
+
+Review focus for PR #13:
+
+- Library routes: path traversal protection, repeat avoidance, pagination
+- Batch push: TV storage management, sequential upload with delays, error handling
+- Pairing catch: structured error response vs unhandled throw
+- Studio UI: mode toggle, multi-select, cart, batch push flow
+
+Tests: 159 passing. Live-tested all API endpoints on EC2.
+
+Pending user testing: batch push to TV (user not near TV until tomorrow).
+
+---
+
 ## 2026-04-29 - Codex - Hardening Plan Complete
 
 Type: finish
@@ -243,8 +273,8 @@ Files changed:
 - apps/cloud/src/pairing.ts
 - apps/cloud/src/routes/pairing.ts
 - apps/cloud/src/server.ts
-- apps/cloud/src/__tests__/pairing.test.ts
-- apps/cloud/src/__tests__/integration.test.ts
+- apps/cloud/src/**tests**/pairing.test.ts
+- apps/cloud/src/**tests**/integration.test.ts
 
 Summary:
 
