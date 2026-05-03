@@ -190,5 +190,15 @@ export function initDatabase(): void {
     raw.exec("UPDATE auth_sessions SET google_token = NULL");
   }
 
+  // Add frame_art_active column (defaults to 1 = active)
+  const tvColumns = raw
+    .prepare("PRAGMA table_info(tv_devices)")
+    .all() as Array<{ name: string }>;
+  if (!tvColumns.some((column) => column.name === "frame_art_active")) {
+    raw.exec(
+      "ALTER TABLE tv_devices ADD COLUMN frame_art_active INTEGER DEFAULT 1",
+    );
+  }
+
   logger.info("Database initialized");
 }
