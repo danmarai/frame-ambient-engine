@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Frame Art",
-    "slug": "frame-art",
+    "name": "Curateur",
+    "slug": "curateur",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,7 +16,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.frameart.mobile",
+      "package": "com.curateur.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0a0a14"

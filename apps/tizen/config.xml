@@ -4,7 +4,7 @@
     <tizen:profile name="tv"/>
     <content src="index.html"/>
     <icon src="icon.png"/>
-    <name>Frame Art</name>
+    <name>Curateur</name>
     <tizen:privilege name="http://tizen.org/privilege/internet"/>
     <access origin="*" subdomains="true"/>
 </widget>

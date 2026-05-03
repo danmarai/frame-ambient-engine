@@ -1,5 +1,5 @@
 /**
- * Frame Art Cloud Server — composition root.
+ * Curateur Cloud Server — composition root.
  *
  * This file wires together middleware, route modules, WebSocket handlers,
  * and error handling. Business logic lives in the route modules under routes/.
@@ -414,5 +414,5 @@ setInterval(
 
 // --- Start ---
 server.listen(PORT, () => {
-  logger.info({ port: PORT, url: CLOUD_URL }, "Frame Art Cloud Server started");
+  logger.info({ port: PORT, url: CLOUD_URL }, "Curateur Cloud Server started");
 });

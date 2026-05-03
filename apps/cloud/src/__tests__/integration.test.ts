@@ -1,5 +1,5 @@
 /**
- * Integration test scenarios for the full Frame Art Cloud e2e flow.
+ * Integration test scenarios for the full Curateur Cloud e2e flow.
  *
  * These tests verify the interactions between modules: pairing -> connection ->
  * upload -> storage management -> notification. They use mocked WebSocket
