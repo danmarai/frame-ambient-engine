@@ -20,6 +20,7 @@ import { uploadToTv, selectAndActivate } from "../tv-upload.js";
 import { makeRoom, recordUpload, handleStorageFull } from "../tv-storage.js";
 import { requireAuth } from "../auth.js";
 import { getOwnedTv } from "../tv-ownership.js";
+import { getRawDb } from "../db.js";
 
 const router = Router();
 
@@ -104,7 +105,8 @@ function resolveLibraryPath(category: string, filename: string): string | null {
   return filePath;
 }
 
-/** Resolve owned TV from request, returning id + tvIp or sending error. */
+/** Resolve owned TV from request, returning id + tvIp or sending error.
+ *  Also checks the frame_art_active toggle — rejects if paused. */
 function resolveOwnedTvFromReq(
   req: any,
   res: any,
@@ -122,6 +124,17 @@ function resolveOwnedTvFromReq(
   const tv = getOwnedTv(userId, { tvId });
   if (!tv) {
     res.status(403).json({ error: "TV is not paired to this user" });
+    return null;
+  }
+  // Check if Curateur is paused for this TV
+  const tvRow = getRawDb()
+    .prepare("SELECT frame_art_active FROM tv_devices WHERE id = ?")
+    .get(tv.id) as { frame_art_active: number } | undefined;
+  if (tvRow && tvRow.frame_art_active === 0) {
+    res.status(409).json({
+      error:
+        "Curateur is paused for this TV. Enable it in Controls to push art.",
+    });
     return null;
   }
   return { id: tv.id, tvIp: tv.tvIp };

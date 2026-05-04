@@ -173,34 +173,70 @@
       var session = localStorage.getItem("frameArtSession");
       var savedTv = localStorage.getItem("pairedTv");
 
-      if (!savedTv) {
+      // Require valid session — redirect to pair/login if missing
+      if (!session) {
+        document.getElementById("noTv").textContent = "Please sign in first.";
+        document.getElementById("noTv").innerHTML =
+          'Session expired. <a href="/pair" style="color:#0ff;">Sign in</a> to manage your TV.';
+        document.getElementById("noTv").style.display = "block";
+      } else if (!savedTv) {
         document.getElementById("noTv").style.display = "block";
       } else {
+        // Verify session is still valid before showing controls
         var tv = JSON.parse(savedTv);
+        fetch("/api/auth/me", {
+          headers: { Authorization: "Bearer " + session },
+        })
+          .then(function (res) {
+            if (!res.ok) {
+              document.getElementById("noTv").innerHTML =
+                'Session expired. <a href="/pair" style="color:#0ff;">Sign in again</a>.';
+              document.getElementById("noTv").style.display = "block";
+              localStorage.removeItem("frameArtSession");
+              return;
+            }
+            initControls(tv);
+          })
+          .catch(function () {
+            // Network error — show controls anyway with cached data
+            initControls(tv);
+          });
+      }
+
+      function initControls(tv) {
         document.getElementById("noTv").style.display = "none";
         document.getElementById("controls").style.display = "block";
         document.getElementById("tvName").textContent = tv.tvId;
 
         // Fetch current state
-        if (session) {
-          fetch("/api/tv/status?tvId=" + encodeURIComponent(tv.tvId), {
-            headers: { Authorization: "Bearer " + session },
+        fetch("/api/tv/status?tvId=" + encodeURIComponent(tv.tvId), {
+          headers: { Authorization: "Bearer " + session },
+        })
+          .then(function (res) {
+            if (res.status === 401) {
+              document.getElementById("noTv").innerHTML =
+                'Session expired. <a href="/pair" style="color:#0ff;">Sign in again</a>.';
+              document.getElementById("noTv").style.display = "block";
+              document.getElementById("controls").style.display = "none";
+              return null;
+            }
+            return res.json();
           })
-            .then(function (res) {
-              return res.json();
-            })
-            .then(function (data) {
+          .then(function (data) {
+            if (data) {
               document.getElementById("activeToggle").checked =
                 data.active !== false;
-            })
-            .catch(function () {});
-        }
+            }
+          })
+          .catch(function () {});
 
         // Toggle handler
         document
           .getElementById("activeToggle")
           .addEventListener("change", function () {
-            var active = this.checked;
+            var toggle = this;
+            var active = toggle.checked;
+            var previousState = !active; // state before toggle
             var statusEl = document.getElementById("statusMsg");
 
             fetch("/api/tv/toggle", {
@@ -212,20 +248,30 @@
               body: JSON.stringify({ tvId: tv.tvId, active: active }),
             })
               .then(function (res) {
+                if (res.status === 401) {
+                  toggle.checked = previousState; // revert
+                  statusEl.textContent =
+                    "Session expired. Please sign in again.";
+                  statusEl.className = "status-msg show error";
+                  return null;
+                }
                 return res.json();
               })
               .then(function (data) {
+                if (!data) return;
                 if (data.success) {
                   statusEl.textContent = active
                     ? "Curateur enabled — fresh art will be pushed to your TV."
                     : "Curateur paused — your TV will use Samsung's default Art Mode.";
                   statusEl.className = "status-msg show success";
                 } else {
+                  toggle.checked = previousState; // revert on failure
                   statusEl.textContent = data.error || "Failed to update";
                   statusEl.className = "status-msg show error";
                 }
               })
               .catch(function (err) {
+                toggle.checked = previousState; // revert on error
                 statusEl.textContent = "Connection error: " + err.message;
                 statusEl.className = "status-msg show error";
               });
