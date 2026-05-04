@@ -30,13 +30,13 @@ const ART_LIBRARY_PATH =
 const recentlyServed = new Map<string, Set<string>>();
 const MAX_RECENT = 50;
 
-interface CategoryInfo {
+export interface CategoryInfo {
   id: string;
   label: string;
   count: number;
 }
 
-function getCategories(): CategoryInfo[] {
+export function getCategories(): CategoryInfo[] {
   if (!existsSync(ART_LIBRARY_PATH)) return [];
   try {
     return readdirSync(ART_LIBRARY_PATH)
@@ -72,7 +72,7 @@ function getCategories(): CategoryInfo[] {
   }
 }
 
-function getImagesInCategory(categoryId: string): string[] {
+export function getImagesInCategory(categoryId: string): string[] {
   // Validate category exists in discovered categories (prevents traversal)
   const categories = getCategories();
   if (!categories.some((c) => c.id === categoryId)) return [];
