@@ -138,6 +138,32 @@ export function initDatabase(): void {
       expires_at TEXT NOT NULL,
       claimed_at TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS art_ratings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      tv_id TEXT REFERENCES tv_devices(id),
+      source_type TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      rating TEXT NOT NULL,
+      category TEXT,
+      filename TEXT,
+      prompt TEXT,
+      provider TEXT,
+      context_json TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(user_id, source_type, source_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS taste_profiles (
+      user_id TEXT PRIMARY KEY REFERENCES users(id),
+      profile_json TEXT NOT NULL,
+      ratings_count INTEGER NOT NULL DEFAULT 0,
+      positive_count INTEGER NOT NULL DEFAULT 0,
+      negative_count INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL
+    );
   `);
 
   // Create indexes for common queries
@@ -168,6 +194,15 @@ export function initDatabase(): void {
       ON pairing_codes(expires_at);
     CREATE INDEX IF NOT EXISTS idx_pairing_codes_user
       ON pairing_codes(user_id);
+
+    CREATE INDEX IF NOT EXISTS idx_art_ratings_user_rating
+      ON art_ratings(user_id, rating);
+    CREATE INDEX IF NOT EXISTS idx_art_ratings_user_source
+      ON art_ratings(user_id, source_type);
+    CREATE INDEX IF NOT EXISTS idx_art_ratings_user_category
+      ON art_ratings(user_id, category);
+    CREATE INDEX IF NOT EXISTS idx_art_ratings_tv_created
+      ON art_ratings(tv_id, created_at);
   `);
 
   const sceneArchiveColumns = raw
