@@ -219,7 +219,7 @@ function dlnaSetUri(ip: string, imageUrl: string): Promise<string> {
     "xmlns:dc=&quot;http://purl.org/dc/elements/1.1/&quot; " +
     "xmlns:upnp=&quot;urn:schemas-upnp-org:metadata-1-0/upnp/&quot;&gt;" +
     "&lt;item id=&quot;0&quot; parentID=&quot;-1&quot; restricted=&quot;false&quot;&gt;" +
-    "&lt;dc:title&gt;Frame Art&lt;/dc:title&gt;" +
+    "&lt;dc:title&gt;Curateur&lt;/dc:title&gt;" +
     "&lt;upnp:class&gt;object.item.imageItem.photo&lt;/upnp:class&gt;" +
     `&lt;res protocolInfo=&quot;http-get:*:image/jpeg:*&quot;&gt;${imageUrl}&lt;/res&gt;` +
     "&lt;/item&gt;&lt;/DIDL-Lite&gt;";
