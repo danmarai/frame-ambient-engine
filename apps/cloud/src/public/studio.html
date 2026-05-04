@@ -1387,7 +1387,7 @@
             "Content-Type": "application/json",
             Authorization: session ? "Bearer " + session : "",
           },
-          body: JSON.stringify({ images: cart, tvIp: pairedTv.tvIp }),
+          body: JSON.stringify({ images: cart, tvId: pairedTv.tvId }),
         })
           .then(function (r) {
             return r.json();

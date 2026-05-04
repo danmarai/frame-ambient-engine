@@ -73,6 +73,9 @@ function getCategories(): CategoryInfo[] {
 }
 
 function getImagesInCategory(categoryId: string): string[] {
+  // Validate category exists in discovered categories (prevents traversal)
+  const categories = getCategories();
+  if (!categories.some((c) => c.id === categoryId)) return [];
   const dir = path.join(ART_LIBRARY_PATH, categoryId);
   if (!existsSync(dir)) return [];
   return readdirSync(dir).filter((f) => /\.(jpg|jpeg|png|webp)$/i.test(f));
