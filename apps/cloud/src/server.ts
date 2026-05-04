@@ -46,6 +46,7 @@ import { createTelemetryRouter } from "./routes/telemetry.js";
 import feedbackRoutes from "./routes/feedback.js";
 import quotesRoutes from "./routes/quotes.js";
 import libraryRoutes from "./routes/library.js";
+import ratingsRoutes from "./routes/ratings.js";
 
 // Load .env
 import { logger } from "./logger.js";
@@ -138,6 +139,7 @@ app.use(createTelemetryRouter(path.join(__dirname, "public")));
 app.use(feedbackRoutes);
 app.use(quotesRoutes);
 app.use(libraryRoutes);
+app.use(ratingsRoutes);
 
 // --- WebSocket handling ---
 

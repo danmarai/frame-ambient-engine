@@ -249,14 +249,34 @@ describe("requireValidTvIp", () => {
 describe("feedback routes", () => {
   // Import the route handlers by extracting them from the router
   // We call the handlers directly with mock req/res.
+  // Note: feedback now requires auth + TV ownership. Tests set req.user and seed owned TVs.
   let feedbackRouter: any;
+  const FEEDBACK_USER = "feedback-test-user";
+  const FEEDBACK_TV = "tv-abc";
 
   beforeEach(async () => {
     feedbackRouter = (await import("../routes/feedback.js")).default;
 
-    // Clear the feedback table before each test
+    // Clear the feedback table and seed test user/TV
     const db = getRawDb();
     db.prepare("DELETE FROM feedback").run();
+    db.prepare(
+      "INSERT OR IGNORE INTO users (id, email, name, created_at) VALUES (?, ?, ?, ?)",
+    ).run(
+      FEEDBACK_USER,
+      "feedback@test.com",
+      "Feedback User",
+      new Date().toISOString(),
+    );
+    db.prepare(
+      "INSERT OR IGNORE INTO tv_devices (id, user_id, tv_ip, paired_at, last_seen_at) VALUES (?, ?, ?, ?, ?)",
+    ).run(
+      FEEDBACK_TV,
+      FEEDBACK_USER,
+      "10.0.0.1",
+      new Date().toISOString(),
+      new Date().toISOString(),
+    );
   });
 
   describe("POST /api/feedback", () => {
@@ -265,6 +285,7 @@ describe("feedback routes", () => {
       expect(handler).not.toBeNull();
 
       const req = mockReq({ contentId: "c1", rating: "up" });
+      req.user = { userId: FEEDBACK_USER };
       const res = mockRes();
       handler!(req, res, vi.fn());
 
@@ -275,7 +296,8 @@ describe("feedback routes", () => {
     it("should reject missing contentId", () => {
       const handler = findHandler(feedbackRouter, "post", "/api/feedback");
 
-      const req = mockReq({ tvId: "tv1", rating: "up" });
+      const req = mockReq({ tvId: FEEDBACK_TV, rating: "up" });
+      req.user = { userId: FEEDBACK_USER };
       const res = mockRes();
       handler!(req, res, vi.fn());
 
@@ -286,7 +308,8 @@ describe("feedback routes", () => {
     it("should reject missing rating", () => {
       const handler = findHandler(feedbackRouter, "post", "/api/feedback");
 
-      const req = mockReq({ tvId: "tv1", contentId: "c1" });
+      const req = mockReq({ tvId: FEEDBACK_TV, contentId: "c1" });
+      req.user = { userId: FEEDBACK_USER };
       const res = mockRes();
       handler!(req, res, vi.fn());
 
@@ -294,14 +317,30 @@ describe("feedback routes", () => {
       expect(res.body.error).toContain("Missing");
     });
 
+    it("should reject unowned TV", () => {
+      const handler = findHandler(feedbackRouter, "post", "/api/feedback");
+
+      const req = mockReq({
+        tvId: "tv-not-mine",
+        contentId: "content-001",
+        rating: "up",
+      });
+      req.user = { userId: FEEDBACK_USER };
+      const res = mockRes();
+      handler!(req, res, vi.fn());
+
+      expect(res.statusCode).toBe(403);
+    });
+
     it("should persist feedback and return count", () => {
       const handler = findHandler(feedbackRouter, "post", "/api/feedback");
 
       const req = mockReq({
-        tvId: "tv-abc",
+        tvId: FEEDBACK_TV,
         contentId: "content-001",
         rating: "up",
       });
+      req.user = { userId: FEEDBACK_USER };
       const res = mockRes();
       handler!(req, res, vi.fn());
 
@@ -313,10 +352,10 @@ describe("feedback routes", () => {
       const db = getRawDb();
       const rows = db.prepare("SELECT * FROM feedback").all() as any[];
       expect(rows).toHaveLength(1);
-      expect(rows[0].tv_id).toBe("tv-abc");
+      expect(rows[0].tv_id).toBe(FEEDBACK_TV);
       expect(rows[0].content_id).toBe("content-001");
       expect(rows[0].rating).toBe("up");
-      expect(rows[0].user_id).toBeNull(); // no auth
+      expect(rows[0].user_id).toBe(FEEDBACK_USER);
       expect(rows[0].timestamp).toBeTruthy();
     });
 
@@ -326,10 +365,11 @@ describe("feedback routes", () => {
       // Submit three feedbacks
       for (let i = 0; i < 3; i++) {
         const req = mockReq({
-          tvId: "tv-abc",
+          tvId: FEEDBACK_TV,
           contentId: `content-${i}`,
           rating: i % 2 === 0 ? "up" : "down",
         });
+        req.user = { userId: FEEDBACK_USER };
         const res = mockRes();
         handler!(req, res, vi.fn());
         expect(res.body.totalFeedback).toBe(i + 1);
@@ -341,36 +381,26 @@ describe("feedback routes", () => {
         .get() as { cnt: number };
       expect(count.cnt).toBe(3);
     });
-
-    it("should store userId when auth is present", () => {
-      const handler = findHandler(feedbackRouter, "post", "/api/feedback");
-
-      const req = mockReq({
-        tvId: "tv-xyz",
-        contentId: "content-auth",
-        rating: "up",
-      });
-      // Simulate authenticated user (as optionalAuth would set it)
-      req.user = { userId: "google-user-42" };
-      const res = mockRes();
-      handler!(req, res, vi.fn());
-
-      expect(res.body.success).toBe(true);
-
-      const db = getRawDb();
-      const row = db
-        .prepare("SELECT user_id FROM feedback WHERE tv_id = ?")
-        .get("tv-xyz") as any;
-      expect(row.user_id).toBe("google-user-42");
-    });
   });
 
   describe("GET /api/feedback/:tvId", () => {
-    it("should return empty array when no feedback exists", () => {
+    it("should reject unowned TV", () => {
       const handler = findHandler(feedbackRouter, "get", "/api/feedback/:tvId");
       expect(handler).not.toBeNull();
 
       const req = mockReq(undefined, { tvId: "no-such-tv" });
+      req.user = { userId: FEEDBACK_USER };
+      const res = mockRes();
+      handler!(req, res, vi.fn());
+
+      expect(res.statusCode).toBe(403);
+    });
+
+    it("should return empty array when no feedback exists for owned TV", () => {
+      const handler = findHandler(feedbackRouter, "get", "/api/feedback/:tvId");
+
+      const req = mockReq(undefined, { tvId: FEEDBACK_TV });
+      req.user = { userId: FEEDBACK_USER };
       const res = mockRes();
       handler!(req, res, vi.fn());
 
@@ -378,39 +408,33 @@ describe("feedback routes", () => {
       expect(res.body).toEqual([]);
     });
 
-    it("should return feedback filtered by tvId", () => {
+    it("should return only user's feedback for owned TV", () => {
       const db = getRawDb();
       const ts = new Date().toISOString();
 
-      // Insert feedback for two different TVs
+      // Insert feedback for the owned TV from this user
       db.prepare(
-        "INSERT INTO feedback (tv_id, content_id, rating, timestamp) VALUES (?, ?, ?, ?)",
-      ).run("tv-A", "c1", "up", ts);
+        "INSERT INTO feedback (tv_id, content_id, rating, user_id, timestamp) VALUES (?, ?, ?, ?, ?)",
+      ).run(FEEDBACK_TV, "c1", "up", FEEDBACK_USER, ts);
       db.prepare(
-        "INSERT INTO feedback (tv_id, content_id, rating, timestamp) VALUES (?, ?, ?, ?)",
-      ).run("tv-A", "c2", "down", ts);
+        "INSERT INTO feedback (tv_id, content_id, rating, user_id, timestamp) VALUES (?, ?, ?, ?, ?)",
+      ).run(FEEDBACK_TV, "c2", "down", FEEDBACK_USER, ts);
+      // Insert feedback from another user (should NOT be returned)
       db.prepare(
-        "INSERT INTO feedback (tv_id, content_id, rating, timestamp) VALUES (?, ?, ?, ?)",
-      ).run("tv-B", "c3", "up", ts);
+        "INSERT INTO feedback (tv_id, content_id, rating, user_id, timestamp) VALUES (?, ?, ?, ?, ?)",
+      ).run(FEEDBACK_TV, "c3", "up", "other-user", ts);
 
       const handler = findHandler(feedbackRouter, "get", "/api/feedback/:tvId");
 
-      // Query for tv-A
-      const reqA = mockReq(undefined, { tvId: "tv-A" });
-      const resA = mockRes();
-      handler!(reqA, resA, vi.fn());
+      const req = mockReq(undefined, { tvId: FEEDBACK_TV });
+      req.user = { userId: FEEDBACK_USER };
+      const res = mockRes();
+      handler!(req, res, vi.fn());
 
-      expect(resA.body).toHaveLength(2);
-      expect(resA.body.every((r: any) => r.tv_id === "tv-A")).toBe(true);
-
-      // Query for tv-B
-      const reqB = mockReq(undefined, { tvId: "tv-B" });
-      const resB = mockRes();
-      handler!(reqB, resB, vi.fn());
-
-      expect(resB.body).toHaveLength(1);
-      expect(resB.body[0].tv_id).toBe("tv-B");
-      expect(resB.body[0].content_id).toBe("c3");
+      expect(res.body).toHaveLength(2);
+      expect(res.body.every((r: any) => r.user_id === FEEDBACK_USER)).toBe(
+        true,
+      );
     });
 
     it("should return results ordered by timestamp DESC", () => {
@@ -418,17 +442,18 @@ describe("feedback routes", () => {
 
       // Insert with known timestamps
       db.prepare(
-        "INSERT INTO feedback (tv_id, content_id, rating, timestamp) VALUES (?, ?, ?, ?)",
-      ).run("tv-order", "old", "up", "2024-01-01T00:00:00Z");
+        "INSERT INTO feedback (tv_id, content_id, rating, user_id, timestamp) VALUES (?, ?, ?, ?, ?)",
+      ).run(FEEDBACK_TV, "old", "up", FEEDBACK_USER, "2024-01-01T00:00:00Z");
       db.prepare(
-        "INSERT INTO feedback (tv_id, content_id, rating, timestamp) VALUES (?, ?, ?, ?)",
-      ).run("tv-order", "mid", "up", "2024-06-15T00:00:00Z");
+        "INSERT INTO feedback (tv_id, content_id, rating, user_id, timestamp) VALUES (?, ?, ?, ?, ?)",
+      ).run(FEEDBACK_TV, "mid", "up", FEEDBACK_USER, "2024-06-15T00:00:00Z");
       db.prepare(
-        "INSERT INTO feedback (tv_id, content_id, rating, timestamp) VALUES (?, ?, ?, ?)",
-      ).run("tv-order", "new", "up", "2024-12-31T00:00:00Z");
+        "INSERT INTO feedback (tv_id, content_id, rating, user_id, timestamp) VALUES (?, ?, ?, ?, ?)",
+      ).run(FEEDBACK_TV, "new", "up", FEEDBACK_USER, "2024-12-31T00:00:00Z");
 
       const handler = findHandler(feedbackRouter, "get", "/api/feedback/:tvId");
-      const req = mockReq(undefined, { tvId: "tv-order" });
+      const req = mockReq(undefined, { tvId: FEEDBACK_TV });
+      req.user = { userId: FEEDBACK_USER };
       const res = mockRes();
       handler!(req, res, vi.fn());
 

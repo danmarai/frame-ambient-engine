@@ -82,7 +82,10 @@ function getImagesInCategory(categoryId: string): string[] {
 }
 
 /** Resolve a library image path, validating it stays under ART_LIBRARY_PATH. */
-function resolveLibraryPath(category: string, filename: string): string | null {
+export function resolveLibraryPath(
+  category: string,
+  filename: string,
+): string | null {
   // Reject obvious traversal
   if (category.includes("..") || filename.includes("..")) return null;
   if (category.includes("/") || filename.includes("/")) return null;
