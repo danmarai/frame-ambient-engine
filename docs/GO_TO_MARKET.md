@@ -6,11 +6,11 @@
 
 ## 1. Executive Summary
 
-Curateur is an AI-powered art curation app for Samsung Frame TVs that replaces Samsung's native Art Mode with a personalized, learning experience. Where Samsung offers a static library for $5.99/month, Curateur learns what you love through simple thumbs up/down ratings, generates original AI art matched to your taste, and auto-rotates your display based on preferences.
+Curateur is an AI-powered art curation app for Samsung Frame TVs that replaces Samsung's native Art Mode with a personalized, learning experience. Where Samsung offers a static library for ~$4.99–5.99/month (varies by region), Curateur learns what you love through simple thumbs up/down ratings, generates original AI art matched to your taste, and auto-rotates your display based on preferences.
 
 The product is live and working end-to-end on Samsung Frame TVs (2020+). The architecture consists of a thin Tizen TV app, a cloud backend, an Android companion app, and a web control panel. Distribution will be phased: direct/sideload first, then Samsung TV App Store and Google Play.
 
-**Revenue model**: Freemium. Free tier with limited monthly art pushes; paid tier ($4.99/mo or $39.99/yr) with unlimited AI generation, priority rotation, and full library access.
+**Revenue model**: Freemium. Free tier with limited monthly art pushes; paid tier ($4.99/mo or $39.99/yr) with generous AI generation limits, priority rotation, and full library access.
 
 **Primary insight**: Samsung Frame TV owners already pay for art. They are conditioned to the subscription model. We offer a better product at an equal or lower price point, with personalization Samsung cannot match.
 
@@ -21,13 +21,13 @@ The product is live and working end-to-end on Samsung Frame TVs (2020+). The arc
 ### Market Size
 
 - Samsung has sold 1M+ Frame TVs globally since 2017
-- Samsung Art Store has ~500K subscribers (estimated at $5.99/mo = ~$36M ARR)
+- Samsung Art Store has ~500K subscribers (estimated at ~$4.99–5.99/mo depending on region = ~$30–36M ARR)
 - The addressable market for Frame TV art alternatives is growing as new Frame models ship yearly
 
 ### Persona 1: "Frustrated Subscriber" (Primary)
 
 **Who**: Current Samsung Art Mode subscriber, 30-50, homeowner
-**Pain**: Pays $5.99/mo but the art rotation feels stale. Can't customize. Has scrolled through the same categories for months. Feels like paying for screensavers.
+**Pain**: Pays ~$5/mo but the art rotation feels stale. Can't customize. Has scrolled through the same categories for months. Feels like paying for screensavers.
 **Behavior**: Active on r/SamsungFrame, searches "Samsung Frame TV custom art" regularly
 **Trigger**: Seeing the same painting for the third week in a row
 **Quote**: "I'm paying six bucks a month for art I stopped noticing."
@@ -62,7 +62,7 @@ The product is live and working end-to-end on Samsung Frame TVs (2020+). The arc
 
 | Feature         | Samsung Art Store    | Meural (Netgear)         | Cast-to-TV Apps     | **Curateur**               |
 | --------------- | -------------------- | ------------------------ | ------------------- | -------------------------- |
-| Price           | $5.99/mo             | $300-600 hardware + free | Free (ad-supported) | Free tier + $4.99/mo       |
+| Price           | ~$4.99–5.99/mo       | $300-600 hardware + free | Free (ad-supported) | Free tier + $4.99/mo       |
 | Personalization | None (manual browse) | Basic categories         | None                | AI-powered taste learning  |
 | AI Generation   | No                   | No                       | No                  | **Yes**                    |
 | Custom Upload   | Limited (phone only) | Yes                      | Yes (low quality)   | Yes (phone, web, batch)    |
@@ -120,7 +120,7 @@ For Samsung Frame TV owners who are tired of generic art, Curateur is the AI art
 ### Paid Tier — "Atelier" ($4.99/mo or $39.99/yr)
 
 - Unlimited art pushes from curated library
-- Unlimited AI-generated art (personalized to taste profile)
+- AI-generated art (personalized to taste profile, up to 100/mo — see unit economics below)
 - Smart rotation (preference-weighted, time-of-day, seasonal)
 - Priority new additions to library
 - Full taste analytics ("Your Art DNA" page)
@@ -129,9 +129,25 @@ For Samsung Frame TV owners who are tired of generic art, Curateur is the AI art
 
 ### Why $4.99/mo
 
-- **Below Samsung** ($5.99/mo) — easy switching pitch: "better AND cheaper"
+- **Price parity with Samsung** (~$4.99/mo in US) — same price, radically better product
 - **Annual discount** ($39.99/yr = $3.33/mo) — incentivizes lock-in
-- **Psychological**: "Cancel Samsung, get something better for less" is a powerful one-line pitch
+- **Positioning**: Not "cheaper" — "same price, but it actually learns what you love"
+- In regions where Samsung charges $5.99/mo (AU, etc.), we're also lower
+
+### AI Generation Unit Economics
+
+⚠️ **Must validate before launch:**
+
+- DALL-E 3 HD: ~$0.08/image → 100 images/mo = $8/user/mo (exceeds $4.99 revenue)
+- Gemini Imagen: ~$0.02-0.04/image → 100 images/mo = $2-4/user/mo (viable)
+- **Mitigation strategies**:
+  - Default to Gemini for bulk generation, DALL-E for "premium" requests
+  - Smart caching: generate once, rotate many times (most users want variety, not volume)
+  - Actual usage likely ~10-20 generations/mo per active user (not 100)
+  - Tiered generation limits: Free=5/mo, Paid=50/mo, Premium=200/mo
+  - Pre-generate popular styles in batches (amortize cost across users)
+- **Key metric to track**: cost-per-active-subscriber-per-month (CPAS)
+- **Decision gate**: Do not promise "unlimited" until CPAS is validated under $2.00
 
 ### Future Consideration: Premium Tier ($9.99/mo)
 
