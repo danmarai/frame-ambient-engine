@@ -10,7 +10,7 @@ import {
   type SourceType,
   type Rating,
 } from "../taste-profile.js";
-import { resolveLibraryPath } from "./library.js";
+import { resolveLibraryPath } from "../library-catalog.js";
 
 const router = Router();
 

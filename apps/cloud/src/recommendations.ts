@@ -23,11 +23,12 @@ import {
   getCategories,
   getImagesInCategory,
   type CategoryInfo,
-} from "./routes/library.js";
+} from "./library-catalog.js";
 
 export interface RecommendationOptions {
   limit?: number;
   includeRated?: boolean;
+  rng?: () => number;
 }
 
 export interface RecommendationResult {
@@ -75,9 +76,9 @@ function imageLabel(filename: string): string {
   return filename.replace(/\.\w+$/, "");
 }
 
-function shuffleInPlace<T>(arr: T[]): T[] {
+function shuffleInPlace<T>(arr: T[], rng: () => number): T[] {
   for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [arr[i], arr[j]] = [arr[j]!, arr[i]!];
   }
   return arr;
@@ -111,10 +112,11 @@ function buildFavorites(
   upratedIds: Set<string>,
   categories: CategoryInfo[],
   max: number,
+  rng: () => number,
 ): RecommendedImage[] {
   const result: RecommendedImage[] = [];
   const validCategories = new Set(categories.map((c) => c.id));
-  const ids = shuffleInPlace([...upratedIds]);
+  const ids = shuffleInPlace([...upratedIds], rng);
   for (const id of ids) {
     if (result.length >= max) break;
     const slash = id.indexOf("/");
@@ -142,6 +144,7 @@ export function getLibraryRecommendations(
 ): RecommendationResult {
   const limit = Math.max(1, Math.min(opts.limit ?? 24, 60));
   const includeRated = opts.includeRated === true;
+  const rng = opts.rng ?? Math.random;
 
   const summary = getTasteProfile(userId);
   const isCold = summary.confidence === "cold_start";
@@ -177,7 +180,7 @@ export function getLibraryRecommendations(
     if (eligible.length === 0) continue;
 
     // Sample randomly within category to avoid always returning the same files
-    const sampled = shuffleInPlace([...eligible]).slice(0, sampleCap);
+    const sampled = shuffleInPlace([...eligible], rng).slice(0, sampleCap);
 
     for (const filename of sampled) {
       const sourceId = `${cat.id}/${filename}`;
@@ -187,7 +190,7 @@ export function getLibraryRecommendations(
 
       // Cold start: small randomness to surface variety, neutral category bias
       // Otherwise: categoryAffinity dominates, with small adjustments
-      let score = isCold ? Math.random() * 0.3 : catScore;
+      let score = isCold ? rng() * 0.3 : catScore;
       if (isUnrated) score += 0.1; // unratedBoost
       if (ratings.recentlyRatedIds.has(sourceId)) score -= 0.2; // recentRepeatPenalty
       if (catScore < 0 && !isCold) score -= 0.1; // downratedCategoryPenalty
@@ -227,6 +230,7 @@ export function getLibraryRecommendations(
       ratings.upratedIds,
       allCategories,
       favCount,
+      rng,
     );
     if (favorites.length > 0 && items.length > 0) {
       const cutoff = Math.max(0, items.length - favorites.length);

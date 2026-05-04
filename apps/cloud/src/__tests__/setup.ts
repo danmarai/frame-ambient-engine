@@ -1,7 +1,7 @@
 /**
  * Test setup — initializes an in-memory SQLite database and a fixture
  * art library before each test file. Env vars must be set before any
- * module that captures them at import time (db.ts, routes/library.ts).
+ * module that captures them at import time (db.ts, library-catalog.ts).
  */
 import { beforeAll } from "vitest";
 import { mkdirSync, writeFileSync, rmSync, existsSync } from "fs";
@@ -11,7 +11,7 @@ import path from "path";
 // Force in-memory database for tests
 process.env.DATABASE_URL = "file::memory:";
 
-// Set up a fixture art library at a unique tmp path so library.ts
+// Set up a fixture art library at a unique tmp path so library-catalog.ts
 // (which captures ART_LIBRARY_PATH at import time) sees real files.
 const FIXTURE_LIBRARY = path.join(
   tmpdir(),
