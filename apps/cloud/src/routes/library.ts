@@ -7,12 +7,19 @@
  * Tracks recently served images per category to avoid repeats.
  */
 import { Router } from "express";
-import { readdirSync, statSync, existsSync, readFileSync } from "fs";
+import {
+  readdirSync,
+  statSync,
+  existsSync,
+  readFileSync,
+  realpathSync,
+} from "fs";
 import path from "path";
 import { logger } from "../logger.js";
 import { uploadToTv, selectAndActivate } from "../tv-upload.js";
-import { makeRoom, recordUpload } from "../tv-storage.js";
-import { optionalAuth } from "../auth.js";
+import { makeRoom, recordUpload, handleStorageFull } from "../tv-storage.js";
+import { requireAuth } from "../auth.js";
+import { getOwnedTv } from "../tv-ownership.js";
 
 const router = Router();
 
@@ -69,6 +76,71 @@ function getImagesInCategory(categoryId: string): string[] {
   const dir = path.join(ART_LIBRARY_PATH, categoryId);
   if (!existsSync(dir)) return [];
   return readdirSync(dir).filter((f) => /\.(jpg|jpeg|png|webp)$/i.test(f));
+}
+
+/** Resolve a library image path, validating it stays under ART_LIBRARY_PATH. */
+function resolveLibraryPath(category: string, filename: string): string | null {
+  // Reject obvious traversal
+  if (category.includes("..") || filename.includes("..")) return null;
+  if (category.includes("/") || filename.includes("/")) return null;
+  if (category.includes("\\") || filename.includes("\\")) return null;
+
+  // Validate against discovered entries
+  const categories = getCategories();
+  if (!categories.some((c) => c.id === category)) return null;
+  const images = getImagesInCategory(category);
+  if (!images.includes(filename)) return null;
+
+  // Resolve and verify real path stays under library root
+  const filePath = path.join(ART_LIBRARY_PATH, category, filename);
+  if (!existsSync(filePath)) return null;
+  const realPath = realpathSync(filePath);
+  const realRoot = realpathSync(ART_LIBRARY_PATH);
+  if (!realPath.startsWith(realRoot + path.sep)) return null;
+
+  return filePath;
+}
+
+/** Resolve owned TV from request, returning id + tvIp or sending error. */
+function resolveOwnedTvFromReq(
+  req: any,
+  res: any,
+): { id: string; tvIp: string } | null {
+  const userId = req.user?.userId as string | undefined;
+  if (!userId) {
+    res.status(401).json({ error: "Authentication required" });
+    return null;
+  }
+  const { tvId } = req.body;
+  if (!tvId) {
+    res.status(400).json({ error: "Missing tvId" });
+    return null;
+  }
+  const tv = getOwnedTv(userId, { tvId });
+  if (!tv) {
+    res.status(403).json({ error: "TV is not paired to this user" });
+    return null;
+  }
+  return { id: tv.id, tvIp: tv.tvIp };
+}
+
+/** Upload a single image to TV with storage-full retry. */
+async function uploadWithRetry(
+  tvIp: string,
+  imageData: Buffer,
+): Promise<{
+  success: boolean;
+  contentId?: string;
+  durationMs?: number;
+  error?: string;
+}> {
+  let result = await uploadToTv(tvIp, imageData);
+  if (!result.success && result.error?.includes("-11")) {
+    logger.info("Storage full, cleaning up and retrying");
+    await handleStorageFull(tvIp);
+    result = await uploadToTv(tvIp, imageData);
+  }
+  return result;
 }
 
 /** GET /api/library/categories */
@@ -166,14 +238,8 @@ router.get("/api/library/random", (req, res) => {
 router.get("/api/library/image/:category/:filename", (req, res) => {
   const { category, filename } = req.params;
 
-  // Prevent path traversal
-  if (category.includes("..") || filename.includes("..")) {
-    res.status(400).json({ error: "Invalid path" });
-    return;
-  }
-
-  const filePath = path.join(ART_LIBRARY_PATH, category, filename);
-  if (!existsSync(filePath)) {
+  const filePath = resolveLibraryPath(category, filename);
+  if (!filePath) {
     res.status(404).json({ error: "Image not found" });
     return;
   }
@@ -192,19 +258,18 @@ router.get("/api/library/image/:category/:filename", (req, res) => {
 });
 
 /** POST /api/library/push — push a single library image to TV */
-router.post("/api/library/push", optionalAuth, async (req, res) => {
-  const { category, filename, tvIp } = req.body;
-  if (!category || !filename || !tvIp) {
-    res.status(400).json({ error: "Missing category, filename, or tvIp" });
-    return;
-  }
-  if (category.includes("..") || filename.includes("..")) {
-    res.status(400).json({ error: "Invalid path" });
+router.post("/api/library/push", requireAuth, async (req, res) => {
+  const { category, filename } = req.body;
+  if (!category || !filename) {
+    res.status(400).json({ error: "Missing category or filename" });
     return;
   }
 
-  const filePath = path.join(ART_LIBRARY_PATH, category, filename);
-  if (!existsSync(filePath)) {
+  const tv = resolveOwnedTvFromReq(req, res);
+  if (!tv) return;
+
+  const filePath = resolveLibraryPath(category, filename);
+  if (!filePath) {
     res.status(404).json({ error: "Image not found" });
     return;
   }
@@ -212,15 +277,15 @@ router.post("/api/library/push", optionalAuth, async (req, res) => {
   try {
     const imageData = readFileSync(filePath);
     logger.info(
-      { category, filename, tvIp, bytes: imageData.length },
+      { category, filename, tvIp: tv.tvIp, bytes: imageData.length },
       "Library push to TV",
     );
 
-    await makeRoom(tvIp, 1);
-    const upload = await uploadToTv(tvIp, imageData);
+    await makeRoom(tv.tvIp, 1);
+    const upload = await uploadWithRetry(tv.tvIp, imageData);
     if (upload.success && upload.contentId) {
-      recordUpload(tvIp, upload.contentId);
-      await selectAndActivate(tvIp, upload.contentId);
+      recordUpload(tv.tvIp, upload.contentId);
+      await selectAndActivate(tv.tvIp, upload.contentId);
       res.json({
         success: true,
         contentId: upload.contentId,
@@ -237,27 +302,25 @@ router.post("/api/library/push", optionalAuth, async (req, res) => {
 });
 
 /** POST /api/library/push-batch — push multiple library images to TV sequentially */
-router.post("/api/library/push-batch", optionalAuth, async (req, res) => {
-  const { images, tvIp } = req.body;
-  if (!Array.isArray(images) || images.length === 0 || !tvIp) {
-    res.status(400).json({ error: "Missing images array or tvIp" });
+router.post("/api/library/push-batch", requireAuth, async (req, res) => {
+  const { images } = req.body;
+  if (!Array.isArray(images) || images.length === 0) {
+    res.status(400).json({ error: "Missing images array" });
     return;
   }
 
-  // Cap at 20 images per batch to be kind to the TV
+  const tv = resolveOwnedTvFromReq(req, res);
+  if (!tv) return;
+
+  // Cap at 20 images per batch
   const batch = images.slice(0, 20);
-  logger.info({ tvIp, count: batch.length }, "Library batch push starting");
 
-  // Make room for the batch
-  try {
-    await makeRoom(tvIp, batch.length);
-  } catch (e: any) {
-    res
-      .status(500)
-      .json({ error: "Failed to prepare TV storage: " + e.message });
-    return;
-  }
-
+  // Validate all items and resolve paths before making room on TV
+  const validated: Array<{
+    filename: string;
+    category: string;
+    filePath: string;
+  }> = [];
   const results: Array<{
     filename: string;
     success: boolean;
@@ -274,54 +337,76 @@ router.post("/api/library/push-batch", optionalAuth, async (req, res) => {
       });
       continue;
     }
-    if (img.category.includes("..") || img.filename.includes("..")) {
+    const filePath = resolveLibraryPath(img.category, img.filename);
+    if (!filePath) {
       results.push({
         filename: img.filename,
         success: false,
-        error: "Invalid path",
+        error: "Not found or invalid path",
       });
       continue;
     }
+    validated.push({
+      filename: img.filename,
+      category: img.category,
+      filePath,
+    });
+  }
 
-    const filePath = path.join(ART_LIBRARY_PATH, img.category, img.filename);
-    if (!existsSync(filePath)) {
-      results.push({
-        filename: img.filename,
-        success: false,
-        error: "Not found",
-      });
-      continue;
-    }
+  if (validated.length === 0) {
+    res.json({
+      total: batch.length,
+      succeeded: 0,
+      failed: batch.length,
+      results,
+    });
+    return;
+  }
 
+  logger.info(
+    { tvIp: tv.tvIp, count: validated.length },
+    "Library batch push starting",
+  );
+
+  // Make room only for valid images
+  try {
+    await makeRoom(tv.tvIp, validated.length);
+  } catch (e: any) {
+    res
+      .status(500)
+      .json({ error: "Failed to prepare TV storage: " + e.message });
+    return;
+  }
+
+  for (const item of validated) {
     try {
-      const imageData = readFileSync(filePath);
-      const upload = await uploadToTv(tvIp, imageData);
+      const imageData = readFileSync(item.filePath);
+      const upload = await uploadWithRetry(tv.tvIp, imageData);
       if (upload.success && upload.contentId) {
-        recordUpload(tvIp, upload.contentId);
+        recordUpload(tv.tvIp, upload.contentId);
         results.push({
-          filename: img.filename,
+          filename: item.filename,
           success: true,
           contentId: upload.contentId,
         });
         logger.info(
-          { filename: img.filename, contentId: upload.contentId },
+          { filename: item.filename, contentId: upload.contentId },
           "Batch item uploaded",
         );
       } else {
         results.push({
-          filename: img.filename,
+          filename: item.filename,
           success: false,
           error: upload.error,
         });
         logger.warn(
-          { filename: img.filename, error: upload.error },
+          { filename: item.filename, error: upload.error },
           "Batch item failed",
         );
-        // Don't abort the batch on individual failure — skip and continue
       }
     } catch (e: any) {
       results.push({
-        filename: img.filename,
+        filename: item.filename,
         success: false,
         error: e.message,
       });
@@ -335,13 +420,13 @@ router.post("/api/library/push-batch", optionalAuth, async (req, res) => {
   const lastSuccess = results.filter((r) => r.success).pop();
   if (lastSuccess?.contentId) {
     try {
-      await selectAndActivate(tvIp, lastSuccess.contentId);
+      await selectAndActivate(tv.tvIp, lastSuccess.contentId);
     } catch {}
   }
 
   const succeeded = results.filter((r) => r.success).length;
   logger.info(
-    { tvIp, total: batch.length, succeeded },
+    { tvIp: tv.tvIp, total: batch.length, succeeded },
     "Library batch push complete",
   );
 
