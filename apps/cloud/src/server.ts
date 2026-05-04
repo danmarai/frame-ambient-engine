@@ -45,6 +45,7 @@ import tvControlRoutes from "./routes/tv-control.js";
 import { createTelemetryRouter } from "./routes/telemetry.js";
 import feedbackRoutes from "./routes/feedback.js";
 import quotesRoutes from "./routes/quotes.js";
+import libraryRoutes from "./routes/library.js";
 
 // Load .env
 import { logger } from "./logger.js";
@@ -136,6 +137,7 @@ app.use(tvControlRoutes);
 app.use(createTelemetryRouter(path.join(__dirname, "public")));
 app.use(feedbackRoutes);
 app.use(quotesRoutes);
+app.use(libraryRoutes);
 
 // --- WebSocket handling ---
 
@@ -204,7 +206,23 @@ function handleTvConnection(ws: WebSocket) {
       if (msg.type === "register") {
         tvId = msg.tvId;
         const tvIp = msg.tvIp || "unknown";
-        const code = createPairingCode(tvId!, tvIp);
+        let code: string;
+        try {
+          code = createPairingCode(tvId!, tvIp);
+        } catch (e: any) {
+          logger.warn(
+            { tvId, tvIp, error: e.message },
+            "Pairing code rate limited",
+          );
+          ws.send(
+            JSON.stringify({
+              type: "pairing_error",
+              error:
+                "Too many pairing attempts. Wait a few minutes and restart the TV app.",
+            }),
+          );
+          return;
+        }
         addTvConnection(tvId!, tvIp, code, ws);
 
         logger.info({ tvId, tvIp, code }, "TV registered");
@@ -213,7 +231,7 @@ function handleTvConnection(ws: WebSocket) {
           JSON.stringify({
             type: "pairing_code",
             code,
-            expiresIn: 3600,
+            expiresIn: 600,
           }),
         );
       }
@@ -300,10 +318,7 @@ function handlePhoneConnection(ws: WebSocket, request: IncomingMessage) {
           return;
         }
 
-        if (
-          auth &&
-          isTvOwnedByAnotherUser(pending.tvId, auth.user.userId)
-        ) {
+        if (auth && isTvOwnedByAnotherUser(pending.tvId, auth.user.userId)) {
           ws.send(
             JSON.stringify({
               type: "pair_error",
