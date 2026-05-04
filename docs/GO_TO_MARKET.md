@@ -12,7 +12,7 @@ The product is live and working end-to-end on Samsung Frame TVs (2020+). The arc
 
 **Revenue model**: Freemium. Free tier with limited monthly art pushes; paid tier ($4.99/mo or $39.99/yr) with generous AI generation limits, priority rotation, and full library access.
 
-**Primary insight**: Samsung Frame TV owners already pay for art. They are conditioned to the subscription model. We offer a better product at an equal or lower price point, with personalization Samsung cannot match.
+**Primary insight**: Samsung Frame TV owners already pay for art. They are conditioned to the subscription model. We offer a radically better product at price parity, with personalization Samsung cannot match.
 
 ---
 
@@ -103,7 +103,7 @@ For Samsung Frame TV owners who are tired of generic art, Curateur is the AI art
 
 ### Elevator Pitch (30 seconds)
 
-"You know how Samsung charges six bucks a month for Frame TV art that all looks the same? Curateur replaces that with an AI that learns what you like. You rate a few pieces — thumbs up, thumbs down — and it starts generating original art matched to your taste. It gets better every week. Same TV, way better art, less money."
+"You know how Samsung charges five bucks a month for Frame TV art that all looks the same? Curateur replaces that with an AI that learns what you like. You rate a few pieces — thumbs up, thumbs down — and it starts generating original art matched to your taste. It gets better every week. Same price, same TV, art that's actually yours."
 
 ---
 
