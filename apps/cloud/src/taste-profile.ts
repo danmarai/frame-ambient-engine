@@ -116,7 +116,8 @@ export function recordRating(input: RatingInput): RatingResult {
     .get(input.userId, input.sourceType, input.sourceId) as { id: number };
 
   // Recompute profile synchronously
-  const profile = recomputeProfile(input.userId);
+  const result = recomputeProfile(input.userId);
+  const { _counts, ...profile } = result;
 
   logger.info(
     {
@@ -132,7 +133,12 @@ export function recordRating(input: RatingInput): RatingResult {
     rating: input.rating,
     sourceType: input.sourceType,
     sourceId: input.sourceId,
-    profile: toProfileSummary(profile),
+    profile: toProfileSummary(
+      profile,
+      _counts.total,
+      _counts.ups,
+      _counts.downs,
+    ),
   };
 }
 
@@ -170,7 +176,9 @@ function confidenceMessage(confidence: Confidence, count: number): string {
   }
 }
 
-export function recomputeProfile(userId: string): TasteProfile {
+export function recomputeProfile(
+  userId: string,
+): TasteProfile & { _counts: { total: number; ups: number; downs: number } } {
   const db = getRawDb();
 
   const counts = db
@@ -283,7 +291,7 @@ export function recomputeProfile(userId: string): TasteProfile {
     new Date().toISOString(),
   );
 
-  return profile;
+  return { ...profile, _counts: counts };
 }
 
 function buildStyleHints(userId: string, db: any): string[] {
@@ -358,42 +366,19 @@ export function getTasteProfile(userId: string): ProfileSummary {
 
 function toProfileSummary(
   profile: TasteProfile,
-  ratingsCount?: number,
-  positiveCount?: number,
-  negativeCount?: number,
+  ratingsCount: number,
+  positiveCount: number,
+  negativeCount: number,
 ): ProfileSummary {
-  const db = getRawDb();
-  let rc = ratingsCount;
-  let pc = positiveCount;
-  let nc = negativeCount;
-
-  // If counts not provided, derive from profile table or compute
-  if (rc === undefined) {
-    const row = db
-      .prepare(
-        "SELECT ratings_count, positive_count, negative_count FROM taste_profiles WHERE user_id = (SELECT user_id FROM taste_profiles LIMIT 1)",
-      )
-      .get() as
-      | {
-          ratings_count: number;
-          positive_count: number;
-          negative_count: number;
-        }
-      | undefined;
-    rc = row?.ratings_count ?? 0;
-    pc = row?.positive_count ?? 0;
-    nc = row?.negative_count ?? 0;
-  }
-
   return {
     confidence: profile.confidence,
-    ratingsCount: rc!,
-    positiveCount: pc ?? 0,
-    negativeCount: nc ?? 0,
+    ratingsCount,
+    positiveCount,
+    negativeCount,
     topCategories: profile.topCategories,
     styleHints: profile.styleHints,
     avoidHints: profile.avoidHints,
-    message: confidenceMessage(profile.confidence, rc!),
+    message: confidenceMessage(profile.confidence, ratingsCount),
   };
 }
 

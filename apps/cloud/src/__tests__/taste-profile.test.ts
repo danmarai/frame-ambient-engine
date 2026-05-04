@@ -369,15 +369,33 @@ describe("ratings routes", () => {
     expect(res.statusCode).toBe(403);
   });
 
-  it("POST /api/ratings accepts valid library rating", () => {
+  it("POST /api/ratings rejects library image not on disk", () => {
     const handler = findHandler(ratingsRouter, "post", "/api/ratings");
     const req = mockReq(
       {
         sourceType: "library",
-        sourceId: "Coastal/sunset.jpg",
+        sourceId: "Nonexistent/fake.jpg",
         rating: "up",
-        category: "Coastal",
-        filename: "sunset.jpg",
+        category: "Nonexistent",
+        filename: "fake.jpg",
+      },
+      {},
+      {},
+      { userId: TEST_USER },
+    );
+    const res = mockRes();
+    handler!(req, res);
+    expect(res.statusCode).toBe(404);
+  });
+
+  it("POST /api/ratings accepts valid generated scene rating", () => {
+    seedScene("scene-valid");
+    const handler = findHandler(ratingsRouter, "post", "/api/ratings");
+    const req = mockReq(
+      {
+        sourceType: "generated",
+        sourceId: "scene-valid",
+        rating: "up",
       },
       {},
       {},

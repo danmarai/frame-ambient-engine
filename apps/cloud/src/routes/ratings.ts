@@ -10,6 +10,7 @@ import {
   type SourceType,
   type Rating,
 } from "../taste-profile.js";
+import { resolveLibraryPath } from "./library.js";
 
 const router = Router();
 
@@ -61,7 +62,7 @@ router.post("/api/ratings", requireAuth, (req, res) => {
     }
   }
 
-  // For library items, validate category/filename format
+  // For library items, validate against actual library on disk
   if (sourceType === "library") {
     if (!category || !filename) {
       res
@@ -69,12 +70,17 @@ router.post("/api/ratings", requireAuth, (req, res) => {
         .json({ error: "Library ratings require category and filename" });
       return;
     }
-    // sourceId should be category/filename
     const expectedId = `${category}/${filename}`;
     if (sourceId !== expectedId) {
       res.status(400).json({
         error: "sourceId must match category/filename for library items",
       });
+      return;
+    }
+    // Validate the image actually exists in the library
+    const resolved = resolveLibraryPath(category, filename);
+    if (!resolved) {
+      res.status(404).json({ error: "Library image not found" });
       return;
     }
   }
