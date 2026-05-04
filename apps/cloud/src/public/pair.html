@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Frame Art — Pair Your TV</title>
+    <title>Curateur — Pair Your TV</title>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
       * {
@@ -141,7 +141,7 @@
   </head>
   <body>
     <div class="card" id="loginView">
-      <h1>Frame Art</h1>
+      <h1>Curateur</h1>
       <p class="subtitle">Sign in to manage your Frame TV art</p>
       <div
         id="googleBtn"
@@ -153,7 +153,7 @@
     </div>
 
     <div class="card" id="pairView" style="display: none">
-      <h1>Frame Art</h1>
+      <h1>Curateur</h1>
       <p class="subtitle">Enter the code shown on your TV</p>
 
       <div class="code-input" id="codeInput">
@@ -169,7 +169,7 @@
       <div class="status" id="status"></div>
 
       <div class="instructions">
-        Open the Frame Art app on your Samsung Frame TV to see the pairing code.
+        Open the Curateur app on your Samsung Frame TV to see the pairing code.
       </div>
     </div>
 
@@ -210,6 +210,23 @@
         Upload Art to TV
       </button>
       <div class="status" id="syncStatus"></div>
+
+      <a
+        href="/controls"
+        style="
+          display: inline-block;
+          margin-top: 12px;
+          padding: 10px 24px;
+          background: transparent;
+          border: 1px solid #4a90d9;
+          color: #4a90d9;
+          border-radius: 6px;
+          text-decoration: none;
+          font-size: 14px;
+          letter-spacing: 0.5px;
+        "
+        >TV Settings</a
+      >
 
       <div class="instructions" style="margin-top: 24px">
         Press "Upload Art" to send a test image to your TV's Art Mode. The image
@@ -254,6 +271,16 @@
         localStorage.removeItem("frameArtSession");
         localStorage.removeItem("frameArtUser");
         window.location.href = "/pair";
+      }
+
+      // Pre-fill code from ?code= query param (from QR scan)
+      var urlParams = new URLSearchParams(window.location.search);
+      var prefillCode = urlParams.get("code");
+      if (prefillCode && prefillCode.length === 6) {
+        for (var pi = 0; pi < 6; pi++) {
+          inputs[pi].value = prefillCode[pi].toUpperCase();
+        }
+        updatePairButton();
       }
 
       var currentSession = localStorage.getItem("frameArtSession");

@@ -17,7 +17,10 @@ import { getRawDb } from "../db.js";
 
 const router = Router();
 
-function resolveOwnedTv(req: any, res: any): { id: string; tvIp: string } | null {
+function resolveOwnedTv(
+  req: any,
+  res: any,
+): { id: string; tvIp: string } | null {
   const userId = req.user.userId as string;
   const { tvId, tvIp } = req.body;
   if (!tvId && !tvIp) {
@@ -39,11 +42,7 @@ function resolveOwnedTv(req: any, res: any): { id: string; tvIp: string } | null
   return { id: tv.id, tvIp: tv.tvIp };
 }
 
-function requireOwnedScene(
-  userId: string,
-  sceneId: string,
-  res: any,
-): boolean {
+function requireOwnedScene(userId: string, sceneId: string, res: any): boolean {
   const row = getRawDb()
     .prepare("SELECT user_id FROM scene_archive WHERE id = ?")
     .get(sceneId) as { user_id: string | null } | undefined;
@@ -106,6 +105,18 @@ router.post("/api/upload", requireAuth, async (req, res) => {
 
   const tv = resolveOwnedTv(req, res);
   if (!tv) return;
+
+  // Check if Curateur is paused for this TV
+  const tvRow = getRawDb()
+    .prepare("SELECT frame_art_active FROM tv_devices WHERE id = ?")
+    .get(tv.id) as { frame_art_active: number } | undefined;
+  if (tvRow && tvRow.frame_art_active === 0) {
+    res.status(409).json({
+      error:
+        "Curateur is paused for this TV. Enable it in Controls to push art.",
+    });
+    return;
+  }
   if (!requireOwnedScene(userId, sceneId, res)) return;
   const tvIp = tv.tvIp;
 
@@ -285,6 +296,51 @@ router.post("/api/cycle/stop", requireAuth, (_req, res) => {
   } else {
     res.json({ success: true, message: "No cycle running" });
   }
+});
+
+/** Pause/resume Curateur for a TV — when paused, no new art is pushed */
+router.post("/api/tv/toggle", requireAuth, (req, res) => {
+  const { active } = req.body;
+  const tv = resolveOwnedTv(req, res);
+  if (!tv) return;
+
+  const db = getRawDb();
+  db.prepare(`UPDATE tv_devices SET frame_art_active = ? WHERE id = ?`).run(
+    active ? 1 : 0,
+    tv.id,
+  );
+
+  // Notify the TV of state change
+  sendToTv(tv.id, {
+    type: "frame_art_toggle",
+    active: !!active,
+  });
+
+  logger.info({ tvId: tv.id, active }, "Curateur toggled");
+  res.json({ success: true, active: !!active });
+});
+
+/** Get Curateur active state for a TV */
+router.get("/api/tv/status", requireAuth, (req, res) => {
+  const userId = (req as any).user.userId as string;
+  const tvId = req.query.tvId as string;
+  if (!tvId) {
+    res.status(400).json({ error: "Missing tvId query param" });
+    return;
+  }
+  const tv = getOwnedTv(userId, { tvId });
+  if (!tv) {
+    res.status(403).json({ error: "TV not owned by this user" });
+    return;
+  }
+  const row = getRawDb()
+    .prepare("SELECT frame_art_active FROM tv_devices WHERE id = ?")
+    .get(tv.id) as { frame_art_active: number } | undefined;
+
+  res.json({
+    tvId: tv.id,
+    active: row ? row.frame_art_active !== 0 : true,
+  });
 });
 
 export default router;
