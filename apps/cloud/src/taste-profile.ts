@@ -327,6 +327,23 @@ function buildAvoidHints(userId: string, db: any): string[] {
 // Profile retrieval
 // ---------------------------------------------------------------------------
 
+/**
+ * Returns the parsed full taste profile JSON, or null for users with no
+ * recorded ratings. Use this when callers need fields beyond the
+ * ProfileSummary shape (e.g. avoidedCategories, sourceWeights).
+ */
+export function getFullProfile(userId: string): TasteProfile | null {
+  const row = getRawDb()
+    .prepare("SELECT profile_json FROM taste_profiles WHERE user_id = ?")
+    .get(userId) as { profile_json: string } | undefined;
+  if (!row) return null;
+  try {
+    return JSON.parse(row.profile_json) as TasteProfile;
+  } catch {
+    return null;
+  }
+}
+
 export function getTasteProfile(userId: string): ProfileSummary {
   const db = getRawDb();
   const row = db

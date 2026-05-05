@@ -47,6 +47,7 @@ import feedbackRoutes from "./routes/feedback.js";
 import quotesRoutes from "./routes/quotes.js";
 import libraryRoutes from "./routes/library.js";
 import ratingsRoutes from "./routes/ratings.js";
+import recommendationsRoutes from "./routes/recommendations.js";
 
 // Load .env
 import { logger } from "./logger.js";
@@ -140,6 +141,7 @@ app.use(feedbackRoutes);
 app.use(quotesRoutes);
 app.use(libraryRoutes);
 app.use(ratingsRoutes);
+app.use(recommendationsRoutes);
 
 // --- WebSocket handling ---
 

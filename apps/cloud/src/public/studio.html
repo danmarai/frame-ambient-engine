@@ -499,6 +499,58 @@
       .library-thumb {
         position: relative;
       }
+      .rate-bar {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        margin: 8px 0 4px;
+      }
+      .rate-btn {
+        flex: 0 0 auto;
+        padding: 8px 16px;
+        border: 1px solid #333;
+        border-radius: 8px;
+        background: #161626;
+        color: #ccc;
+        font-size: 18px;
+        cursor: pointer;
+        transition:
+          background 0.15s,
+          color 0.15s,
+          border-color 0.15s;
+      }
+      .rate-btn:hover {
+        background: #1f1f33;
+        color: #fff;
+      }
+      .rate-btn.active.up {
+        background: #0a5;
+        border-color: #0a5;
+        color: #fff;
+      }
+      .rate-btn.active.down {
+        background: #a33;
+        border-color: #a33;
+        color: #fff;
+      }
+      .taste-status {
+        font-size: 12px;
+        color: #888;
+        text-align: center;
+        margin: 4px 0 8px;
+      }
+      .taste-status.active {
+        color: #0fa;
+      }
+      .rec-reason {
+        font-size: 10px;
+        color: #888;
+        text-align: center;
+        margin-top: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
     </style>
   </head>
   <body>
@@ -576,6 +628,9 @@
           <button class="generate-btn" id="genBtn">Generate Art</button>
         </div>
         <div id="libraryPanel" class="library-panel">
+          <div id="tasteStatus" class="taste-status">
+            Rate art to start personalization.
+          </div>
           <select
             id="libCategorySelect"
             style="
@@ -643,6 +698,24 @@
       </div>
       <div class="preview" id="previewSection" style="display: none">
         <img id="previewImg" src="" alt="Generated art" />
+        <div class="rate-bar" id="rateBar">
+          <button
+            class="rate-btn"
+            id="rateUpBtn"
+            onclick="rateCurrent('up')"
+            title="I like this"
+          >
+            &#128077;
+          </button>
+          <button
+            class="rate-btn"
+            id="rateDownBtn"
+            onclick="rateCurrent('down')"
+            title="Not for me"
+          >
+            &#128078;
+          </button>
+        </div>
         <div class="preview-actions">
           <button class="btn-saved" id="savedBadge">
             &#10003; Saved to Gallery
@@ -1000,6 +1073,8 @@
               return;
             }
             currentScene = data;
+            currentScene.source = "generated";
+            resetRateButtons();
             document.getElementById("previewSection").style.display = "block";
             document.getElementById("previewImg").src = data.imageUrl;
             document.getElementById("promptText").textContent =
@@ -1196,12 +1271,20 @@
             libCategories = cats;
             libCatsLoaded = true;
             var sel = document.getElementById("libCategorySelect");
-            sel.innerHTML =
-              '<option value="">All categories (' +
-              cats.reduce(function (s, c) {
-                return s + c.count;
-              }, 0) +
-              " images)</option>";
+            var total = cats.reduce(function (s, c) {
+              return s + c.count;
+            }, 0);
+            sel.innerHTML = "";
+            if (session) {
+              var recOpt = document.createElement("option");
+              recOpt.value = "__recommended__";
+              recOpt.textContent = "Recommended for you";
+              sel.appendChild(recOpt);
+            }
+            var allOpt = document.createElement("option");
+            allOpt.value = "";
+            allOpt.textContent = "All categories (" + total + " images)";
+            sel.appendChild(allOpt);
             cats.forEach(function (c) {
               var o = document.createElement("option");
               o.value = c.id;
@@ -1209,9 +1292,73 @@
               sel.appendChild(o);
             });
             dbg("Library: loaded " + cats.length + " categories");
+            // Default to recommended view for signed-in users
+            if (session) {
+              sel.value = "__recommended__";
+              loadRecommendations();
+            }
+            refreshTasteStatus();
           })
           .catch(function (e) {
             dbg("Library load error: " + e.message);
+          });
+      }
+
+      function refreshTasteStatus() {
+        var el = document.getElementById("tasteStatus");
+        if (!session) {
+          el.textContent = "Sign in to personalize recommendations.";
+          el.className = "taste-status";
+          return;
+        }
+        fetch("/api/taste/profile", {
+          headers: { Authorization: "Bearer " + session },
+        })
+          .then(function (r) {
+            return r.ok ? r.json() : null;
+          })
+          .then(function (p) {
+            if (!p) return;
+            el.textContent = p.message || "";
+            el.className =
+              "taste-status" + (p.confidence === "useful" ? " active" : "");
+          })
+          .catch(function () {});
+      }
+
+      function loadRecommendations() {
+        if (!session) {
+          document.getElementById("libGrid").innerHTML =
+            '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#888">Sign in to see personalized recommendations.</div>';
+          document.getElementById("libMoreBtn").style.display = "none";
+          return;
+        }
+        var grid = document.getElementById("libGrid");
+        grid.innerHTML =
+          '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#888">Loading recommendations...</div>';
+        document.getElementById("libMoreBtn").style.display = "none";
+        fetch("/api/recommendations/library?limit=24", {
+          headers: { Authorization: "Bearer " + session },
+        })
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (data) {
+            grid.innerHTML = "";
+            if (!data.items || data.items.length === 0) {
+              grid.innerHTML =
+                '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#888">No recommendations yet — rate a few pieces.</div>';
+              return;
+            }
+            data.items.forEach(function (img) {
+              renderLibraryThumb(img.category, img, true);
+            });
+          })
+          .catch(function (e) {
+            grid.innerHTML =
+              '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#a55">Error: ' +
+              e.message +
+              "</div>";
           });
       }
 
@@ -1238,7 +1385,11 @@
               sceneId: "lib-" + Date.now(),
               imageUrl: data.url,
               prompt: data.label,
+              source: "library",
+              category: data.category,
+              filename: data.filename,
             };
+            resetRateButtons();
             document.getElementById("previewSection").style.display = "block";
             document.getElementById("previewImg").src = data.url;
             document.getElementById("promptText").textContent = data.label;
@@ -1260,9 +1411,95 @@
 
       function loadMoreLibrary() {
         var cat = document.getElementById("libCategorySelect").value;
-        if (!cat) return;
+        if (!cat || cat === "__recommended__") return;
         libPage++;
         browseLibrary(cat, libPage);
+      }
+
+      function resetRateButtons() {
+        var up = document.getElementById("rateUpBtn");
+        var down = document.getElementById("rateDownBtn");
+        if (up) up.className = "rate-btn";
+        if (down) down.className = "rate-btn";
+      }
+
+      function rateCurrent(rating) {
+        if (!session) {
+          setStatus("Sign in to rate art", true);
+          return;
+        }
+        if (!currentScene) return;
+
+        var body = { rating: rating };
+        if (currentScene.source === "library") {
+          if (!currentScene.category || !currentScene.filename) return;
+          body.sourceType = "library";
+          body.sourceId = currentScene.category + "/" + currentScene.filename;
+          body.category = currentScene.category;
+          body.filename = currentScene.filename;
+        } else {
+          if (!currentScene.sceneId || /^lib-/.test(currentScene.sceneId))
+            return;
+          body.sourceType = "generated";
+          body.sourceId = currentScene.sceneId;
+        }
+        if (pairedTv && pairedTv.tvId) body.tvId = pairedTv.tvId;
+
+        // Optimistic UI
+        var up = document.getElementById("rateUpBtn");
+        var down = document.getElementById("rateDownBtn");
+        var prevUp = up.className;
+        var prevDown = down.className;
+        up.className = "rate-btn" + (rating === "up" ? " active up" : "");
+        down.className = "rate-btn" + (rating === "down" ? " active down" : "");
+
+        fetch("/api/ratings", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + session,
+          },
+          body: JSON.stringify(body),
+        })
+          .then(function (r) {
+            return r.json().then(function (j) {
+              return { ok: r.ok, body: j };
+            });
+          })
+          .then(function (res) {
+            if (!res.ok) {
+              up.className = prevUp;
+              down.className = prevDown;
+              setStatus(
+                "Rating failed: " + (res.body.error || "unknown"),
+                true,
+              );
+              return;
+            }
+            setStatus(
+              rating === "up"
+                ? "Liked — thanks!"
+                : "Got it — we'll show less of that.",
+              false,
+            );
+            if (res.body.profile) {
+              var el = document.getElementById("tasteStatus");
+              el.textContent = res.body.profile.message || "";
+              el.className =
+                "taste-status" +
+                (res.body.profile.confidence === "useful" ? " active" : "");
+            }
+            // If recommendation view active and downrated, refresh
+            var sel = document.getElementById("libCategorySelect");
+            if (rating === "down" && sel.value === "__recommended__") {
+              loadRecommendations();
+            }
+          })
+          .catch(function (e) {
+            up.className = prevUp;
+            down.className = prevDown;
+            setStatus("Rating error: " + e.message, true);
+          });
       }
 
       // Multi-select cart
@@ -1414,6 +1651,42 @@
           });
       }
 
+      function renderLibraryThumb(category, img, showReason) {
+        var grid = document.getElementById("libGrid");
+        var div = document.createElement("div");
+        var inCart = isInCart(img.filename, category);
+        div.className = "library-thumb" + (inCart ? " selected" : "");
+        var reasonHtml =
+          showReason && img.reason
+            ? '<div class="rec-reason">' + escapeHtml(img.reason) + "</div>"
+            : "";
+        div.innerHTML =
+          '<div class="check">&#10003;</div><img src="' +
+          img.url +
+          '" loading="lazy" alt="' +
+          img.label +
+          '"><div class="library-thumb-label">' +
+          img.label +
+          "</div>" +
+          reasonHtml;
+        div.onclick = function () {
+          toggleCartItem(img, category, div);
+        };
+        grid.appendChild(div);
+      }
+
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+          return {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;",
+          }[c];
+        });
+      }
+
       function browseLibrary(category, page) {
         fetch(
           "/api/library/browse/" +
@@ -1430,21 +1703,7 @@
             var grid = document.getElementById("libGrid");
             if (page === 0) grid.innerHTML = "";
             data.images.forEach(function (img) {
-              var div = document.createElement("div");
-              var inCart = isInCart(img.filename, category);
-              div.className = "library-thumb" + (inCart ? " selected" : "");
-              div.innerHTML =
-                '<div class="check">&#10003;</div><img src="' +
-                img.url +
-                '" loading="lazy" alt="' +
-                img.label +
-                '"><div class="library-thumb-label">' +
-                img.label +
-                "</div>";
-              div.onclick = function () {
-                toggleCartItem(img, category, div);
-              };
-              grid.appendChild(div);
+              renderLibraryThumb(category, img, false);
             });
             var moreBtn = document.getElementById("libMoreBtn");
             moreBtn.style.display =
@@ -1457,8 +1716,14 @@
         .addEventListener("change", function () {
           libPage = 0;
           var cat = this.value;
-          if (cat) browseLibrary(cat, 0);
-          else document.getElementById("libGrid").innerHTML = "";
+          if (cat === "__recommended__") {
+            loadRecommendations();
+          } else if (cat) {
+            browseLibrary(cat, 0);
+          } else {
+            document.getElementById("libGrid").innerHTML = "";
+            document.getElementById("libMoreBtn").style.display = "none";
+          }
         });
 
       if (IS_APP) {
