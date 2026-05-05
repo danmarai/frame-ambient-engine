@@ -240,6 +240,45 @@ describe("buildTastePromptHints", () => {
     expect(hints).not.toBeNull();
     expect(hints!.negative).toContain("abstract");
   });
+
+  it("uses conservative hints at learning (top 2 styles, top 1 avoid)", () => {
+    // Build a learning profile with 5+ liked categories and 3+ disliked
+    const liked = ["A", "B", "C", "D", "E"];
+    const disliked = ["X", "Y", "Z"];
+    for (const c of liked) rateLibrary(c, `img-${c}.jpg`, "up");
+    for (const c of disliked) rateLibrary(c, `img-${c}.jpg`, "down");
+
+    const profile = getTasteProfile(TEST_USER);
+    expect(profile.confidence).toBe("learning");
+
+    const hints = buildTastePromptHints(profile);
+    expect(hints).not.toBeNull();
+    // Conservative: at most 2 style entries and 1 avoid entry
+    const styleCount = hints!.positive.split(",").length;
+    const avoidCount = hints!.negative ? hints!.negative.split(",").length : 0;
+    expect(styleCount).toBeLessThanOrEqual(2);
+    expect(avoidCount).toBeLessThanOrEqual(1);
+  });
+
+  it("uses full hints at useful (top 5 styles, top 3 avoids)", () => {
+    // 20+ ratings to reach useful confidence
+    const liked = ["A", "B", "C", "D", "E"];
+    const disliked = ["X", "Y", "Z"];
+    for (let i = 0; i < 4; i++) {
+      for (const c of liked) rateLibrary(c, `up-${c}-${i}.jpg`, "up");
+    }
+    for (const c of disliked) rateLibrary(c, `down-${c}.jpg`, "down");
+
+    const profile = getTasteProfile(TEST_USER);
+    expect(profile.confidence).toBe("useful");
+
+    const hints = buildTastePromptHints(profile);
+    expect(hints).not.toBeNull();
+    // Full: more than 2 styles is allowed (up to 5)
+    const styleCount = hints!.positive.split(",").length;
+    expect(styleCount).toBeGreaterThanOrEqual(2);
+    expect(styleCount).toBeLessThanOrEqual(5);
+  });
 });
 
 // ---------------------------------------------------------------------------

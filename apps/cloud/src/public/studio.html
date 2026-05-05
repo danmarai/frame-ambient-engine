@@ -551,6 +551,18 @@
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      .taste-badge {
+        display: inline-block;
+        margin: 8px auto 0;
+        padding: 4px 10px;
+        border-radius: 12px;
+        background: rgba(0, 250, 170, 0.12);
+        border: 1px solid rgba(0, 250, 170, 0.4);
+        color: #0fa;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
     </style>
   </head>
   <body>
@@ -698,6 +710,7 @@
       </div>
       <div class="preview" id="previewSection" style="display: none">
         <img id="previewImg" src="" alt="Generated art" />
+        <div id="tasteBadge" class="taste-badge" style="display: none"></div>
         <div class="rate-bar" id="rateBar">
           <button
             class="rate-btn"
@@ -1075,6 +1088,7 @@
             currentScene = data;
             currentScene.source = "generated";
             resetRateButtons();
+            updateTasteBadge(data.tasteProfileUsed, data.tasteConfidence);
             document.getElementById("previewSection").style.display = "block";
             document.getElementById("previewImg").src = data.imageUrl;
             document.getElementById("promptText").textContent =
@@ -1390,6 +1404,7 @@
               filename: data.filename,
             };
             resetRateButtons();
+            updateTasteBadge(false);
             document.getElementById("previewSection").style.display = "block";
             document.getElementById("previewImg").src = data.url;
             document.getElementById("promptText").textContent = data.label;
@@ -1421,6 +1436,21 @@
         var down = document.getElementById("rateDownBtn");
         if (up) up.className = "rate-btn";
         if (down) down.className = "rate-btn";
+      }
+
+      function updateTasteBadge(used, confidence) {
+        var badge = document.getElementById("tasteBadge");
+        if (!badge) return;
+        if (used) {
+          var label =
+            confidence === "useful"
+              ? "Personalized for you"
+              : "Learning your taste";
+          badge.textContent = label;
+          badge.style.display = "inline-block";
+        } else {
+          badge.style.display = "none";
+        }
       }
 
       function rateCurrent(rating) {

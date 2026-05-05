@@ -41,6 +41,7 @@ export async function generateScene(
     theme?: ThemeName;
     imageStyle?: ImageStyleName;
     styleHints?: string;
+    avoidHints?: string;
   },
 ): Promise<{ scene: Omit<Scene, "id" | "imagePath">; imageData: Buffer }> {
   const start = Date.now();
@@ -65,6 +66,7 @@ export async function generateScene(
     quote: quote.status === "fulfilled" ? quote.value : null,
     theme,
     ...(overrides?.styleHints ? { styleHints: overrides.styleHints } : {}),
+    ...(overrides?.avoidHints ? { avoidHints: overrides.avoidHints } : {}),
   };
 
   // 2. Compose prompt with image style

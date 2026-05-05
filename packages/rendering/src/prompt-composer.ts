@@ -468,6 +468,9 @@ export function composePrompt(
   if (context.styleHints && context.styleHints.length > 0) {
     parts.push(`Style preferences: ${context.styleHints}`);
   }
+  if (context.avoidHints && context.avoidHints.length > 0) {
+    parts.push(`Avoid: ${context.avoidHints}`);
+  }
 
   // Image style + theme style
   parts.push(IMAGE_STYLES[style]);
