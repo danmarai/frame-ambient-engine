@@ -21,6 +21,7 @@ export interface SceneContext {
   quote: Quote | null;
   theme: ThemeName;
   styleHints?: string;
+  avoidHints?: string;
 }
 
 /** A fully realized scene with generated image. */

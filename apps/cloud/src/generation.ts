@@ -52,6 +52,11 @@ const DATA_DIR = path.resolve(process.cwd(), "../../data/images");
 
 // User settings persisted to SQLite via the settings table
 import { getRawDb } from "./db.js";
+import {
+  getTasteProfile,
+  buildTastePromptHints,
+  type Confidence,
+} from "./taste-profile.js";
 
 export function getUserSettings(userId: string): AppSettings {
   const db = getRawDb();
@@ -146,6 +151,8 @@ export interface GenerateResult {
   context: Record<string, unknown>;
   durationMs: number;
   provider: string;
+  tasteProfileUsed: boolean;
+  tasteConfidence?: Confidence;
 }
 
 export async function generate(
@@ -197,10 +204,30 @@ export async function generate(
     "Generating scene",
   );
 
+  // Personalize the prompt with the user's taste profile if signed in.
+  // Cold-start profiles return null and the generator falls back to its
+  // default behavior — see buildTastePromptHints for the confidence rules.
+  let tasteProfileUsed = false;
+  let tasteConfidence: Confidence | undefined;
+  let styleHints: string | undefined;
+  let avoidHints: string | undefined;
+  if (options.userId) {
+    const profile = getTasteProfile(options.userId);
+    tasteConfidence = profile.confidence;
+    const hints = buildTastePromptHints(profile);
+    if (hints) {
+      styleHints = hints.positive || undefined;
+      avoidHints = hints.negative || undefined;
+      tasteProfileUsed = !!(styleHints || avoidHints);
+    }
+  }
+
   const { generateScene: genScene } = await loadRendering();
   const { scene, imageData: rawImage } = await genScene(deps, settings, {
     theme: options.theme as any,
     imageStyle: options.imageStyle as any,
+    styleHints,
+    avoidHints,
   });
 
   // Prepare for TV (resize to 3840x2160 JPEG)
@@ -244,6 +271,8 @@ export async function generate(
     context: scene.context as unknown as Record<string, unknown>,
     durationMs: scene.durationMs ?? 0,
     provider: options.provider || settings.imageProvider,
+    tasteProfileUsed,
+    tasteConfidence,
   };
 }
 

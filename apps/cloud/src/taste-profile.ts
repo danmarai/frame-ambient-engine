@@ -403,21 +403,36 @@ function toProfileSummary(
 // Prompt personalization
 // ---------------------------------------------------------------------------
 
+/**
+ * Build prompt-ready hint strings from a taste profile.
+ *
+ * Hint volume scales with confidence (per spec Q4):
+ *   - cold_start: no hints (returns null)
+ *   - learning  (5-19 ratings): conservative — top 2 styles, top 1 avoid
+ *   - useful    (20+ ratings):  full — top 5 styles, top 3 avoids
+ *
+ * The strings returned are bare phrases (e.g. "warm coastal light, painterly
+ * landscapes") suitable for the rendering composer to wrap with its own
+ * prefixes ("Style preferences: ...", "Avoid: ...").
+ */
 export function buildTastePromptHints(
   profile: ProfileSummary,
 ): { positive: string; negative: string } | null {
-  // Don't add hints for cold_start
   if (profile.confidence === "cold_start") return null;
 
+  const styleLimit = profile.confidence === "learning" ? 2 : 5;
+  const avoidLimit = profile.confidence === "learning" ? 1 : 3;
+
+  const styleSlice = profile.styleHints.slice(0, styleLimit);
+  const avoidSlice = profile.avoidHints.slice(0, avoidLimit);
+
   const positive =
-    profile.styleHints.length > 0
-      ? `User taste: prefers ${profile.styleHints.join(", ")}.`
+    styleSlice.length > 0
+      ? `User taste: prefers ${styleSlice.join(", ")}.`
       : "";
 
   const negative =
-    profile.avoidHints.length > 0
-      ? `Avoid: ${profile.avoidHints.join(", ")}.`
-      : "";
+    avoidSlice.length > 0 ? `Avoid: ${avoidSlice.join(", ")}.` : "";
 
   if (!positive && !negative) return null;
 
