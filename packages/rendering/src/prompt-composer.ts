@@ -304,9 +304,10 @@ function getHolidayScene(): string | null {
 
 const IMAGE_STYLES: Record<Exclude<ImageStyleName, "random">, string> = {
   photorealistic:
-    "Professional DSLR photograph, shot on Canon EOS R5 with 85mm f/1.4 lens. " +
-    "Natural lighting, realistic colors, no digital artifacts. " +
-    "Indistinguishable from a real photograph. RAW quality, sharp focus.",
+    "Quiet observational nature photography with believable geography and botanical detail. " +
+    "Natural soft light, restrained color, irregular organic textures, realistic depth and imperfect reflections. " +
+    "A place encountered on a walk, with an understated asymmetrical composition. " +
+    "No HDR halos, neon foliage, fantasy scenery, plastic surfaces, excessive sharpening, or artificial sunbeams.",
   "fine-art":
     "Gallery-quality fine art painting. Oil on canvas texture with visible brushstrokes. " +
     "Rich color palette, museum-worthy composition. Classical artistic technique.",

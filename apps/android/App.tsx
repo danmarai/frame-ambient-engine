@@ -369,7 +369,7 @@ async function doUpload(
                 );
                 tcp.write(lb);
                 tcp.write(hb);
-                tcp.write(Buffer.from(imageData), () => {
+                tcp.write(Buffer.from(imageData), undefined, () => {
                   tcpWriteDone = true;
                   setPhase(
                     "tcp_flushing",
@@ -996,7 +996,14 @@ export default function App() {
     try {
       const r = await fetch(CLOUD + "/api/scenes");
       const d = await r.json();
-      setScenes(d);
+      if (!r.ok || !Array.isArray(d)) throw new Error("Gallery unavailable");
+      setScenes(d.map((row: any) => ({
+        sceneId: row.sceneId ?? row.id,
+        imageUrl: row.imageUrl ?? row.image_url,
+        prompt: row.prompt ?? "",
+        durationMs: row.durationMs ?? row.duration_ms ?? 0,
+        provider: row.provider ?? "",
+      })).filter((row: Scene) => typeof row.sceneId === "string" && typeof row.imageUrl === "string"));
       log("Loaded " + d.length + " scenes");
     } catch (e: any) {
       log("Load failed: " + e.message);
@@ -1208,7 +1215,10 @@ export default function App() {
 
   function onWebViewMessage(event: WebViewMessageEvent) {
     try {
+      if (!event.nativeEvent.url?.startsWith(CLOUD + "/")) return;
       const msg = JSON.parse(event.nativeEvent.data);
+      if (msg.type === "publish" && (typeof msg.imageUrl !== "string" ||
+          !/^\/api\/(images|library\/image)\//.test(msg.imageUrl))) return;
       log("Bridge: " + msg.type);
       if (msg.type === "publish" && msg.imageUrl) {
         pushScene(
@@ -1491,8 +1501,9 @@ export default function App() {
           style={{ flex: 1, backgroundColor: "#0f0f1a" }}
           javaScriptEnabled
           domStorageEnabled
-          mixedContentMode="always"
-          originWhitelist={["*"]}
+          mixedContentMode="never"
+          originWhitelist={[CLOUD]}
+          onShouldStartLoadWithRequest={(request) => request.url.startsWith(CLOUD + "/")}
           injectedJavaScript={bridgeScript}
           onMessage={onWebViewMessage}
           startInLoadingState

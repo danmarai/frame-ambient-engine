@@ -90,40 +90,35 @@ export function updateUserSettings(
 }
 
 async function getImageProvider(name?: ImageProviderName) {
+  if (name !== "mock" && process.env.FRAME_ENABLE_API_GENERATION !== "true") {
+    throw new Error("Paid API generation is disabled. Generate artwork in Codex using your subscription, then upload the saved file with tools/tv-art.ts. Enable FRAME_ENABLE_API_GENERATION=true only when ready to use API billing.");
+  }
   const {
     GPTImageProvider,
-    OpenAIImageProvider,
     GeminiImageProvider,
     MockImageProvider,
   } = await loadProviders();
   switch (name) {
+    case "openai": // Migrate saved DALL-E preferences to the supported provider.
     case "gpt-image":
       if (!process.env.OPENAI_API_KEY) {
-        logger.warn("OPENAI_API_KEY not set, falling back to mock");
-        return new MockImageProvider();
+        throw new Error("Image API generation requires OPENAI_API_KEY. For subscription artwork, generate in Codex and use tools/tv-art.ts to upload the saved file.");
       }
       return new GPTImageProvider(process.env.OPENAI_API_KEY);
-    case "openai":
-      if (!process.env.OPENAI_API_KEY) {
-        logger.warn("OPENAI_API_KEY not set, falling back to mock");
-        return new MockImageProvider();
-      }
-      return new OpenAIImageProvider(process.env.OPENAI_API_KEY);
     case "gemini":
       if (!process.env.GEMINI_API_KEY) {
-        logger.warn("GEMINI_API_KEY not set, falling back to mock");
-        return new MockImageProvider();
+        throw new Error("Gemini API generation requires GEMINI_API_KEY; no mock artwork was generated.");
       }
       return new GeminiImageProvider(process.env.GEMINI_API_KEY);
     case "mock":
       return new MockImageProvider();
     default:
-      // Default: GPT Image (best quality), fallback to DALL-E 3, then mock
+      // Explicit provider selection keeps API generation separate from subscription artwork.
       if (process.env.OPENAI_API_KEY)
         return new GPTImageProvider(process.env.OPENAI_API_KEY);
       if (process.env.GEMINI_API_KEY)
         return new GeminiImageProvider(process.env.GEMINI_API_KEY);
-      return new MockImageProvider();
+      throw new Error("API generation requires a configured provider key; choose mock explicitly for tests.");
   }
 }
 
@@ -319,8 +314,7 @@ export function getGenerationConfig() {
       { id: "random", label: "Random (cycles)" },
     ],
     providers: [
-      { id: "gpt-image", label: "GPT Image (best)" },
-      { id: "openai", label: "OpenAI (DALL-E 3)" },
+      { id: "gpt-image", label: "GPT Image 2.5 Sunburst (API)" },
       { id: "gemini", label: "Google Gemini" },
       { id: "mock", label: "Mock (test)" },
     ],

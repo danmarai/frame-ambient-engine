@@ -1,4 +1,9 @@
-# Frame Ambient Engine
+# Curateur / Frame Ambient Engine
+
+Primary development and Android/Tizen builds now run on Tuscany at
+`~/ClaudeCode/FrameHomepage`. See [the revival runbook](docs/REVIVAL.md) for
+reconciled branches, pinned tooling, subscription artwork, and TV deployment.
+
 
 A local-first ambient display system that generates AI-powered wallpapers and pushes them to a Samsung Frame TV. Includes a web control panel for monitoring and adjusting generation parameters.
 
@@ -64,7 +69,7 @@ npm run build:apk
 - **Auth**: Google OAuth + session tokens
 - **Database**: SQLite via Drizzle ORM + better-sqlite3
 - **TV protocol**: Samsung Frame Art Mode WebSocket + d2d TCP upload
-- **Image generation**: OpenAI GPT Image (default), DALL-E 3, Google Gemini
+- **Image generation**: OpenAI GPT Image 2.5 Sunburst (API opt-in), Google Gemini; subscription-generated files via LAN helper
 - **Weather**: Open-Meteo (free, no key)
 - **Deployment**: EC2, PM2, nginx, Let's Encrypt; Docker available
 
@@ -72,7 +77,7 @@ All providers have mock implementations for local development without API keys.
 
 ## Project Status
 
-Production hardening in progress. See `docs/HARDENING_PLAN.md` for the full plan and `docs/coordination/` for Track 1/Track 2 progress.
+Revival baseline: cloud/Android checks and device upload are verified; Tizen signing requires unlocking the existing profile. Historical hardening notes are not a public-release security signoff. See `docs/REVIVAL.md`.
 
 See `docs/` for the PRD, technical spec, and architecture decision records.
 

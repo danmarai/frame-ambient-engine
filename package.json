@@ -11,5 +11,8 @@
   },
   "devDependencies": {
     "turbo": "^2.3.0"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }

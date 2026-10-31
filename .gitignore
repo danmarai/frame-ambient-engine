@@ -60,3 +60,11 @@ apps/cloud/.env
 
 # Editor temp files
 *.!*!*
+
+# Primary Studio builds and local device credentials
+*.tsbuildinfo
+apps/android/android/
+apps/android/.expo/
+apps/android/pnpm-lock.yaml
+apps/tizen/.buildResult/
+.frame-local/
