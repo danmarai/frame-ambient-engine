@@ -7,6 +7,7 @@ import { sendToTv } from "../tv-connections.js";
 import { isValidTvIp } from "../middleware.js";
 import { logger } from "../logger.js";
 import { isTvOwnedByAnotherUser } from "../tv-ownership.js";
+import QRCode from "qrcode";
 
 const router = Router();
 
@@ -161,6 +162,34 @@ router.get("/api/pair/status/:code", (req, res) => {
     paired: !!session.pairedAt,
     tvId: session.tvId,
   });
+});
+
+/** Generate QR code SVG — encodes pairing URL or gallery URL */
+router.get("/api/qr/:code", async (req, res) => {
+  const code = req.params.code.toUpperCase();
+  const baseUrl = process.env.CLOUD_URL || "https://frameapp.dmarantz.com";
+
+  // Special codes map to specific pages; otherwise it's a pairing code
+  const urlMap: Record<string, string> = {
+    GALLERY: `${baseUrl}/gallery`,
+    CONTROLS: `${baseUrl}/controls`,
+    STUDIO: `${baseUrl}/studio`,
+  };
+  const targetUrl = urlMap[code] || `${baseUrl}/pair?code=${code}`;
+
+  try {
+    const svg = await QRCode.toString(targetUrl, {
+      type: "svg",
+      width: 200,
+      margin: 1,
+      color: { dark: "#000", light: "#fff" },
+    });
+    res.setHeader("Content-Type", "image/svg+xml");
+    res.setHeader("Cache-Control", "public, max-age=600");
+    res.send(svg);
+  } catch (err) {
+    res.status(500).json({ error: "QR generation failed" });
+  }
 });
 
 export default router;
