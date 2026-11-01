@@ -6,6 +6,7 @@ import {fileURLToPath} from 'node:url';
 import sharp from '../../packages/rendering/node_modules/sharp/lib/index.js';
 import {equal,verifier} from './auth.mjs';
 import {createStudio} from './studio.mjs';
+import {createLabs} from './labs.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const dir=process.env.FRAME_PILOT_DATA;
@@ -31,6 +32,19 @@ async function saveImage(input) {
  }finally{uploading=false;}
 }
 const studio=await createStudio(dir,{saveImage});
+const labs=await createLabs(dir);
+let ticking=false;
+async function rotationTick(){
+ if(ticking)return;ticking=true;
+ try{
+  if(job&&Date.now()-job.created>300000){lastResult={ok:false,message:"Bridge timed out. Check TV before retrying."};job=null;await labs.pause("Paused after bridge timeout");}
+  if(job||Date.now()-bridgeSeen>=30000)return;
+  const ids=(await gallery()).map(x=>x.id);
+  const id=labs.candidate(ids);
+  if(id&&!job){job={id:randomUUID(),image:id,status:"pending",created:Date.now(),source:"rotation"};await labs.queued();}
+ }catch{await labs.pause("Paused after rotation error").catch(()=>{});}finally{ticking=false;}
+}
+setInterval(rotationTick,5000).unref();
 const server=http.createServer(async(req,res)=>{
  res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
  res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
@@ -63,7 +77,7 @@ const server=http.createServer(async(req,res)=>{
     const result=JSON.parse(bytes.toString());
     if(!job||result.id!==job.id||job.status!=='running')return send(409,{error:'No matching running job'});
     lastResult={id:job.id,image:job.image,ok:result.ok===true,message:String(result.message||'').slice(0,500),at:new Date().toISOString()};
-    await fs.writeFile(path.join(dir,'last-result.json'),JSON.stringify(lastResult),{mode:0o600});job=null;return send(200,{ok:true});
+    await fs.writeFile(path.join(dir,'last-result.json'),JSON.stringify(lastResult),{mode:0o600});if(job.source==='rotation')await labs.complete(job.image,result.ok===true);job=null;return send(200,{ok:true});
    }
    const id=p.slice('/bridge/image/'.length);
    if(p.startsWith('/bridge/image/')&&method==='GET'&&idOK(id)&&job?.image===id)return send(200,await fs.readFile(path.join(imageDir,id+'.jpg')),'image/jpeg');
@@ -74,10 +88,29 @@ const server=http.createServer(async(req,res)=>{
   if(method!=='GET'&&req.headers.origin!==config.origin)return send(403,{error:'Origin rejected'});
   if(p==='/logout'&&method==='POST'){sessions.delete(token);res.setHeader('Set-Cookie','__Host-frame=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0');return send(200,{ok:true});}
   if(p==='/api/status'&&method==='GET'){
-   if(job&&Date.now()-job.created>300000){lastResult={ok:false,message:'Bridge timed out. Check TV before retrying.'};job=null;}
+   if(job&&Date.now()-job.created>300000){lastResult={ok:false,message:'Bridge timed out. Check TV before retrying.'};job=null;await labs.pause('Paused after bridge timeout');}
    return send(200,{bridgeOnline:Date.now()-bridgeSeen<30000,job,lastResult,images:await gallery()});
   }
   if(p.startsWith('/image/')&&method==='GET'&&idOK(p.slice(7)))return send(200,await fs.readFile(path.join(imageDir,p.slice(7)+'.jpg')),'image/jpeg');
+  if(p==='/api/labs'&&method==='GET')return send(200,labs.snapshot());
+  if(p==='/api/labs/flag'&&method==='POST'){
+   const input=JSON.parse((await body(req,1024)).toString());
+   const result=await labs.flag(input.id,input.enabled);
+   if(!result.rotation.active&&job?.source==='rotation'&&job.status==='pending')job=null;
+   return send(200,result);
+  }
+  if(p==='/api/labs/review'&&method==='POST'){
+   const input=JSON.parse((await body(req,1024)).toString());
+   const result=await labs.review(input.id,input.value,(await gallery()).map(x=>x.id));
+   if(job?.source==='rotation'&&job.status==='pending'&&result.reviews[job.image]!=='approved')job=null;
+   return send(200,result);
+  }
+  if(p==='/api/labs/rotation'&&method==='POST'){
+   const input=JSON.parse((await body(req,1024)).toString());
+   const result=await labs.control(input.action,input.minutes,(await gallery()).map(x=>x.id),Date.now()-bridgeSeen<30000);
+   if(input.action==='stop'&&job?.source==='rotation'&&job.status==='pending')job=null;
+   return send(200,result);
+  }
   if(p==='/api/studio'&&method==='GET')return send(200,studio.snapshot());
   if(p==='/api/studio/draft'&&method==='POST'){
    try{return send(200,await studio.save(JSON.parse((await body(req,16000)).toString())));}catch(e){return send(400,{error:e.message});}
@@ -94,6 +127,8 @@ const server=http.createServer(async(req,res)=>{
    if(Date.now()-bridgeSeen>30000)return send(409,{error:'The laptop TV bridge is offline'});
    const input=JSON.parse((await body(req,1024)).toString());
    if(!idOK(input.id)||(await gallery()).every(x=>x.id!==input.id))return send(400,{error:'Unknown image'});
+   await labs.pause('Paused for manual display');
+   if(job)return send(409,{error:'A TV operation is already in progress'});
    job={id:randomUUID(),image:input.id,status:'pending',created:Date.now()};return send(202,{ok:true});
   }
   send(404,{error:'Not found'});

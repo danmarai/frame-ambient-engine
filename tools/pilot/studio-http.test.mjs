@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {headers as bridgeHeaders} from './auth.mjs';
 import sharp from '../../packages/rendering/node_modules/sharp/lib/index.js';
 
 test('studio HTTP routes require auth and origin, then save/prepare/import without displaying',async t=>{
@@ -17,6 +18,8 @@ test('studio HTTP routes require auth and origin, then save/prepare/import witho
  const base='http://127.0.0.1:'+port;
  const request=(p,method='GET',body,headers={})=>fetch(base+p,{method,headers,body:body===undefined?undefined:JSON.stringify(body)});
  assert.equal((await request('/api/studio')).status,401);
+ assert.equal((await request('/api/labs')).status,401);
+ assert.equal((await request('/api/labs/flag','POST',{id:'review',enabled:true})).status,401);
  assert.equal((await request('/api/studio/draft','POST',{})).status,401);
  const login=await request('/login','POST',{key},{Origin:origin});const cookie=login.headers.get('set-cookie').split(';')[0];
  const auth={Cookie:cookie,Origin:origin};
@@ -30,4 +33,25 @@ test('studio HTTP routes require auth and origin, then save/prepare/import witho
  const status=await request('/api/status','GET',undefined,auth).then(x=>x.json());assert.equal(status.job,null);assert.equal(status.images.length,1);
  assert.equal((await request('/api/studio/generate','POST',{id:d.id},auth)).status,404);
  assert.equal((await request('/image/'+image.id)).status,401);
+ assert.equal((await request('/api/labs/flag','POST',{id:'review',enabled:true},{Cookie:cookie,Origin:'https://evil.example'})).status,403);
+ assert.equal((await request('/api/labs/review','POST',{id:image.id,value:'approved'},auth)).status,400);
+ assert.equal((await request('/api/labs/flag','POST',{id:'review',enabled:true},auth)).status,200);
+ assert.equal((await request('/api/labs/review','POST',{id:image.id,value:'approved'},auth)).status,200);
+ assert.equal((await request('/api/labs/flag','POST',{id:'compare',enabled:true},auth)).status,400);
+ assert.equal((await request('/api/labs/flag','POST',{id:'rotation',enabled:true},auth)).status,200);
+ assert.equal((await request('/api/labs/rotation','POST',{action:'start',minutes:15},auth)).status,400);
+ assert.equal((await request('/api/status','GET',undefined,auth).then(r=>r.json())).job,null);
+ const bridge=async(p,data={})=>{const body=JSON.stringify(data);return fetch(base+p,{method:'POST',headers:bridgeHeaders('test-only-bridge-key'.repeat(4),'POST',p,body),body});};
+ assert.equal((await bridge('/bridge/poll')).status,200);
+ assert.equal((await request('/api/labs/rotation','POST',{action:'start',minutes:5},auth)).status,200);
+ let scheduled=null;const deadline=Date.now()+8000;
+ while(Date.now()<deadline){scheduled=(await request('/api/status','GET',undefined,auth).then(r=>r.json())).job;if(scheduled)break;await new Promise(r=>setTimeout(r,200));}
+ assert.equal(scheduled?.image,image.id);assert.equal(scheduled.source,'rotation');
+ const polled=await bridge('/bridge/poll').then(r=>r.json());assert.equal(polled.job.id,scheduled.id);
+ assert.equal((await bridge('/bridge/result',{id:scheduled.id,ok:true,message:'Simulated TV confirmation'})).status,200);
+ assert.equal((await request('/api/status','GET',undefined,auth).then(r=>r.json())).job,null);
+ const running=await request('/api/labs','GET',undefined,auth).then(r=>r.json());assert.ok(running.rotation.nextAt>Date.now());
+ assert.equal((await request('/api/labs/rotation','POST',{action:'stop'},auth)).status,200);
+ assert.equal((await request('/api/labs/flag','POST',{id:'review',enabled:false},auth)).status,200);
+ const labs=await request('/api/labs','GET',undefined,auth).then(r=>r.json());assert.equal(labs.flags.rotation,false);assert.equal(labs.reviews[image.id],'approved');
 });

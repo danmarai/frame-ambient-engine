@@ -1,13 +1,13 @@
 # Creation studio
 
-The authenticated home pilot now has Create and Library views. The creation workflow intentionally uses Codex subscription image generation; the website contains no provider API-generation endpoint.
+The authenticated home pilot now has Create, Library and Labs views. The creation workflow intentionally uses Codex subscription image generation; the website contains no provider API-generation endpoint.
 
 1. Choose a nature category, season, lighting, region, and scene details.
 2. Use **Build from settings** to compose a prompt, then edit it freely. Rebuilding asks before replacing prompt edits.
 3. **Save draft** persists settings and a version on Tuscany. Concurrent stale edits are rejected instead of silently overwriting a newer draft.
 4. **Prepare for Codex** saves an immutable snapshot of the current draft. **Copy request** provides the prompt and request/draft identifiers to paste into Codex. This does not run generation automatically.
 5. Generate with the Codex subscription image tool. **Import result** attaches a saved image to the selected prepared request's prompt version, even if the draft has since changed. Codex can also attach the result using the authenticated import endpoint.
-6. Preview the image and its saved prompt. Only **Display on Frame** queues a TV operation. **Use this prompt** starts a new draft for variations; it does not edit the existing image.
+6. Preview the image and its saved prompt. **Display on Frame** explicitly queues a TV operation. Optional approved-art rotation is separately gated in Labs. **Use this prompt** starts a new draft for variations; it does not edit the existing image.
 
 Library supports category filtering, previews, and explicit display. Unassociated uploads and existing gallery images remain available. Small images are enlarged to the 4K TV canvas and marked as such.
 
@@ -32,5 +32,5 @@ The HTTP test uses an isolated temporary directory, ephemeral loopback port, fak
 ## Later iterations
 
 - Android phone as local TV bridge: [issue #20](https://github.com/danmarai/frame-ambient-engine/issues/20). Deferred until after creation-studio work; no Android bridge implementation in this change.
-- Persistent playlists, rotation intervals, shuffle and pause/resume.
+- Artwork review and approved-only rotation are now available behind off-by-default flags; see [Labs](LABS.md). Named playlists, shuffle and quiet hours remain queued.
 - Optional API-backed generation only after explicit user opt-in and credential/credit setup. The current user preference is Codex subscription generation.
