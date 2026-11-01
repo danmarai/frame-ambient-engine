@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 
-export const categories = ['River & lake','Forest','Coast','Mountains','Meadow','Wetlands','Desert'];
+export const categories = ['River & lake','Forest','Coast','Mountains','Meadow','Wetlands','Desert','National Geographic inspired'];
 export const seasons = ['Spring','Summer','Autumn','Winter'];
 export const lights = ['Soft overcast','Morning light','Late afternoon','After rain'];
 export function validateDraft(input) {
