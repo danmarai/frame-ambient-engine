@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=1920, initial-scale=1.0" />
-    <title>Frame Art</title>
+    <title>Curateur</title>
     <style>
       * {
         margin: 0;
@@ -125,6 +125,18 @@
         line-height: 1.6;
       }
 
+      /* QR code */
+      .qr-container {
+        margin: 30px 0;
+        display: flex;
+        justify-content: center;
+      }
+      .qr-container img {
+        background: #fff;
+        padding: 12px;
+        border-radius: 12px;
+      }
+
       /* Art mode indicator */
       .art-status {
         position: fixed;
@@ -137,8 +149,8 @@
   </head>
   <body>
     <div id="pairingView">
-      <div class="logo">FRAME ART</div>
-      <div class="tagline">AI-Powered Art for Your Frame TV</div>
+      <div class="logo">CURATEUR</div>
+      <div class="tagline">Your Personal Art Curator</div>
 
       <div class="pairing-code" id="codeDisplay">
         <div class="char" id="c0">—</div>
@@ -150,10 +162,12 @@
         <div class="char" id="c5">—</div>
       </div>
 
+      <div class="qr-container" id="qrContainer"></div>
+
       <div class="instructions">
         <div class="step">
-          <span class="step-num">1</span> On your phone, go to
-          <strong>frameapp.dmarantz.com/pair</strong>
+          <span class="step-num">1</span> Scan the QR code, or go to
+          <strong id="pairUrlDisplay">frameapp.dmarantz.com/pair</strong>
         </div>
         <div class="step">
           <span class="step-num">2</span> Enter the code shown above
@@ -169,17 +183,25 @@
       <h2>TV Linked!</h2>
       <p>
         Your Frame TV is now connected.<br />
-        Fresh art will appear in Art Mode automatically.<br /><br />
-        Press <strong>HOME</strong> to return to your TV.
+        Manage your art at
+        <strong id="controlUrlDisplay">frameapp.dmarantz.com</strong
+        ><br /><br />
+        <span style="font-size: 20px; color: #666"
+          >This app will close in a few seconds.<br />Art Mode will resume
+          automatically.</span
+        >
       </p>
+      <div class="qr-container" id="successQrContainer"></div>
     </div>
 
     <div class="status" id="status">Connecting to cloud...</div>
     <div class="art-status" id="artStatus"></div>
 
     <script>
-      // Configuration
-      var CLOUD_WS = "wss://frameapp.dmarantz.com/ws/tv";
+      // Configuration — single source of truth for cloud URL
+      var CLOUD_URL = "https://frameapp.dmarantz.com";
+      var CLOUD_WS = CLOUD_URL.replace(/^http/, "ws") + "/ws/tv";
+      var PAIR_URL = CLOUD_URL + "/pair";
       var TV_ID = "frame-tv-" + Math.random().toString(36).substring(2, 8);
       var TV_IP = "10.199.1.210"; // TODO: auto-detect from REST API
 
@@ -308,18 +330,35 @@
 
               if (msg.type === "pairing_code") {
                 setCode(msg.code);
+                renderQR(msg.code);
                 setStatus(
-                  "Enter this code on your phone at frameapp.dmarantz.com/pair",
+                  "Enter this code or scan the QR at " +
+                    PAIR_URL.replace(/^https?:\/\//, ""),
                   "connected",
                 );
               }
 
               if (msg.type === "paired") {
-                // Show success view briefly, then exit app
+                // Show success view with control panel QR
                 document.getElementById("pairingView").style.display = "none";
                 document.getElementById("successView").style.display = "block";
+                var ctrlEl = document.getElementById("controlUrlDisplay");
+                if (ctrlEl)
+                  ctrlEl.textContent = CLOUD_URL.replace(/^https?:\/\//, "");
+                // Show QR code linking to gallery/control panel
+                var sqr = document.getElementById("successQrContainer");
+                if (sqr) {
+                  var qrImg = document.createElement("img");
+                  qrImg.src = CLOUD_URL + "/api/qr/CONTROLS";
+                  qrImg.width = 160;
+                  qrImg.height = 160;
+                  qrImg.style.borderRadius = "12px";
+                  qrImg.style.background = "#fff";
+                  qrImg.style.padding = "8px";
+                  sqr.appendChild(qrImg);
+                }
                 setStatus(
-                  "Paired! Returning to Art Mode in 5 seconds...",
+                  "Paired! Returning to Art Mode in 8 seconds...",
                   "connected",
                 );
 
@@ -334,7 +373,7 @@
                   );
                 } catch (e) {}
 
-                // Auto-close after 5 seconds to let art mode resume
+                // Auto-close after 8 seconds (gives time to scan control QR)
                 setTimeout(function () {
                   try {
                     if (typeof tizen !== "undefined" && tizen.application) {
@@ -346,7 +385,15 @@
                       "connected",
                     );
                   }
-                }, 5000);
+                }, 8000);
+              }
+
+              if (msg.type === "frame_art_toggle") {
+                if (msg.active) {
+                  setStatus("Curateur enabled — receiving art", "connected");
+                } else {
+                  setStatus("Curateur paused — Samsung Art Mode active", "");
+                }
               }
 
               if (msg.type === "new_art") {
@@ -387,6 +434,24 @@
         }
       }
 
+      // Render QR code from cloud endpoint
+      function renderQR(code) {
+        var container = document.getElementById("qrContainer");
+        container.innerHTML = "";
+        var img = document.createElement("img");
+        img.src = CLOUD_URL + "/api/qr/" + code;
+        img.alt = "Scan to pair";
+        img.width = 200;
+        img.height = 200;
+        img.style.borderRadius = "12px";
+        container.appendChild(img);
+      }
+
+      // Update the pair URL display dynamically
+      var pairUrlEl = document.getElementById("pairUrlDisplay");
+      if (pairUrlEl)
+        pairUrlEl.textContent = PAIR_URL.replace(/^https?:\/\//, "");
+
       // Check if already paired from previous session
       var savedPairing = null;
       try {
@@ -394,13 +459,16 @@
       } catch (e) {}
 
       if (savedPairing) {
-        // Already paired — show linked state, still connect to cloud
+        // Already paired — show linked state with control panel URL
         document.getElementById("pairingView").style.display = "none";
         document.getElementById("successView").style.display = "block";
+        var controlUrl = CLOUD_URL.replace(/^https?:\/\//, "");
         document.getElementById("successView").innerHTML =
-          "<h2>Frame Art Active</h2>" +
+          "<h2>Curateur Active</h2>" +
           "<p>Your TV is linked and receiving art.<br><br>" +
-          "Manage your art at <strong>frameapp.dmarantz.com</strong><br><br>" +
+          "Manage your art at <strong>" +
+          controlUrl +
+          "</strong><br><br>" +
           "<small>Press HOME to return to Art Mode.</small></p>" +
           "<p style='margin-top:40px;font-size:20px;color:#666;'>" +
           "<a href='#' onclick='localStorage.removeItem(\"frameart_paired\");location.reload();' " +

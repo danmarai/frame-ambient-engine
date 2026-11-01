@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';import fs from 'node:fs/promises';
+const cfg=JSON.parse(await fs.readFile(process.env.FRAME_CONFIG,'utf8'));
+const base=process.env.FRAME_URL||'http://127.0.0.1:3848';
+const request=(p,method='GET',body,headers={})=>fetch(base+p,{method,headers,body:body===undefined?undefined:JSON.stringify(body)});
+assert.equal((await request('/api/status')).status,401);
+assert.equal((await request('/api/display','POST',{id:'x'})).status,401);
+assert.equal((await request('/bridge/poll','POST',{})).status,401);
+assert.equal((await request('/login','POST',{key:cfg.browserKey},{Origin:'https://evil.example'})).status,403);
+assert.equal((await request('/login','POST',{key:'wrong'},{Origin:cfg.origin})).status,401);
+const login=await request('/login','POST',{key:cfg.browserKey},{Origin:cfg.origin});assert.equal(login.status,200);
+const cookie=login.headers.get('set-cookie');assert.match(cookie,/HttpOnly; Secure; SameSite=Strict/);
+const session=cookie.split(';')[0];
+assert.equal((await request('/api/status','GET',undefined,{Cookie:session})).status,200);
+assert.equal((await request('/api/upload','POST',{}, {Cookie:session,Origin:'https://evil.example'})).status,403);
+assert.equal((await request('/api/upload','POST',{}, {Cookie:session,Origin:cfg.origin})).status,400);
+assert.equal((await request('/logout','POST',{}, {Cookie:session,Origin:cfg.origin})).status,200);
+assert.equal((await request('/api/status','GET',undefined,{Cookie:session})).status,401);
+console.log('HTTP security checks passed: unauthenticated routes, bridge gate, origin checks, login, secure cookie, invalid image, logout revocation.');

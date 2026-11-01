@@ -46,6 +46,7 @@ COPY --from=deps /app/packages ./packages
 
 # Copy source code
 COPY apps/cloud/ apps/cloud/
+COPY packages/ packages/
 
 # Create data directory for SQLite and images
 RUN mkdir -p data/images

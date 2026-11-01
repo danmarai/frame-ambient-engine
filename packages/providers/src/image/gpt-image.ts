@@ -1,19 +1,3 @@
-/**
- * OpenAI GPT Image provider (gpt-image-1).
- *
- * Uses the same /v1/images/generations endpoint as DALL-E but with
- * the gpt-image-1 model which produces significantly better photorealistic
- * output, handles text rendering, and follows complex prompts more faithfully.
- *
- * Key differences from DALL-E 3:
- * - Model: "gpt-image-1" instead of "dall-e-3"
- * - Size options: 1024x1024, 1536x1024, 1024x1536 (not 1792x1024)
- * - Quality: "low" | "medium" | "high" (not "standard" | "hd")
- * - No "style" parameter (vivid/natural) — the model handles this natively
- * - Output format: supports b64_json and url
- * - Better photorealism, text rendering, and instruction following
- */
-
 import type {
   ImageProvider,
   ImageGenerationRequest,
@@ -34,17 +18,18 @@ export class GPTImageProvider implements ImageProvider {
   private apiKey: string;
   private model: string;
 
-  constructor(apiKey: string, model = "gpt-image-1") {
+  constructor(apiKey: string, model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2.5-sunburst") {
     this.apiKey = apiKey;
     this.model = model;
   }
 
   async generate(request: ImageGenerationRequest): Promise<GeneratedImage> {
-    // Use 1536x1024 landscape for Frame TV (closest to 16:9)
-    const size = "1536x1024";
+    // Native 16:9 avoids cropping the composition for Frame TV.
+    const size = "2560x1440";
 
     const res = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
+      signal: AbortSignal.timeout(180_000),
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
         "Content-Type": "application/json",
@@ -73,8 +58,8 @@ export class GPTImageProvider implements ImageProvider {
     return {
       data: Buffer.from(b64, "base64"),
       mimeType: "image/png",
-      width: 1536,
-      height: 1024,
+      width: 2560,
+      height: 1440,
       provider: this.name,
       generatedAt: new Date().toISOString(),
     };

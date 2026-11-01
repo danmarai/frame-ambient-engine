@@ -38,9 +38,7 @@ router.post(
     const userId = (req as any).user?.userId;
 
     try {
-      let targetTv:
-        | { id: string; tvIp: string }
-        | null = null;
+      let targetTv: { id: string; tvIp: string } | null = null;
       if (tvId || explicitIp) {
         if (!userId) {
           res.status(401).json({ error: "Authentication required" });
@@ -111,6 +109,8 @@ router.post(
         provider: result.provider,
         imageUrl: `/api/images/${result.sceneId}`,
         upload: uploadResult,
+        tasteProfileUsed: result.tasteProfileUsed,
+        tasteConfidence: result.tasteConfidence,
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Generation failed";

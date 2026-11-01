@@ -920,12 +920,12 @@ describe("generation config", () => {
     }
   });
 
-  it("should include gpt-image, openai, gemini, and mock providers", () => {
+  it("should include supported providers and hide retired DALL-E", () => {
     const { providers } = getGenerationConfig();
     const ids = providers.map((p: any) => p.id);
 
     expect(ids).toContain("gpt-image");
-    expect(ids).toContain("openai");
+    expect(ids).not.toContain("openai");
     expect(ids).toContain("gemini");
     expect(ids).toContain("mock");
   });
