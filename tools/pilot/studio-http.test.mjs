@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import {spawn} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import sharp from '../../packages/rendering/node_modules/sharp/lib/index.js';
+
+test('studio HTTP routes require auth and origin, then save/prepare/import without displaying',async t=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'frame-studio-http-'));
+ const key='test-only-browser-key'.repeat(4),origin='https://frame.marantz.net';
+ await fs.writeFile(path.join(dir,'config.json'),JSON.stringify({browserKey:key,bridgeKey:'test-only-bridge-key'.repeat(4),origin}));
+ const child=spawn(process.execPath,[fileURLToPath(new URL('./server.mjs',import.meta.url))],{env:{...process.env,FRAME_PILOT_DATA:dir,FRAME_PILOT_PORT:'0'},stdio:['ignore','pipe','pipe']});
+ t.after(async()=>{child.kill();await new Promise(r=>child.once('exit',r));await fs.rm(dir,{recursive:true,force:true});});
+ const port=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Server startup timed out')),10000);child.stdout.on('data',b=>{const match=String(b).match(/port (\d+)/);if(match){clearTimeout(timer);resolve(match[1]);}});child.once('exit',()=>{clearTimeout(timer);reject(Error('Server exited'));});});
+ const base='http://127.0.0.1:'+port;
+ const request=(p,method='GET',body,headers={})=>fetch(base+p,{method,headers,body:body===undefined?undefined:JSON.stringify(body)});
+ assert.equal((await request('/api/studio')).status,401);
+ assert.equal((await request('/api/studio/draft','POST',{})).status,401);
+ const login=await request('/login','POST',{key},{Origin:origin});const cookie=login.headers.get('set-cookie').split(';')[0];
+ const auth={Cookie:cookie,Origin:origin};
+ assert.equal((await request('/api/studio/prepare','POST',{}, {Cookie:cookie,Origin:'https://evil.example'})).status,403);
+ const draft={title:'Test forest',category:'Forest',season:'Autumn',light:'Soft overcast',location:'PNW',notes:'',prompt:'Photograph of a forest.'};
+ const saved=await request('/api/studio/draft','POST',draft,auth);assert.equal(saved.status,200);const d=await saved.json();
+ const prepared=await request('/api/studio/prepare','POST',{id:d.id},auth);assert.equal(prepared.status,201);const r=await prepared.json();
+ const input=await sharp({create:{width:32,height:18,channels:3,background:'#536847'}}).png().toBuffer();
+ const imported=await fetch(base+'/api/studio/import/'+d.id,{method:'POST',headers:{...auth,'X-Frame-Request-Id':r.id},body:input});assert.equal(imported.status,201);const image=await imported.json();
+ const state=await request('/api/studio','GET',undefined,auth).then(x=>x.json());assert.equal(state.artworks[image.id].prompt,draft.prompt);assert.equal(state.requests[0].status,'imported');
+ const status=await request('/api/status','GET',undefined,auth).then(x=>x.json());assert.equal(status.job,null);assert.equal(status.images.length,1);
+ assert.equal((await request('/api/studio/generate','POST',{id:d.id},auth)).status,404);
+ assert.equal((await request('/image/'+image.id)).status,401);
+});

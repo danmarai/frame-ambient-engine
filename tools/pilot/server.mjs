@@ -5,6 +5,7 @@ import {randomBytes,randomUUID} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import sharp from '../../packages/rendering/node_modules/sharp/lib/index.js';
 import {equal,verifier} from './auth.mjs';
+import {createStudio} from './studio.mjs';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const dir=process.env.FRAME_PILOT_DATA;
@@ -18,6 +19,18 @@ let failures=0, reset=0;
 async function body(req,limit){let size=0,chunks=[];for await(const chunk of req){size+=chunk.length;if(size>limit)throw Error('Payload too large');chunks.push(chunk);}return Buffer.concat(chunks);}
 const idOK=id=>/^[a-f0-9-]{36}$/.test(id);
 async function gallery(){return (await fs.readdir(imageDir)).filter(n=>/^[a-f0-9-]{36}\.jpg$/.test(n)).map(n=>({id:n.slice(0,-4)}));}
+async function saveImage(input) {
+ if(uploading)throw Error('Another upload is processing');
+ if((await gallery()).length>=200)throw Error('Pilot gallery limit reached');
+ uploading=true;
+ try{
+  const img=sharp(input,{limitInputPixels:40000000});const meta=await img.metadata();
+  if(!['jpeg','png','webp'].includes(meta.format)||meta.pages>1)throw Error('Use a single JPEG, PNG or WebP');
+  const id=randomUUID();await img.rotate().resize(3840,2160,{fit:'cover'}).jpeg({quality:95,chromaSubsampling:'4:4:4'}).toFile(path.join(imageDir,id+'.jpg'));
+  return {id,upscaled:meta.width<3840||meta.height<2160};
+ }finally{uploading=false;}
+}
+const studio=await createStudio(dir,{saveImage});
 const server=http.createServer(async(req,res)=>{
  res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
  res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
@@ -65,17 +78,17 @@ const server=http.createServer(async(req,res)=>{
    return send(200,{bridgeOnline:Date.now()-bridgeSeen<30000,job,lastResult,images:await gallery()});
   }
   if(p.startsWith('/image/')&&method==='GET'&&idOK(p.slice(7)))return send(200,await fs.readFile(path.join(imageDir,p.slice(7)+'.jpg')),'image/jpeg');
-  if(p==='/api/upload'&&method==='POST'){
-   if(uploading)return send(409,{error:'Another upload is processing'});
-   if((await gallery()).length>=200)return send(409,{error:'Pilot gallery limit reached'});
-   uploading=true;
-   try{
-    const input=await body(req,20*1024*1024);const img=sharp(input,{limitInputPixels:40000000});const meta=await img.metadata();
-    if(!['jpeg','png','webp'].includes(meta.format)||meta.pages>1)throw Error('Use a single JPEG, PNG or WebP');
-    const id=randomUUID();await img.rotate().resize(3840,2160,{fit:'cover'}).jpeg({quality:95,chromaSubsampling:'4:4:4'}).toFile(path.join(imageDir,id+'.jpg'));
-    return send(201,{id,upscaled:meta.width<3840||meta.height<2160});
-   }finally{uploading=false;}
+  if(p==='/api/studio'&&method==='GET')return send(200,studio.snapshot());
+  if(p==='/api/studio/draft'&&method==='POST'){
+   try{return send(200,await studio.save(JSON.parse((await body(req,16000)).toString())));}catch(e){return send(400,{error:e.message});}
   }
+  if(p==='/api/studio/prepare'&&method==='POST'){
+   try{const input=JSON.parse((await body(req,1024)).toString());return send(201,await studio.prepare(input.id));}catch(e){return send(400,{error:e.message});}
+  }
+  if(p.startsWith('/api/studio/import/')&&method==='POST'&&idOK(p.slice(19))){
+   try{return send(201,await studio.import(p.slice(19),await body(req,20*1024*1024),req.headers['x-frame-request-id']));}catch{return send(400,{error:'Could not import the image. Check the prepared request and use a single JPEG, PNG or WebP under 20 MB.'});}
+  }
+  if(p==='/api/upload'&&method==='POST')return send(201,await saveImage(await body(req,20*1024*1024)));
   if(p==='/api/display'&&method==='POST'){
    if(job)return send(409,{error:'A TV operation is already in progress'});
    if(Date.now()-bridgeSeen>30000)return send(409,{error:'The laptop TV bridge is offline'});
@@ -87,4 +100,4 @@ const server=http.createServer(async(req,res)=>{
  }catch(e){if(!res.headersSent)send(400,{error:e.code==='ENOENT'?'Not found':'Request could not be processed'});else res.end();}
 });
 server.requestTimeout=30000;server.headersTimeout=10000;
-server.listen(3848,'127.0.0.1',()=>console.log('Frame pilot listening on loopback port 3848'));
+server.listen(Number(process.env.FRAME_PILOT_PORT||3848),'127.0.0.1',()=>console.log('Frame pilot listening on loopback port '+server.address().port));
